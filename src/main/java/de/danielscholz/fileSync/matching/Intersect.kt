@@ -10,13 +10,10 @@ import kotlin.math.min
 /**
  * Calculates the intersection of two collections.
  */
-class Intersect(val mode: EnumSet<MatchMode>, private val multimapMatching: Boolean) {
+class Intersect(val mode: EnumSet<MatchMode>, private val multimapMatching: Boolean = false) {
 
     context(FoldersContext, CaseSensitiveContext)
-    fun apply(
-        collection1: Collection<File2>,
-        collection2: Collection<File2>
-    ): List<Pair<File2, File2>> {
+    fun apply(collection1: Collection<File2>, collection2: Collection<File2>): List<Pair<File2, File2>> {
 
         val result = mutableListOf<Pair<File2, File2>>()
         if (result is ArrayList) {

@@ -2,31 +2,16 @@ package de.danielscholz.fileSync.matching
 
 import de.danielscholz.fileSync.common.CaseSensitiveContext
 import de.danielscholz.fileSync.common.FoldersContext
-import de.danielscholz.fileSync.common.mutableListMultimapOf
 import de.danielscholz.fileSync.persistence.File2
 import java.util.*
 
 /**
  * Calculates collection1 minus collection2
  */
-class Subtract(private val mode: EnumSet<MatchMode>, private val multimapMatching: Boolean) {
+class Subtract(private val mode: EnumSet<MatchMode>) {
 
     context(FoldersContext, CaseSensitiveContext)
     fun apply(collection1: Collection<File2>, collection2: Collection<File2>): Collection<File2> {
-
-        if (multimapMatching) {
-            val collection1AsMultimap = mutableListMultimapOf<String, File2>()
-
-            collection1.forEach {
-                collection1AsMultimap.put(createKey(it, mode), it)
-            }
-
-            collection2.forEach {
-                collection1AsMultimap.removeAll(createKey(it, mode))
-            }
-
-            return collection1AsMultimap.values()
-        }
 
         val collection1AsMap = HashMap<String, File2>()
 

@@ -6,9 +6,7 @@ import de.danielscholz.fileSync.persistence.File2
 
 
 fun interface ResultFilter {
-
     fun filter(file1: File2, file2: File2): Boolean
-
 }
 
 

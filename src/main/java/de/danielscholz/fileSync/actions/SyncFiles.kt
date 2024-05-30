@@ -4,7 +4,8 @@ import de.danielscholz.fileSync.GlobalParams
 import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.*
-import de.danielscholz.fileSync.matching.MatchMode.*
+import de.danielscholz.fileSync.matching.MatchMode.HASH
+import de.danielscholz.fileSync.matching.MatchMode.MODIFIED
 import de.danielscholz.fileSync.persistence.*
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinInstant
@@ -213,27 +214,28 @@ class SyncFiles(private val globalParams: GlobalParams, private val syncFilesPar
 
             val current = getCurrentFiles(dir, filter, lastSyncResult)
 
-            val added = Subtract(pathAndName, false)
+            val added = Subtract(pathAndName)
                 .apply(current, lastSyncResult)
                 .toMutableSet()
 
-            val deleted = Subtract(pathAndName, false)
+            val deleted = Subtract(pathAndName)
                 .apply(lastSyncResult, current)
                 .toMutableSet()
 
-            val moved = Intersect(EnumSet.of(HASH, CREATED, MODIFIED), false)
+            // TODO collisions
+            val moved = Intersect(EnumSet.of(HASH, MODIFIED), false)
                 .apply(deleted, added)
                 .map { Moved(it.first, it.second) }
 
             added -= moved.to().toSet()
             deleted -= moved.from().toSet()
 
-            val contentChanged = Intersect(pathAndName, false)
+            val contentChanged = Intersect(pathAndName)
                 .apply(lastSyncResult, current)
                 .filter2(HASH_NEQ)
                 .map { ContentChanged(it.first, it.second) }
 
-            val attributesChanged = Intersect(pathAndName, false)
+            val attributesChanged = Intersect(pathAndName)
                 .apply(lastSyncResult, current)
                 .filter2(HASH_EQ and MODIFIED_NEQ)
                 .right()

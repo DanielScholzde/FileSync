@@ -30,7 +30,7 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
     }
 
     // fix scenario: same added files in both locations (or changed files with same content)
-    Intersect(pathAndName, false)
+    Intersect(pathAndName)
         .apply(sourceChanges.added + sourceChanges.contentChanged.to(), targetChanges.added + targetChanges.contentChanged.to())
         .filter2(HASH_EQ)
         .forEach { pair ->
@@ -49,14 +49,14 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
             }
         }
 
-    Intersect(pathAndName, false)
+    Intersect(pathAndName)
         .apply(sourceChanges.contentChanged.to(), targetChanges.contentChanged.to())
         .filter2(HASH_NEQ)
         .ifNotEmptyCreateConflicts("modified (with different content) within source and target") {
             "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
         }
 
-    Intersect(pathAndName, false)
+    Intersect(pathAndName)
         .apply(sourceChanges.attributesChanged, targetChanges.attributesChanged)
         .filter2(MODIFIED_NEQ)
         .ifNotEmptyCreateConflicts("changed modification date (not equal) within source and target") {
@@ -65,24 +65,24 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
 
 
     fun directionalChecks(changed1: Changes, changed2: Changes) {
-        Intersect(pathAndName, false)
+        Intersect(pathAndName)
             .apply(changed1.added, changed2.allFilesBeforeSync)
             .filter2(HASH_NEQ or MODIFIED_NEQ)
             .ifNotEmptyCreateConflicts("already exists within target dir (and has different content or modification date)") {
                 "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
             }
 
-        Intersect(pathAndName, false)
+        Intersect(pathAndName)
             .apply(changed1.deleted, changed2.contentChanged.to())
             .ifNotEmptyCreateConflicts("deleted source file but changed content within target dir") {
                 "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
             }
 
-        Subtract(pathAndName, false)
+        Subtract(pathAndName)
             .apply(changed1.movedOrRenamed.from(), changed2.allFilesBeforeSync)
             .ifNotEmptyCreateConflicts("source of moved file does not exists within target dir")
 
-        Intersect(pathAndName, false)
+        Intersect(pathAndName)
             .apply(changed1.movedOrRenamed.to(), changed2.allFilesBeforeSync)
             .ifNotEmptyCreateConflicts("target of moved file already exists within target dir") {
                 "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
