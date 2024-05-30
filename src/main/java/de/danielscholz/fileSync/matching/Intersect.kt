@@ -10,7 +10,7 @@ import kotlin.math.min
 /**
  * Calculates the intersection of two collections.
  */
-class Intersect(val mode: EnumSet<MatchMode>, private val multimapMatching: Boolean = false) {
+class Intersect(val mode: EnumSet<MatchMode>, private val multimapMatching: Boolean = false, private val ignoreDuplicates: Boolean = false) {
 
     context(FoldersContext, CaseSensitiveContext)
     fun apply(collection1: Collection<File2>, collection2: Collection<File2>): List<Pair<File2, File2>> {
@@ -18,6 +18,29 @@ class Intersect(val mode: EnumSet<MatchMode>, private val multimapMatching: Bool
         val result = mutableListOf<Pair<File2, File2>>()
         if (result is ArrayList) {
             result.ensureCapacity(min(collection1.size, collection2.size) / 10)
+        }
+
+        if (ignoreDuplicates) {
+            val collection1AsMultimap = mutableListMultimapOf<String, File2>()
+            val collection2AsMultimap = mutableListMultimapOf<String, File2>()
+
+            collection1.forEach {
+                collection1AsMultimap.put(createKey(it, mode), it)
+            }
+            collection2.forEach {
+                collection2AsMultimap.put(createKey(it, mode), it)
+            }
+
+            collection2AsMultimap.keySet().forEach { key ->
+                val set1 = collection1AsMultimap[key]
+                val set2 = collection2AsMultimap[key]
+                if (set1.size > 1 || set2.size > 1) {
+                    return@forEach
+                }
+                result.add(set1[0] to set2[0])
+            }
+
+            return result
         }
 
         if (multimapMatching) {

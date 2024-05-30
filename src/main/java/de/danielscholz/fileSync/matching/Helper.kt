@@ -39,6 +39,14 @@ fun createKey(file: File2, mode: EnumSet<MatchMode>): String {
     return b.toString()
 }
 
+operator fun MatchMode.plus(b: MatchMode): EnumSet<MatchMode> {
+    return EnumSet.of(this, b)
+}
+
+operator fun EnumSet<MatchMode>.plus(b: MatchMode): EnumSet<MatchMode> {
+    this.add(b)
+    return this
+}
 
 fun Collection<Pair<File2, File2>>.filter2(resultFilter: ResultFilter): Collection<Pair<File2, File2>> {
     return this.filter { resultFilter.filter(it.first, it.second) }

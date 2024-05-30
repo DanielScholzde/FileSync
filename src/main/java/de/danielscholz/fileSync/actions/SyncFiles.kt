@@ -4,8 +4,7 @@ import de.danielscholz.fileSync.GlobalParams
 import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.*
-import de.danielscholz.fileSync.matching.MatchMode.HASH
-import de.danielscholz.fileSync.matching.MatchMode.MODIFIED
+import de.danielscholz.fileSync.matching.MatchMode.*
 import de.danielscholz.fileSync.persistence.*
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinInstant
@@ -15,7 +14,6 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.time.LocalDateTime
-import java.util.*
 import kotlin.collections.set
 
 
@@ -223,7 +221,9 @@ class SyncFiles(private val globalParams: GlobalParams, private val syncFilesPar
                 .toMutableSet()
 
             // TODO collisions
-            val moved = Intersect(EnumSet.of(HASH, MODIFIED), false)
+            val moved = mutableListOf<Moved>()
+
+            moved += Intersect(PATH + HASH + MODIFIED, false)
                 .apply(deleted, added)
                 .map { Moved(it.first, it.second) }
 
