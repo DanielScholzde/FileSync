@@ -2,7 +2,6 @@ package de.danielscholz.fileSync.common
 
 import de.danielscholz.fileSync.actions.SyncFiles
 import de.danielscholz.fileSync.persistence.File2
-import org.apache.commons.lang3.StringUtils
 
 
 fun String.getSha1Chunk(): String {
@@ -24,7 +23,7 @@ fun String.getFileExtension(): String? {
 }
 
 fun leftPad(num: Int, length: Int): String {
-    return StringUtils.leftPad(num.toString(), length)
+    return num.toString().padStart(length)
 }
 
 

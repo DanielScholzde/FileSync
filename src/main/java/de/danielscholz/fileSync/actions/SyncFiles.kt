@@ -20,7 +20,7 @@ import kotlin.collections.set
 
 class SyncFiles(private val globalParams: GlobalParams, private val syncFilesParams: SyncFilesParams) {
 
-    private val backupDir = ".history"
+    private val backupDir = ".syncFilesHistory"
 
     fun sync(sourceDir: File, targetDir: File, filter: Filter) {
         val now = LocalDateTime.now().withNano(0)
@@ -35,20 +35,20 @@ class SyncFiles(private val globalParams: GlobalParams, private val syncFilesPar
                     (isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"))
         )
 
-        val filePrefix = ".sync_"
+        val filePrefix = ".syncFiles_"
         val fileSuffix = ".jsn"
         val indexRunFile = File(sourceDir, "$filePrefix${targetDir.path.hashCode()}$fileSuffix")
 
         @Suppress("NAME_SHADOWING")
         val filter = Filter(
             fileFilter = { path, fileName ->
-                if (path == "/" && fileName.startsWith(filePrefix) && fileName.endsWith(fileSuffix))
+                if (fileName.startsWith(filePrefix) && fileName.endsWith(fileSuffix))
                     ExcludedBy.SYSTEM
                 else
                     filter.fileFilter.excluded(path, fileName)
             },
             folderFilter = { fullPath, folderName ->
-                if (fullPath == "/$backupDir/")
+                if (folderName == backupDir)
                     ExcludedBy.SYSTEM
                 else
                     filter.folderFilter.excluded(fullPath, folderName)

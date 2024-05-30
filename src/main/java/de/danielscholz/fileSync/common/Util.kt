@@ -3,7 +3,9 @@ package de.danielscholz.fileSync.common
 import de.danielscholz.fileSync.Global
 import kotlinx.datetime.*
 import kotlinx.datetime.format.char
-import org.slf4j.LoggerFactory
+import java.io.File
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
 import kotlin.math.absoluteValue
 
 
@@ -17,20 +19,23 @@ fun registerShutdownCallback(exitCallback: () -> Unit) {
 
 fun testIfCancel() {
     if (Global.cancel) {
-        LoggerFactory.getLogger("Main").debug("cancel -> exit..")
+        println("cancel -> exit..")
         throw CancelException()
     }
 }
 
-//fun setRootLoggerLevel() {
-//    val rootLogger = LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME) as ch.qos.logback.classic.Logger
-//    rootLogger.level = when (Config.INST.logLevel.lowercase()) {
-//        "info" -> ch.qos.logback.classic.Level.INFO
-//        "debug" -> ch.qos.logback.classic.Level.DEBUG
-//        "trace" -> ch.qos.logback.classic.Level.TRACE
-//        else -> rootLogger.level
-//    }
-//}
+fun guardWithLockFile(lockfile: File, block: () -> Unit) {
+    try {
+        Files.createFile(lockfile.toPath())
+
+        block()
+
+        lockfile.delete()
+    } catch (e: FileAlreadyExistsException) {
+        println("Lockfile could not be created: ${e.message}")
+    }
+}
+
 
 
 val customFormat = LocalDateTime.Format {

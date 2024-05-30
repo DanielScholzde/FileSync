@@ -1,7 +1,6 @@
 package de.danielscholz.fileSync.common
 
 import de.danielscholz.fileSync.Global
-import org.slf4j.LoggerFactory
 import java.lang.management.ManagementFactory
 import java.lang.management.MemoryNotificationInfo
 import java.lang.management.MemoryType
@@ -10,16 +9,13 @@ import javax.management.NotificationEmitter
 import javax.management.NotificationListener
 import kotlin.math.floor
 
-private val logger = LoggerFactory.getLogger(LowMemoryListener::class.java)
 
 class LowMemoryListener(private val max: Long, private val threshold: Long) : NotificationListener {
 
-    private val logger = LoggerFactory.getLogger(this.javaClass)
-
     override fun handleNotification(notification: Notification, handback: Any?) {
         if (notification.type == MemoryNotificationInfo.MEMORY_THRESHOLD_EXCEEDED) {
-            logger.error("ERROR: Memory usage threshold reached: " + threshold.formatAsFileSize() + " of " + max.formatAsFileSize())
-            logger.error("shutting down..")
+            println("ERROR: Memory usage threshold reached: " + threshold.formatAsFileSize() + " of " + max.formatAsFileSize())
+            println("shutting down..")
             Global.cancel = true
         }
     }
@@ -44,6 +40,6 @@ fun registerLowMemoryListener() {
         notificationEmitter.addNotificationListener(LowMemoryListener(max, threshold), null, null)
         registered = true
 
-        logger.debug("LowMemoryListener successfully registered. Max available Memory: ${max.formatAsFileSize()}, Threshold: ${threshold.formatAsFileSize()}")
+        println("LowMemoryListener successfully registered. Max available Memory: ${max.formatAsFileSize()}, Threshold: ${threshold.formatAsFileSize()}")
     }
 }

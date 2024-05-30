@@ -2,7 +2,6 @@ package de.danielscholz.fileSync.common
 
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinInstant
-import org.slf4j.LoggerFactory
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
@@ -55,9 +54,6 @@ class FileResult(
 }
 
 
-private val logger = LoggerFactory.getLogger("ReadDir")
-
-
 fun readDir(dir: File, subPath: String = "/"): FolderResult {
     val files = mutableListOf<FileResult>()
     val folders = mutableListOf<FolderEntry>()
@@ -90,12 +86,12 @@ fun readDir(dir: File, subPath: String = "/"): FolderResult {
                     }
                 )
             } else {
-                logger.warn("$fileEntry not processed because it is not a directory nor a regular file")
+                println("$fileEntry not processed because it is not a directory nor a regular file")
             }
         }
     } else {
         val msg = "ERROR: $dir: Directory is not readable"
-        logger.error(msg)
+        println(msg)
     }
     return FolderResult(folders, files)
 }

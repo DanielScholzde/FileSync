@@ -10,17 +10,14 @@ import de.danielscholz.kargparser.ArgParser
 import de.danielscholz.kargparser.ArgParserBuilder
 import de.danielscholz.kargparser.ArgParserConfig
 import de.danielscholz.kargparser.parser.*
-import org.slf4j.LoggerFactory
 import java.io.File
 import kotlin.reflect.KProperty0
 
 
-private val logger = LoggerFactory.getLogger("Main")
-
 fun main(args: Array<String>) {
     registerShutdownCallback {
         Global.cancel = true
-        (LoggerFactory.getILoggerFactory() as ch.qos.logback.classic.LoggerContext).stop()
+        //(LoggerFactory.getILoggerFactory() as ch.qos.logback.classic.LoggerContext).stop()
     }
     registerLowMemoryListener()
 
@@ -31,10 +28,10 @@ fun main(args: Array<String>) {
             parser.parseArgs(args)
 
         } catch (e: CancelException) {
-            logger.error("execution canceled")
+            println("execution canceled")
             if (isTest()) throw e // throw exception only in test case
         } catch (e: ArgParseException) {
-            logger.info(parser.printout(e))
+            println(parser.printout(e))
             if (isTest()) throw e // throw exception only in test case
         }
     }
@@ -58,7 +55,7 @@ private fun createParser(): ArgParser<GlobalParams> {
     return ArgParserBuilder(GlobalParams()).buildWith(ArgParserConfig(ignoreCase = true, noPrefixForActionParams = true)) {
 
         addActionParser("help", "Show all available options and commands") {
-            logger.info(printout())
+            println(printout())
         }
 
         add(paramValues::dryRun, BooleanParam())
@@ -163,8 +160,6 @@ private fun createParser(): ArgParser<GlobalParams> {
 
             val filter = Filter(folderFilter, fileFilter)
 
-            //setRootLoggerLevel()
-
             SyncFiles(globalParams, paramValues).sync(
                 paramValues.sourceDir!!.canonicalFile,
                 paramValues.targetDir!!.canonicalFile,
@@ -222,7 +217,7 @@ private fun demandedHelp(args: Array<String>, parser: ArgParser<GlobalParams>): 
     if (foundIdx >= 0) {
         val argumentsWithoutHelp = args.toMutableList()
         argumentsWithoutHelp.removeAt(foundIdx)
-        logger.info(parser.printout(argumentsWithoutHelp.toTypedArray(), false))
+        println(parser.printout(argumentsWithoutHelp.toTypedArray(), false))
         return true
     }
     return false
@@ -245,5 +240,5 @@ private fun loggerInfo(propertyName: String, propertyValue: Any?) {
     } else {
         value = convertSingle(value)
     }
-    logger.info("$propertyName = $value")
+    println("$propertyName = $value")
 }
