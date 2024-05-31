@@ -1,6 +1,5 @@
 package de.danielscholz.fileSync.common
 
-import de.danielscholz.fileSync.Global
 import kotlinx.datetime.*
 import kotlinx.datetime.format.char
 import java.io.File

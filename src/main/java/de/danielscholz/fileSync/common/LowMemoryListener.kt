@@ -1,6 +1,5 @@
 package de.danielscholz.fileSync.common
 
-import de.danielscholz.fileSync.Global
 import java.lang.management.ManagementFactory
 import java.lang.management.MemoryNotificationInfo
 import java.lang.management.MemoryType

@@ -1,23 +1,20 @@
 package de.danielscholz.fileSync
 
 import de.danielscholz.fileSync.actions.*
-import de.danielscholz.fileSync.common.CancelException
-import de.danielscholz.fileSync.common.isTest
-import de.danielscholz.fileSync.common.registerLowMemoryListener
-import de.danielscholz.fileSync.common.registerShutdownCallback
+import de.danielscholz.fileSync.common.*
 import de.danielscholz.kargparser.ArgParseException
 import de.danielscholz.kargparser.ArgParser
 import de.danielscholz.kargparser.ArgParserBuilder
 import de.danielscholz.kargparser.ArgParserConfig
-import de.danielscholz.kargparser.parser.*
-import java.io.File
-import kotlin.reflect.KProperty0
+import de.danielscholz.kargparser.parser.BooleanParam
+import de.danielscholz.kargparser.parser.FileParam
+import de.danielscholz.kargparser.parser.IntParam
+import de.danielscholz.kargparser.parser.StringSetParam
 
 
 fun main(args: Array<String>) {
     registerShutdownCallback {
         Global.cancel = true
-        //(LoggerFactory.getILoggerFactory() as ch.qos.logback.classic.LoggerContext).stop()
     }
     registerLowMemoryListener()
 
@@ -39,45 +36,27 @@ fun main(args: Array<String>) {
 
 
 @Suppress("DuplicatedCode")
-private fun createParser(): ArgParser<GlobalParams> {
-
-    fun ArgParserBuilder<*>.addConfigParamsForIndexFiles() {
-//        add(Config.INST::fastMode, BooleanParam())
-//        add(Config.INST::ignoreHashInFastMode, BooleanParam())
-//        add(Config.INST::createHashOnlyForFirstMb, BooleanParam())
-//        add(Config.INST::alwaysCheckHashOnIndexForFilesSuffix, StringSetParam(typeDescription = ""))
-    }
-
-    fun loggerInfo(property: KProperty0<*>) {
-        loggerInfo(property.name, property.get())
-    }
-
-    return ArgParserBuilder(GlobalParams()).buildWith(ArgParserConfig(ignoreCase = true, noPrefixForActionParams = true)) {
+private fun createParser() = ArgParserBuilder(GlobalParams())
+    .buildWith(ArgParserConfig(ignoreCase = true, noPrefixForActionParams = true)) {
 
         addActionParser("help", "Show all available options and commands") {
             println(printout())
         }
 
-        add(paramValues::dryRun, BooleanParam())
-        add(paramValues::verbose, BooleanParam())
-//        add(Config.INST::logLevel, StringParam())
-        add(paramValues::confirmations, BooleanParam())
-//      add(paramValues::timeZone, TimeZoneParam())
-
-        val globalParams = paramValues
-
         addActionParser(
             Commands.SYNC_FILES.command,
             ArgParserBuilder(SyncFilesParams()).buildWith {
-                addConfigParamsForIndexFiles()
+                add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
+                add(paramValues::targetDir, FileParam(checkIsDir = true), required = true)
                 add(paramValues::excludedPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
                 add(paramValues::excludedFiles, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
                 add(paramValues::maxChangedFilesWarningPercent, IntParam())
                 add(paramValues::minAllowedChanges, IntParam())
                 add(paramValues::minDiskFreeSpacePercent, IntParam())
                 add(paramValues::minDiskFreeSpaceMB, IntParam())
-                add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
-                add(paramValues::targetDir, FileParam(checkIsDir = true), required = true)
+                add(paramValues::confirmations, BooleanParam())
+                add(paramValues::dryRun, BooleanParam())
+                add(paramValues::verbose, BooleanParam())
             }) {
 
             val exclFileNamesSimple = mutableSetOf<String>()
@@ -160,7 +139,7 @@ private fun createParser(): ArgParser<GlobalParams> {
 
             val filter = Filter(folderFilter, fileFilter)
 
-            SyncFiles(globalParams, paramValues).sync(
+            SyncFiles(paramValues).sync(
                 paramValues.sourceDir!!.canonicalFile,
                 paramValues.targetDir!!.canonicalFile,
                 filter
@@ -201,9 +180,7 @@ private fun createParser(): ArgParser<GlobalParams> {
 //            null
 //         }
 //      }
-
     }
-}
 
 
 fun interface PathMatcher {
@@ -221,24 +198,4 @@ private fun demandedHelp(args: Array<String>, parser: ArgParser<GlobalParams>): 
         return true
     }
     return false
-}
-
-
-private fun loggerInfo(propertyName: String, propertyValue: Any?) {
-    fun convertSingle(value: Any?): String? {
-        if (value is String) return "\"$value\""
-        if (value is Boolean) return BooleanParam().convertToStr(value)
-        if (value is File) return FileParam().convertToStr(value)
-//      if (value is TimeZone) return TimeZoneParam().convertToStr(value)
-        if (value is IntRange) return IntRangeParam().convertToStr(value)
-        return if (value != null) value.toString() else ""
-    }
-
-    var value: Any? = propertyValue
-    if (value is Collection<*>) {
-        value = value.joinToString(transform = { convertSingle(it).toString() })
-    } else {
-        value = convertSingle(value)
-    }
-    println("$propertyName = $value")
 }

@@ -1,4 +1,4 @@
-package de.danielscholz.fileSync
+package de.danielscholz.fileSync.common
 
 /**
  * Global properties that are required by the whole program.

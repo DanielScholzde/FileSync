@@ -2,37 +2,22 @@ package de.danielscholz.fileSync
 
 import de.danielscholz.kargparser.Description
 import java.io.File
-import java.util.*
 
 
-class GlobalParams {
-
-    var timeZone: TimeZone = TimeZone.getDefault()
-
-    @Description("Should a test run be done without any file changes (except the database)?")
-    var dryRun = false
-
-    @Description("Should a confirmation popup window for file changes be shown?")
-    var confirmations = true
-
-    @Description("Should more information be printed to console?")
-    var verbose = false
-}
+class GlobalParams
 
 class SyncFilesParams {
+
     @Description("Source directory")
     var sourceDir: File? = null
 
     @Description("Target directory")
     var targetDir: File? = null
 
-//   @Description("Included directories; base path is 'sourceDir'. Separator char is \"/\". Specify only if needed")
-//   var includedPaths: List<String> = listOf()
-
-    @Description("Maximum of allowed file changes in percent. If more files changed, a confirmation popup window will appear (can be disabled with parameter '--silent').")
+    @Description("Maximum of allowed file changes in percent. If more files changed, a confirmation popup window will appear (can be disabled with parameter '--confirmations no').")
     var maxChangedFilesWarningPercent = 5
 
-    @Description("Minimum of allowed file changes. If more files changed, a confirmation popup window will appear (can be disabled with parameter '--silent').")
+    @Description("Minimum of allowed file changes. If more files changed, a confirmation popup window will appear (can be disabled with parameter '--confirmations no').")
     var minAllowedChanges = 50
 
     @Description("Minimum of free disk space in percent. If there is not enough disk space, the whole task is not started.")
@@ -53,11 +38,20 @@ class SyncFilesParams {
     )
     var excludedPaths: Set<String> = setOf()
 
+    @Description("Should a test run be done without any file changes (except the database)?")
+    var dryRun = false
+
+    @Description("Should a confirmation popup window file changes (e.g. more files than allowed were changed) be shown?")
+    var confirmations = true
+
+    @Description("Should more information be printed to console?")
+    var verbose = false
+
     val defaultExcludedFiles = setOf("thumbs.db", "desktop.ini")
     val defaultExcludedPaths = setOf("\$RECYCLE.BIN", "System Volume Information")
 }
 
-class VerifyFilesParams {
-    @Description("Directory")
-    var dir: File? = null
-}
+//class VerifyFilesParams {
+//    @Description("Directory")
+//    var dir: File? = null
+//}

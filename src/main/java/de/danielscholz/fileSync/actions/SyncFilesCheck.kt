@@ -1,6 +1,5 @@
 package de.danielscholz.fileSync.actions
 
-import de.danielscholz.fileSync.GlobalParams
 import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.actions.SyncFiles.Changes
 import de.danielscholz.fileSync.actions.SyncFiles.ContentChanged
@@ -113,7 +112,7 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
 }
 
 
-fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targetChanges: Changes, syncFilesParams: SyncFilesParams, globalParams: GlobalParams): Boolean {
+fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targetChanges: Changes, syncFilesParams: SyncFilesParams): Boolean {
 
     fun intern(dir: File, changes: Changes): Boolean {
 
@@ -150,7 +149,7 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
                     "(config: ${syncFilesParams.minDiskFreeSpacePercent}% OR ${syncFilesParams.minDiskFreeSpaceMB}MB should be left free).\n" +
                     "Sync process not started."
 
-            if (!globalParams.confirmations) {
+            if (!syncFilesParams.confirmations) {
                 println(msg)
                 return false
             }
@@ -166,7 +165,7 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
                     "(changed: ${changedNumberOfFiles - changes.deleted.size}, deleted: ${changes.deleted.size}. This corresponds to: $changedPercent%). " +
                     "Do you want to continue the sync process?"
 
-            if (!globalParams.confirmations) {
+            if (!syncFilesParams.confirmations) {
                 println(msg)
                 return false
             }

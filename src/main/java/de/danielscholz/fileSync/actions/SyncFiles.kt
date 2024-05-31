@@ -1,6 +1,5 @@
 package de.danielscholz.fileSync.actions
 
-import de.danielscholz.fileSync.GlobalParams
 import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.*
@@ -17,7 +16,7 @@ import java.time.LocalDateTime
 import kotlin.collections.set
 
 
-class SyncFiles(private val globalParams: GlobalParams, private val syncFilesParams: SyncFilesParams) {
+class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
     private val backupDir = ".syncFilesHistory"
 
@@ -81,7 +80,7 @@ class SyncFiles(private val globalParams: GlobalParams, private val syncFilesPar
                     return
                 }
 
-                if (!furtherChecks(sourceDir, targetDir, sourceChanges, targetChanges, syncFilesParams, globalParams)) {
+                if (!furtherChecks(sourceDir, targetDir, sourceChanges, targetChanges, syncFilesParams)) {
                     return
                 }
 
@@ -92,7 +91,7 @@ class SyncFiles(private val globalParams: GlobalParams, private val syncFilesPar
                     fun process(action: String, block: () -> Unit) {
                         try {
                             print(action)
-                            if (!globalParams.dryRun) {
+                            if (!syncFilesParams.dryRun) {
                                 block()
                             }
                             println(" ok")
@@ -197,7 +196,7 @@ class SyncFiles(private val globalParams: GlobalParams, private val syncFilesPar
             failures
         )
 
-        if (!globalParams.dryRun) {
+        if (!syncFilesParams.dryRun) {
             if (indexRunFile.exists()) {
                 Files.move(indexRunFile.toPath(), File(sourceDir, indexRunFile.name.replace(fileSuffix, "_old$fileSuffix")).toPath(), REPLACE_EXISTING)
             }
