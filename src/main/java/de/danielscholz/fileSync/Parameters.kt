@@ -38,6 +38,9 @@ class SyncFilesParams {
     )
     var excludedPaths: Set<String> = setOf()
 
+    @Description("Directory where the synchronization lockfile should be placed")
+    var lockfileDir: File? = null
+
     @Description("Should a test run be done without any file changes (except the database)?")
     var dryRun = false
 

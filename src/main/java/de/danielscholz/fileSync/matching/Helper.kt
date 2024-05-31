@@ -7,6 +7,10 @@ import de.danielscholz.fileSync.persistence.File2
 import java.util.*
 
 
+fun interface KeySupplier {
+    fun getKey(file: File2): String
+}
+
 context(FoldersContext, CaseSensitiveContext)
 fun createKey(file: File2, mode: EnumSet<MatchMode>): String {
     val b = StringBuilder(100)

@@ -224,7 +224,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
             val moved = mutableListOf<Moved>()
 
-            Intersect(PATH + HASH + MODIFIED, true)
+            Intersect(matchMode(PATH + HASH + MODIFIED), true)
                 .apply(deleted, added)
                 .map { Moved(it.first, it.second) }
                 .ifNotEmpty {
@@ -233,7 +233,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                     moved += it
                 }
 
-            Intersect(FILENAME + HASH + MODIFIED, true)
+            Intersect(matchMode(FILENAME + HASH + MODIFIED), true)
                 .apply(deleted, added)
                 .map { Moved(it.first, it.second) }
                 .ifNotEmpty {
@@ -242,7 +242,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                     moved += it
                 }
 
-            Intersect(HASH + MODIFIED, true)
+            Intersect(matchMode(HASH + MODIFIED), true)
                 .apply(deleted, added)
                 .map { Moved(it.first, it.second) }
                 .ifNotEmpty {
