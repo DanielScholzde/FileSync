@@ -40,6 +40,8 @@ fun registerLowMemoryListener() {
         notificationEmitter.addNotificationListener(LowMemoryListener(max, threshold), null, null)
         registered = true
 
-        println("LowMemoryListener successfully registered. Max available Memory: ${max.formatAsFileSize()}, Threshold: ${threshold.formatAsFileSize()}")
+        //println("LowMemoryListener successfully registered. Max available Memory: ${max.formatAsFileSize()}, Threshold: ${threshold.formatAsFileSize()}")
+    } else {
+        println("ERROR: Low memory listener could NOT be registered!")
     }
 }

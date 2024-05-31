@@ -6,7 +6,6 @@ enum class MatchMode {
     PATH,
     FILENAME,
     HASH,
-    CREATED,
     MODIFIED,
 }
 

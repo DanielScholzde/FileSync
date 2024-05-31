@@ -13,6 +13,9 @@ class Subtract(private val mode: EnumSet<MatchMode>) {
     context(FoldersContext, CaseSensitiveContext)
     fun apply(collection1: Collection<File2>, collection2: Collection<File2>): Collection<File2> {
 
+        if (collection1.isEmpty()) return listOf()
+        if (collection2.isEmpty()) return collection1
+
         val collection1AsMap = HashMap<String, File2>()
 
         collection1.forEach {

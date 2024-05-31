@@ -39,7 +39,7 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
                 syncResult -= source // remove old instance (optional)
                 syncResult += source // add new with changed hash
                 sourceChanges.added -= source
-                sourceChanges.contentChanged -= ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, source)
+                sourceChanges.contentChanged -= ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, source) // equals of ContentChanged considers only second property
                 targetChanges.added -= target
                 targetChanges.contentChanged -= ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, target)
             } else {
@@ -48,6 +48,19 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
                 }
             }
         }
+
+    // fix scenario: same deleted files in both locations
+    Intersect(pathAndName)
+        .apply(sourceChanges.deleted, targetChanges.deleted)
+        .forEach { pair ->
+            val (source, target) = pair
+            syncResult.removeWithCheck(source)
+            sourceChanges.deleted -= source
+            targetChanges.deleted -= target
+        }
+
+    // fix scenario: same moved files in both locations
+    // TODO
 
     Intersect(pathAndName)
         .apply(sourceChanges.contentChanged.to(), targetChanges.contentChanged.to())

@@ -22,6 +22,9 @@ class SyncFiles(private val globalParams: GlobalParams, private val syncFilesPar
     private val backupDir = ".syncFilesHistory"
 
     fun sync(sourceDir: File, targetDir: File, filter: Filter) {
+        println("Source dir: $sourceDir")
+        println("Target dir: $targetDir\n")
+
         val now = LocalDateTime.now().withNano(0)
         val dateTimeStr = now.toString().replace(":", "").replace("T", " ")
         val changedDir = "$backupDir/modified/$dateTimeStr"
@@ -220,15 +223,34 @@ class SyncFiles(private val globalParams: GlobalParams, private val syncFilesPar
                 .apply(lastSyncResult, current)
                 .toMutableSet()
 
-            // TODO collisions
             val moved = mutableListOf<Moved>()
 
-            moved += Intersect(PATH + HASH + MODIFIED, false)
+            Intersect(PATH + HASH + MODIFIED, true)
                 .apply(deleted, added)
                 .map { Moved(it.first, it.second) }
+                .ifNotEmpty {
+                    added -= it.to().toSet()
+                    deleted -= it.from().toSet()
+                    moved += it
+                }
 
-            added -= moved.to().toSet()
-            deleted -= moved.from().toSet()
+            Intersect(FILENAME + HASH + MODIFIED, true)
+                .apply(deleted, added)
+                .map { Moved(it.first, it.second) }
+                .ifNotEmpty {
+                    added -= it.to().toSet()
+                    deleted -= it.from().toSet()
+                    moved += it
+                }
+
+            Intersect(HASH + MODIFIED, true)
+                .apply(deleted, added)
+                .map { Moved(it.first, it.second) }
+                .ifNotEmpty {
+                    added -= it.to().toSet()
+                    deleted -= it.from().toSet()
+                    moved += it
+                }
 
             val contentChanged = Intersect(pathAndName)
                 .apply(lastSyncResult, current)
@@ -336,7 +358,7 @@ class SyncFiles(private val globalParams: GlobalParams, private val syncFilesPar
 
     class Changes(
         val added: MutableSet<File2>,
-        val deleted: Set<File2>,
+        val deleted: MutableSet<File2>,
         val contentChanged: MutableSet<ContentChanged>,
         val attributesChanged: Set<File2>,
         val movedOrRenamed: List<Moved>,

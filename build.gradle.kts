@@ -21,7 +21,6 @@ repositories {
 
 dependencies {
     implementation("de.danielscholz:KArgParser:0.1-SNAPSHOT")
-//   implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0-RC")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
     implementation("com.google.guava:guava:33.2.0-jre") {

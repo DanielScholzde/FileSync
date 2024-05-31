@@ -18,7 +18,7 @@ class FoldersImpl : FoldersMutable {
 
     override val rootFolderId = 0L
 
-    private var folderId = 0L
+    private var maxAssignedFolderId = 0L
 
     private val _folders = mutableMapOf<Long, Folder>()
     override val folders: Map<Long, Folder>
@@ -38,7 +38,7 @@ class FoldersImpl : FoldersMutable {
         foldersByParent[parentFolderId].firstOrNull { it.name == name }?.let {
             return it
         }
-        val id = ++folderId
+        val id = ++maxAssignedFolderId
         val folder = Folder(id, parentFolderId, name)
         _folders[id] = folder
         foldersByParent[parentFolderId] = folder
