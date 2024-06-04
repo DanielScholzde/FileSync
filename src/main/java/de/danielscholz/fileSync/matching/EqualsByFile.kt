@@ -7,6 +7,7 @@ import java.util.*
 fun <R> equalsBy(mode: EnumSet<MatchMode>, ignoreDuplicatesOnIntersect: Boolean = false, block: EqualsBy<File2>.() -> R): R {
 
     val equalsBy = EqualsBy(ignoreDuplicatesOnIntersect, object : EqualsAndHashCodeSupplier<File2> {
+
         override fun equals(obj1: File2, obj2: File2): Boolean {
             if (MatchMode.HASH in mode) {
                 if (obj1.size != obj2.size || obj1.hash?.hash != obj2.hash?.hash) return false
@@ -33,20 +34,20 @@ fun <R> equalsBy(mode: EnumSet<MatchMode>, ignoreDuplicatesOnIntersect: Boolean 
         }
 
         override fun hashCode(obj: File2): Int {
-            var res = 1
+            var result = 1
             if (MatchMode.HASH in mode) {
-                res = 31 * res + (obj.hash?.hash?.hashCode() ?: 0)
+                result = 31 * result + (obj.hash?.hash?.hashCode() ?: 0)
             }
             if (MatchMode.PATH in mode) {
-                res = 31 * res + obj.folderId.hashCode() // TODO case sensitive?
+                result = 31 * result + obj.folderId.hashCode() // TODO case sensitive?
             }
             if (MatchMode.FILENAME in mode) {
-                res = 31 * res + obj.name.hashCode()
+                result = 31 * result + obj.name.hashCode()
             }
             if (MatchMode.MODIFIED in mode) {
-                res = 31 * res + obj.modified.hashCode()
+                result = 31 * result + obj.modified.hashCode()
             }
-            return res
+            return result
         }
     })
 

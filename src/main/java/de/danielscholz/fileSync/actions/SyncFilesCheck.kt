@@ -124,17 +124,21 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
 
         val maxLength = totalNumberOfFiles.toString().length
 
-        println(
-            "$dir\n" +
-                    "Free diskspace:       ${usableSpace.formatAsFileSize()}\n" +
-                    "Diskspace needed:     ${diskspaceNeeded.formatAsFileSize()}\n" +
-                    "New files:            ${leftPad(changes.added.size, maxLength)} (${changes.added.fileSize().formatAsFileSize()})\n" +
-                    "Changed files:        ${leftPad(changes.contentChanged.size, maxLength)} (${changes.contentChanged.fileSize().formatAsFileSize()})\n" +
-                    "Renamed files:        ${leftPad(changes.movedOrRenamed.filter { it.renamed && !it.moved }.size, maxLength)}\n" +
-                    "Moved files:          ${leftPad(changes.movedOrRenamed.filter { !it.renamed && it.moved }.size, maxLength)}\n" +
-                    "Renamed+moved files:  ${leftPad(changes.movedOrRenamed.filter { it.renamed && it.moved }.size, maxLength)}\n" +
-                    "Deleted files:        ${leftPad(changes.deleted.size, maxLength)}\n"
-        )
+        if (changes.hasChanges()) {
+            println(
+                "$dir\n" +
+                        "  Free diskspace:          ${usableSpace.formatAsFileSize()}\n" +
+                        "  Diskspace needed:        ${diskspaceNeeded.formatAsFileSize()}\n" +
+                        "  Files to add:            ${leftPad(changes.added.size, maxLength)} (${changes.added.fileSize().formatAsFileSize()})\n" +
+                        "  Files to update content: ${leftPad(changes.contentChanged.size, maxLength)} (${changes.contentChanged.fileSize().formatAsFileSize()})\n" +
+                        "  Files to rename:         ${leftPad(changes.movedOrRenamed.filter { it.renamed && !it.moved }.size, maxLength)}\n" +
+                        "  Files to move:           ${leftPad(changes.movedOrRenamed.filter { !it.renamed && it.moved }.size, maxLength)}\n" +
+                        "  Files to rename+move:    ${leftPad(changes.movedOrRenamed.filter { it.renamed && it.moved }.size, maxLength)}\n" +
+                        "  Files to delete:         ${leftPad(changes.deleted.size, maxLength)}\n"
+            )
+        } else {
+            println("$dir\n  no changes to apply")
+        }
 
         if (usableSpace - diskspaceNeeded < totalSpace / 100 * syncFilesParams.minDiskFreeSpacePercent
             || usableSpace - diskspaceNeeded < syncFilesParams.minDiskFreeSpaceMB * 1024L * 1024

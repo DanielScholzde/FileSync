@@ -28,7 +28,7 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
             collection2AsMultimap.keySet().forEach { key ->
                 val set1 = collection1AsMultimap[key]
                 val set2 = collection2AsMultimap[key]
-                if (set1.size > 1 || set2.size > 1) {
+                if (set1.size > 1 || set2.size > 1 || set1.size == 0) {
                     return@forEach
                 }
                 result.add(set1[0] to set2[0])

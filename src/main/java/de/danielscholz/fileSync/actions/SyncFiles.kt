@@ -106,7 +106,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                         actions += Action(it.folderId, it.name) {
                             val sourceFile = File(sourceDir, it.pathAndName())
                             val targetFile = File(targetDir, it.pathAndName())
-                            process("created: $sourceFile -> $targetFile") {
+                            process("add: $sourceFile -> $targetFile") {
                                 targetFile.parentFile.mkdirs()
                                 Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
                                 syncResult.addWithCheck(it)
@@ -119,7 +119,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                         actions += Action(to.folderId, to.name) {
                             val sourceFile = File(sourceDir, to.pathAndName())
                             val targetFile = File(targetDir, to.pathAndName())
-                            process("changed: $sourceFile -> $targetFile") {
+                            process("copy: $sourceFile -> $targetFile") {
                                 val backupFile = File(File(targetDir, changedDir), to.pathAndName())
                                 backupFile.parentFile.mkdirs()
                                 Files.move(targetFile.toPath(), backupFile.toPath())
@@ -133,18 +133,20 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                         actions += Action(it.folderId, it.name) {
                             val sourceFile = File(sourceDir, it.pathAndName())
                             val targetFile = File(targetDir, it.pathAndName())
-                            process("attributes changed: $sourceFile -> $targetFile") {
+                            process("change 'modified': $sourceFile -> $targetFile") {
                                 targetFile.setLastModified(sourceFile.lastModified()) || throw Exception("set of last modification date failed!")
                                 syncResult.replace(it)
                             }
                         }
                     }
 
-                    movedOrRenamed.forEach { (from, to) ->
+                    movedOrRenamed.forEach {
+                        val (from, to) = it
                         actions += Action(to.folderId, to.name) {
                             val sourceFile = File(targetDir, from.pathAndName())
                             val targetFile = File(targetDir, to.pathAndName())
-                            process("moved: $sourceFile -> $targetFile") {
+                            val s = if (it.moved && it.renamed) "move+rename" else if (it.moved) "move" else "rename"
+                            process("$s: $sourceFile -> $targetFile") {
                                 targetFile.parentFile.mkdirs()
                                 Files.move(sourceFile.toPath(), targetFile.toPath())
                                 syncResult.removeWithCheck(from)
@@ -157,7 +159,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                         actions += Action(it.folderId, it.name) {
                             val toDelete = File(targetDir, it.pathAndName())
                             val backupFile = File(File(targetDir, deletedDir), it.pathAndName())
-                            process("deleted: $toDelete") {
+                            process("delete: $toDelete") {
                                 backupFile.parentFile.mkdirs()
                                 Files.move(toDelete.toPath(), backupFile.toPath())
                                 syncResult.removeWithCheck(it)
@@ -376,6 +378,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                 throw IllegalStateException()
             }
         }
+
+        fun hasChanges() = added.isNotEmpty() || deleted.isNotEmpty() || contentChanged.isNotEmpty() || attributesChanged.isNotEmpty() || movedOrRenamed.isNotEmpty()
     }
 
     interface FromTo {
