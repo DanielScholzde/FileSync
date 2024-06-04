@@ -114,7 +114,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                         }
                     }
 
-                    contentChanged.forEach { (from, to) ->
+                    contentChanged.forEach { (_, to) ->
                         // pathAndName() must be equals in 'from' and 'to'
                         actions += Action(to.folderId, to.name) {
                             val sourceFile = File(sourceDir, to.pathAndName())
@@ -214,52 +214,57 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
             val current = getCurrentFiles(dir, filter, lastSyncResult)
 
-            val added = Subtract(pathAndName)
-                .apply(current, lastSyncResult)
-                .toMutableSet()
+            val added = equalsBy(pathAndName) {
+                (current - lastSyncResult).toMutableSet()
+            }
 
-            val deleted = Subtract(pathAndName)
-                .apply(lastSyncResult, current)
-                .toMutableSet()
+            val deleted = equalsBy(pathAndName) {
+                (lastSyncResult - current).toMutableSet()
+            }
 
             val moved = mutableListOf<Moved>()
 
-            Intersect(matchMode(PATH + HASH + MODIFIED), true)
-                .apply(deleted, added)
-                .map { Moved(it.first, it.second) }
-                .ifNotEmpty {
-                    added -= it.to().toSet()
-                    deleted -= it.from().toSet()
-                    moved += it
-                }
+            equalsBy(PATH + HASH + MODIFIED, true) {
+                (deleted intersect added)
+                    .map { Moved(it.first, it.second) }
+                    .ifNotEmpty {
+                        added -= it.to().toSet()
+                        deleted -= it.from().toSet()
+                        moved += it
+                    }
+            }
 
-            Intersect(matchMode(FILENAME + HASH + MODIFIED), true)
-                .apply(deleted, added)
-                .map { Moved(it.first, it.second) }
-                .ifNotEmpty {
-                    added -= it.to().toSet()
-                    deleted -= it.from().toSet()
-                    moved += it
-                }
+            equalsBy(FILENAME + HASH + MODIFIED, true) {
+                (deleted intersect added)
+                    .map { Moved(it.first, it.second) }
+                    .ifNotEmpty {
+                        added -= it.to().toSet()
+                        deleted -= it.from().toSet()
+                        moved += it
+                    }
+            }
 
-            Intersect(matchMode(HASH + MODIFIED), true)
-                .apply(deleted, added)
-                .map { Moved(it.first, it.second) }
-                .ifNotEmpty {
-                    added -= it.to().toSet()
-                    deleted -= it.from().toSet()
-                    moved += it
-                }
+            equalsBy(HASH + MODIFIED, true) {
+                (deleted intersect added)
+                    .map { Moved(it.first, it.second) }
+                    .ifNotEmpty {
+                        added -= it.to().toSet()
+                        deleted -= it.from().toSet()
+                        moved += it
+                    }
+            }
 
-            val contentChanged = Intersect(pathAndName)
-                .apply(lastSyncResult, current)
-                .filter2(HASH_NEQ)
-                .map { ContentChanged(it.first, it.second) }
+            val contentChanged = equalsBy(pathAndName) {
+                (lastSyncResult intersect current)
+                    .filter2(HASH_NEQ)
+                    .map { ContentChanged(it.first, it.second) }
+            }
 
-            val attributesChanged = Intersect(pathAndName)
-                .apply(lastSyncResult, current)
-                .filter2(HASH_EQ and MODIFIED_NEQ)
-                .right()
+            val attributesChanged = equalsBy(pathAndName) {
+                (lastSyncResult intersect current)
+                    .filter2(HASH_EQ and MODIFIED_NEQ)
+                    .right()
+            }
 
             Changes(
                 added,
