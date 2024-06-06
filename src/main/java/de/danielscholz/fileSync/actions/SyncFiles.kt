@@ -19,8 +19,17 @@ import kotlin.collections.set
 class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
     private val backupDir = ".syncFilesHistory"
+    private val lockfileName = ".syncFiles_lockfile"
+    private val filePrefix = ".syncFiles_"
+    private val fileSuffix = ".jsn"
 
     fun sync(sourceDir: File, targetDir: File, filter: Filter) {
+        guardWithLockFile(File(targetDir, lockfileName)) {
+            syncIntern(sourceDir, targetDir, filter)
+        }
+    }
+
+    private fun syncIntern(sourceDir: File, targetDir: File, filter: Filter) {
         println("Source dir: $sourceDir")
         println("Target dir: $targetDir\n")
 
@@ -36,14 +45,12 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                     (isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"))
         )
 
-        val filePrefix = ".syncFiles_"
-        val fileSuffix = ".jsn"
         val indexRunFile = File(sourceDir, "$filePrefix${targetDir.path.hashCode()}$fileSuffix")
 
         @Suppress("NAME_SHADOWING")
         val filter = Filter(
             fileFilter = { path, fileName ->
-                if (fileName.startsWith(filePrefix) && fileName.endsWith(fileSuffix))
+                if (fileName.startsWith(filePrefix) && fileName.endsWith(fileSuffix) || fileName == lockfileName)
                     ExcludedBy.SYSTEM
                 else
                     filter.fileFilter.excluded(path, fileName)
@@ -258,14 +265,14 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
             val contentChanged = equalsBy(pathAndName) {
                 (lastSyncResult intersect current)
-                    .filter2(HASH_NEQ)
+                    .filter(HASH_NEQ)
                     .map { ContentChanged(it.first, it.second) }
             }
 
             val attributesChanged = equalsBy(pathAndName) {
                 (lastSyncResult intersect current)
-                    .filter2(HASH_EQ and MODIFIED_NEQ)
-                    .right()
+                    .filter(HASH_EQ and MODIFIED_NEQ)
+                    .rightSide()
             }
 
             Changes(
@@ -382,26 +389,27 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         fun hasChanges() = added.isNotEmpty() || deleted.isNotEmpty() || contentChanged.isNotEmpty() || attributesChanged.isNotEmpty() || movedOrRenamed.isNotEmpty()
     }
 
-    interface FromTo {
-        val from: File2
-        val to: File2
+    abstract class FromTo {
+        abstract val from: File2
+        abstract val to: File2
+
+        final override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is FromTo) return false // TODO
+            return to == other.to
+        }
+
+        final override fun hashCode() = to.hashCode()
     }
 
-    data class Moved(override val from: File2, override val to: File2) : FromTo {
+    /** equals/hashCode: only 'to' is considered! */
+    data class Moved(override val from: File2, override val to: File2) : FromTo() {
         val renamed get() = from.name != to.name
         val moved get() = from.folderId != to.folderId
     }
 
     /** equals/hashCode: only 'to' is considered! */
-    data class ContentChanged(override val from: File2, override val to: File2) : FromTo {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is ContentChanged) return false
-            return (to == other.to)
-        }
-
-        override fun hashCode() = to.hashCode()
-
+    data class ContentChanged(override val from: File2, override val to: File2) : FromTo() {
         companion object {
             val DOES_NOT_MATTER_FILE = File2(0, "-", Instant.DISTANT_PAST, Instant.DISTANT_PAST, true, 0, null)
         }

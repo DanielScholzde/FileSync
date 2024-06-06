@@ -16,12 +16,8 @@ operator fun EnumSet<MatchMode>.plus(matchMode: MatchMode): EnumSet<MatchMode> {
 }
 
 
-fun Collection<Pair<File2, File2>>.filter2(resultFilter: ResultFilter): Collection<Pair<File2, File2>> {
-    return this.filter { resultFilter.filter(it.first, it.second) }
-}
-
-fun Collection<Pair<File2, File2>>.left() = this.map { it.first }
-fun Collection<Pair<File2, File2>>.right() = this.map { it.second }
+fun Collection<Pair<File2, File2>>.leftSide() = this.map { it.first }
+fun Collection<Pair<File2, File2>>.rightSide() = this.map { it.second }
 
 fun Collection<SyncFiles.FromTo>.from() = this.map { it.from }
 fun Collection<SyncFiles.FromTo>.to() = this.map { it.to }

@@ -47,14 +47,14 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
 
         val set2 = HashSet<EqualsDelegate<T>>()
 
-        collection2.forEach { e2 ->
-            val equalsDelegate2 = EqualsDelegate(e2, equalsAndHashcodeSupplier)
+        collection2.forEach { entry2 ->
+            val equalsDelegate2 = EqualsDelegate(entry2, equalsAndHashcodeSupplier)
             if (!set2.add(equalsDelegate2)) {
                 throw Exception("Error: The match mode creates duplicates within collection 2!")
             }
-            val e1 = collection1AsMap[equalsDelegate2]
-            if (e1 != null) {
-                result.add(Pair(e1, e2))
+            val entry1 = collection1AsMap[equalsDelegate2]
+            if (entry1 != null) {
+                result.add(Pair(entry1, entry2))
             }
         }
 

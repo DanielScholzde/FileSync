@@ -3,6 +3,7 @@ package de.danielscholz.fileSync.common
 import kotlinx.datetime.*
 import kotlinx.datetime.format.char
 import java.io.File
+import java.io.IOException
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import kotlin.math.absoluteValue
@@ -31,6 +32,8 @@ fun guardWithLockFile(lockfile: File, block: () -> Unit) {
 
         lockfile.delete()
     } catch (e: FileAlreadyExistsException) {
+        println("Lockfile could not be created: ${e.message}")
+    } catch (e: IOException) {
         println("Lockfile could not be created: ${e.message}")
     }
 }

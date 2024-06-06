@@ -31,7 +31,7 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
     // fix scenario: same added files in both locations (or changed files with same content)
     equalsBy(pathAndName) {
         (sourceChanges.added + sourceChanges.contentChanged.to() intersect targetChanges.added + targetChanges.contentChanged.to())
-            .filter2(HASH_EQ)
+            .filter(HASH_EQ)
             .forEach { pair ->
                 val (source, target) = pair
                 if (source.modified == target.modified) {
@@ -50,8 +50,7 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
 
         // fix scenario: same deleted files in both locations
         (sourceChanges.deleted intersect targetChanges.deleted)
-            .forEach { pair ->
-                val (source, target) = pair
+            .forEach { (source, target) ->
                 syncResult.removeWithCheck(source)
                 sourceChanges.deleted -= source
                 targetChanges.deleted -= target
@@ -61,13 +60,13 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
         // TODO
 
         (sourceChanges.contentChanged.to() intersect targetChanges.contentChanged.to())
-            .filter2(HASH_NEQ)
+            .filter(HASH_NEQ)
             .ifNotEmptyCreateConflicts("modified (with different content) within source and target") {
                 "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
             }
 
         (sourceChanges.attributesChanged intersect targetChanges.attributesChanged)
-            .filter2(MODIFIED_NEQ)
+            .filter(MODIFIED_NEQ)
             .ifNotEmptyCreateConflicts("changed modification date (not equal) within source and target") {
                 it.modified.toStr()
             }
@@ -77,7 +76,7 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
     fun directionalChecks(changed1: Changes, changed2: Changes) {
         equalsBy(pathAndName) {
             (changed1.added intersect changed2.allFilesBeforeSync)
-                .filter2(HASH_NEQ or MODIFIED_NEQ)
+                .filter(HASH_NEQ or MODIFIED_NEQ)
                 .ifNotEmptyCreateConflicts("already exists within target dir (and has different content or modification date)") {
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
                 }
