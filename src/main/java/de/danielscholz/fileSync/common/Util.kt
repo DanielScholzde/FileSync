@@ -25,19 +25,26 @@ fun testIfCancel() {
 }
 
 fun guardWithLockFile(lockfile: File, block: () -> Unit) {
+    var exception: Exception? = null
     try {
         Files.createFile(lockfile.toPath())
 
-        block()
+        try {
+            block()
+        } catch (e: Exception) {
+            exception = e
+        }
 
         lockfile.delete()
     } catch (e: FileAlreadyExistsException) {
-        println("Lockfile could not be created: ${e.message}")
+        println("Sync can not be started, because there is already an ongoing sync process. If not, you should delete the file $lockfile")
     } catch (e: IOException) {
         println("Lockfile could not be created: ${e.message}")
     }
+    if (exception != null) {
+        throw exception
+    }
 }
-
 
 
 val customFormat = LocalDateTime.Format {

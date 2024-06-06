@@ -2,9 +2,7 @@ package de.danielscholz.fileSync.common
 
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinInstant
-import java.io.BufferedInputStream
 import java.io.File
-import java.io.FileInputStream
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.attribute.BasicFileAttributes
@@ -80,10 +78,7 @@ fun readDir(dir: File, subPath: String = "/"): FolderResult {
                     hash = myLazy {
                         if (size > 0) {
                             // TODO size may have changed
-                            val checksumCreator = ChecksumCreator(BufferedInputStream(FileInputStream(fileEntry)), size, null, null)
-                            val sha1 = checksumCreator.calcChecksum().sha1
-                            if (computeSHA1(fileEntry) != sha1) throw Exception("sha-1 ungleich!")
-                            sha1
+                            computeSHA1(fileEntry)
                         } else null
                     }
                 )
