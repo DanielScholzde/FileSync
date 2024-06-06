@@ -3,7 +3,6 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.common.formatAsFileSize
-import de.danielscholz.fileSync.common.leftPad
 import java.io.File
 import java.nio.file.Files
 import javax.swing.JOptionPane
@@ -23,34 +22,41 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
         val usableSpace = fileStore.usableSpace
         val totalSpace = fileStore.totalSpace
 
-        val maxLength = totalNumberOfFiles.toString().length
-
         if (changes.hasChanges()) {
             println(dir.toString())
-            if (diskspaceNeeded > 0) {
-                println("  Free diskspace:           ${usableSpace.formatAsFileSize()}")
-                println("  Diskspace needed:         ${diskspaceNeeded.formatAsFileSize()}")
+            val list = mutableListOf<Triple<String, String, String?>>()
+            fun p(str: String, str2: Any, str3: Any? = null) {
+                list += Triple("  $str: ", str2.toString(), str3?.toString()?.let { " $it" })
             }
             if (changes.added.isNotEmpty()) {
-                println("  Files to add:             ${leftPad(changes.added.size, maxLength)} (${changes.added.fileSize().formatAsFileSize()})")
+                p("Files to add", changes.added.size, "(${changes.added.fileSize().formatAsFileSize()})")
             }
             if (changes.contentChanged.isNotEmpty()) {
-                println("  Files to update content:  ${leftPad(changes.contentChanged.size, maxLength)} (${changes.contentChanged.fileSize().formatAsFileSize()})")
+                p("Files to update content", changes.contentChanged.size, "(${changes.contentChanged.fileSize().formatAsFileSize()})")
             }
             if (changes.attributesChanged.isNotEmpty()) {
-                println("  Files to update modified: ${leftPad(changes.attributesChanged.size, maxLength)}")
+                p("Files to update modified", changes.attributesChanged.size)
             }
             if (changes.movedOrRenamed.any { it.renamed && !it.moved }) {
-                println("  Files to rename:          ${leftPad(changes.movedOrRenamed.filter { it.renamed && !it.moved }.size, maxLength)}")
+                p("Files to rename", changes.movedOrRenamed.filter { it.renamed && !it.moved }.size)
             }
             if (changes.movedOrRenamed.any { !it.renamed && it.moved }) {
-                println("  Files to move:            ${leftPad(changes.movedOrRenamed.filter { !it.renamed && it.moved }.size, maxLength)}")
+                p("Files to move", changes.movedOrRenamed.filter { !it.renamed && it.moved }.size)
             }
             if (changes.movedOrRenamed.any { it.renamed && it.moved }) {
-                println("  Files to rename+move:     ${leftPad(changes.movedOrRenamed.filter { it.renamed && it.moved }.size, maxLength)}")
+                p("Files to rename+move", changes.movedOrRenamed.filter { it.renamed && it.moved }.size)
             }
             if (changes.deleted.isNotEmpty()) {
-                println("  Files to delete:          ${leftPad(changes.deleted.size, maxLength)}")
+                p("Files to delete", changes.deleted.size)
+            }
+            val max1 = list.maxOf { it.first.length }
+            val max2 = list.maxOf { it.second.length }
+            list.forEach {
+                println("${it.first.padEnd(max1)}${it.second.padStart(max2)}${it.third ?: ""}")
+            }
+            if (diskspaceNeeded > 0) {
+                println("  Diskspace needed:    " + diskspaceNeeded.formatAsFileSize())
+                println("  Diskspace available: " + usableSpace.formatAsFileSize())
             }
         } else {
             println(dir.toString())

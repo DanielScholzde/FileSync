@@ -71,17 +71,17 @@ fun <T> myLazy(initializer: () -> T): Lazy<T> = lazy(LazyThreadSafetyMode.NONE, 
 
 fun Long.formatAsFileSize(): String {
     val size = this
-    val gb = size * 100 / (1024 * 1024 * 1024)
+    val gb = size * 10 / (1024 * 1024 * 1024)
     if (gb.absoluteValue >= 10) {
-        return "" + (gb / 100.0) + " GB"
+        return "${gb / 10.0} GB".replace('.', ',')
     }
     val mb = size * 10 / (1024 * 1024)
     if (mb.absoluteValue >= 10) {
-        return "" + (mb / 10.0) + " MB"
+        return "${mb / 10.0} MB".replace('.', ',')
     }
     val kb = size * 10 / 1024
     if (kb.absoluteValue >= 10) {
-        return "" + (kb / 10.0) + " KB"
+        return "${kb / 10.0} KB".replace('.', ',')
     }
     return "$size Byte"
 }
