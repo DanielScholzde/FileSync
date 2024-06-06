@@ -81,7 +81,9 @@ fun readDir(dir: File, subPath: String = "/"): FolderResult {
                         if (size > 0) {
                             // TODO size may have changed
                             val checksumCreator = ChecksumCreator(BufferedInputStream(FileInputStream(fileEntry)), size, null, null)
-                            checksumCreator.calcChecksum().sha1
+                            val sha1 = checksumCreator.calcChecksum().sha1
+                            if (computeSHA1(fileEntry) != sha1) throw Exception("sha-1 ungleich!")
+                            sha1
                         } else null
                     }
                 )

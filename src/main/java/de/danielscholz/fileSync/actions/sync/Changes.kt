@@ -1,7 +1,5 @@
 package de.danielscholz.fileSync.actions.sync
 
-import de.danielscholz.fileSync.matching.from
-import de.danielscholz.fileSync.matching.to
 import de.danielscholz.fileSync.persistence.File2
 import kotlinx.datetime.Instant
 
