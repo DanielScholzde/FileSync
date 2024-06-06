@@ -24,8 +24,8 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
 
     // fix scenario: same added/changed/moved files in both locations
     equalsBy(pathAndName) {
-        val sourceChangedFiles = sourceChanges.added + sourceChanges.contentChanged.to() //+ sourceChanges.movedOrRenamed.to()
-        val targetChangedFiles = targetChanges.added + targetChanges.contentChanged.to() //+ targetChanges.movedOrRenamed.to()
+        val sourceChangedFiles = sourceChanges.added.files() + sourceChanges.contentChanged.to() //+ sourceChanges.movedOrRenamed.to()
+        val targetChangedFiles = targetChanges.added.files() + targetChanges.contentChanged.to() //+ targetChanges.movedOrRenamed.to()
         (sourceChangedFiles intersect targetChangedFiles)
             .filter(HASH_EQ)
             .forEach { pair ->
@@ -34,10 +34,10 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
                     // here: source must be identical to target!
                     syncResult -= source // remove old instance (optional)
                     syncResult += source // add new with changed hash
-                    sourceChanges.added -= source
+                    sourceChanges.added -= Addition(source)
                     sourceChanges.contentChanged -= Change(Change.DOES_NOT_MATTER_FILE, source) // equals of ContentChanged considers only second property
                     //sourceChanges.movedOrRenamed -= Moved(ContentChanged.DOES_NOT_MATTER_FILE, source) // equals of Moved considers only second property
-                    targetChanges.added -= target
+                    targetChanges.added -= Addition(target)
                     targetChanges.contentChanged -= Change(Change.DOES_NOT_MATTER_FILE, target)
                     //targetChanges.movedOrRenamed -= Moved(ContentChanged.DOES_NOT_MATTER_FILE, target)
                 } else {
@@ -48,11 +48,11 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
             }
 
         // fix scenario: same deleted files in both locations
-        (sourceChanges.deleted intersect targetChanges.deleted)
+        (sourceChanges.deleted.files() intersect targetChanges.deleted.files())
             .forEach { (source, target) ->
                 syncResult.removeWithCheck(source)
-                sourceChanges.deleted -= source
-                targetChanges.deleted -= target
+                sourceChanges.deleted -= Deletion(source)
+                targetChanges.deleted -= Deletion(target)
             }
 
         // fix scenario: same moved files in both locations
@@ -74,13 +74,13 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
 
     fun directionalChecks(changed1: Changes, changed2: Changes) {
         equalsBy(pathAndName) {
-            (changed1.added intersect changed2.allFilesBeforeSync)
+            (changed1.added.files() intersect changed2.allFilesBeforeSync)
                 .filter(HASH_NEQ or MODIFIED_NEQ)
                 .ifNotEmptyCreateConflicts("already exists within target dir (and has different content or modification date)") {
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
                 }
 
-            (changed1.deleted intersect changed2.contentChanged.to())
+            (changed1.deleted.files() intersect changed2.contentChanged.to())
                 .ifNotEmptyCreateConflicts("deleted source file but changed content within target dir") {
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
                 }
