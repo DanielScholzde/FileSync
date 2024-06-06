@@ -1,6 +1,6 @@
 package de.danielscholz.fileSync.common
 
-import de.danielscholz.fileSync.actions.sync.SyncFiles
+import de.danielscholz.fileSync.actions.sync.ContentChanged
 import de.danielscholz.fileSync.persistence.File2
 
 
@@ -31,4 +31,4 @@ fun leftPad(num: Int, length: Int): String {
 fun Collection<File2>.fileSize() = sumOf { it.size }
 
 @JvmName("fileSize2")
-fun Collection<SyncFiles.ContentChanged>.fileSize() = sumOf { it.to.size }
+fun Collection<ContentChanged>.fileSize() = sumOf { it.to.size }
