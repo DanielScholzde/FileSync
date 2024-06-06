@@ -136,13 +136,13 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                         }
                     }
 
-                    attributesChanged.forEach {
-                        actions += Action(it.folderId, it.name) {
-                            val sourceFile = File(sourceDir, it.pathAndName())
-                            val targetFile = File(targetDir, it.pathAndName())
+                    attributesChanged.forEach { (_, to) ->
+                        actions += Action(to.folderId, to.name) {
+                            val sourceFile = File(sourceDir, to.pathAndName())
+                            val targetFile = File(targetDir, to.pathAndName())
                             process("change 'modified': $sourceFile -> $targetFile") {
                                 targetFile.setLastModified(sourceFile.lastModified()) || throw Exception("set of last modification date failed!")
-                                syncResult.replace(it)
+                                syncResult.replace(to)
                             }
                         }
                     }
@@ -231,11 +231,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                 (lastSyncResult - current).toMutableSet()
             }
 
-            val moved = mutableListOf<Moved>()
+            val moved = mutableSetOf<Change>()
 
             equalsBy(PATH + HASH + MODIFIED, true) {
                 (deleted intersect added)
-                    .map { Moved(it.first, it.second) }
+                    .map { Change(it.first, it.second) }
                     .ifNotEmpty {
                         added -= it.to().toSet()
                         deleted -= it.from().toSet()
@@ -245,7 +245,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
             equalsBy(FILENAME + HASH + MODIFIED, true) {
                 (deleted intersect added)
-                    .map { Moved(it.first, it.second) }
+                    .map { Change(it.first, it.second) }
                     .ifNotEmpty {
                         added -= it.to().toSet()
                         deleted -= it.from().toSet()
@@ -255,7 +255,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
             equalsBy(HASH + MODIFIED, true) {
                 (deleted intersect added)
-                    .map { Moved(it.first, it.second) }
+                    .map { Change(it.first, it.second) }
                     .ifNotEmpty {
                         added -= it.to().toSet()
                         deleted -= it.from().toSet()
@@ -266,13 +266,13 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
             val contentChanged = equalsBy(pathAndName) {
                 (lastSyncResult intersect current)
                     .filter(HASH_NEQ)
-                    .map { ContentChanged(it.first, it.second) }
+                    .map { Change(it.first, it.second) }
             }
 
             val attributesChanged = equalsBy(pathAndName) {
                 (lastSyncResult intersect current)
                     .filter(HASH_EQ and MODIFIED_NEQ)
-                    .rightSide()
+                    .map { Change(it.first, it.second) }
             }
 
             Changes(

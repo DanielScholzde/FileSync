@@ -22,19 +22,24 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
         }
     }
 
-    // fix scenario: same added files in both locations (or changed files with same content)
+    // fix scenario: same added/changed/moved files in both locations
     equalsBy(pathAndName) {
-        (sourceChanges.added + sourceChanges.contentChanged.to() intersect targetChanges.added + targetChanges.contentChanged.to())
+        val sourceChangedFiles = sourceChanges.added + sourceChanges.contentChanged.to() //+ sourceChanges.movedOrRenamed.to()
+        val targetChangedFiles = targetChanges.added + targetChanges.contentChanged.to() //+ targetChanges.movedOrRenamed.to()
+        (sourceChangedFiles intersect targetChangedFiles)
             .filter(HASH_EQ)
             .forEach { pair ->
                 val (source, target) = pair
                 if (source.modified == target.modified) {
+                    // here: source must be identical to target!
                     syncResult -= source // remove old instance (optional)
                     syncResult += source // add new with changed hash
                     sourceChanges.added -= source
-                    sourceChanges.contentChanged -= ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, source) // equals of ContentChanged considers only second property
+                    sourceChanges.contentChanged -= Change(Change.DOES_NOT_MATTER_FILE, source) // equals of ContentChanged considers only second property
+                    //sourceChanges.movedOrRenamed -= Moved(ContentChanged.DOES_NOT_MATTER_FILE, source) // equals of Moved considers only second property
                     targetChanges.added -= target
-                    targetChanges.contentChanged -= ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, target)
+                    targetChanges.contentChanged -= Change(Change.DOES_NOT_MATTER_FILE, target)
+                    //targetChanges.movedOrRenamed -= Moved(ContentChanged.DOES_NOT_MATTER_FILE, target)
                 } else {
                     listOf(pair).ifNotEmptyCreateConflicts("changed modification date (not equal) within source and target") {
                         it.modified.toStr()
@@ -59,7 +64,7 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
                 "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
             }
 
-        (sourceChanges.attributesChanged intersect targetChanges.attributesChanged)
+        (sourceChanges.attributesChanged.to() intersect targetChanges.attributesChanged.to())
             .filter(MODIFIED_NEQ)
             .ifNotEmptyCreateConflicts("changed modification date (not equal) within source and target") {
                 it.modified.toStr()
