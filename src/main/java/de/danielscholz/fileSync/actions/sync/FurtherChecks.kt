@@ -26,19 +26,35 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
         val maxLength = totalNumberOfFiles.toString().length
 
         if (changes.hasChanges()) {
-            println(
-                "$dir\n" +
-                        "  Free diskspace:          ${usableSpace.formatAsFileSize()}\n" +
-                        "  Diskspace needed:        ${diskspaceNeeded.formatAsFileSize()}\n" +
-                        "  Files to add:            ${leftPad(changes.added.size, maxLength)} (${changes.added.fileSize().formatAsFileSize()})\n" +
-                        "  Files to update content: ${leftPad(changes.contentChanged.size, maxLength)} (${changes.contentChanged.fileSize().formatAsFileSize()})\n" +
-                        "  Files to rename:         ${leftPad(changes.movedOrRenamed.filter { it.renamed && !it.moved }.size, maxLength)}\n" +
-                        "  Files to move:           ${leftPad(changes.movedOrRenamed.filter { !it.renamed && it.moved }.size, maxLength)}\n" +
-                        "  Files to rename+move:    ${leftPad(changes.movedOrRenamed.filter { it.renamed && it.moved }.size, maxLength)}\n" +
-                        "  Files to delete:         ${leftPad(changes.deleted.size, maxLength)}\n"
-            )
+            println(dir.toString())
+            if (diskspaceNeeded > 0) {
+                println("  Free diskspace:           ${usableSpace.formatAsFileSize()}")
+                println("  Diskspace needed:         ${diskspaceNeeded.formatAsFileSize()}")
+            }
+            if (changes.added.isNotEmpty()) {
+                println("  Files to add:             ${leftPad(changes.added.size, maxLength)} (${changes.added.fileSize().formatAsFileSize()})")
+            }
+            if (changes.contentChanged.isNotEmpty()) {
+                println("  Files to update content:  ${leftPad(changes.contentChanged.size, maxLength)} (${changes.contentChanged.fileSize().formatAsFileSize()})")
+            }
+            if (changes.attributesChanged.isNotEmpty()) {
+                println("  Files to update modified: ${leftPad(changes.attributesChanged.size, maxLength)}")
+            }
+            if (changes.movedOrRenamed.any { it.renamed && !it.moved }) {
+                println("  Files to rename:          ${leftPad(changes.movedOrRenamed.filter { it.renamed && !it.moved }.size, maxLength)}")
+            }
+            if (changes.movedOrRenamed.any { !it.renamed && it.moved }) {
+                println("  Files to move:            ${leftPad(changes.movedOrRenamed.filter { !it.renamed && it.moved }.size, maxLength)}")
+            }
+            if (changes.movedOrRenamed.any { it.renamed && it.moved }) {
+                println("  Files to rename+move:     ${leftPad(changes.movedOrRenamed.filter { it.renamed && it.moved }.size, maxLength)}")
+            }
+            if (changes.deleted.isNotEmpty()) {
+                println("  Files to delete:          ${leftPad(changes.deleted.size, maxLength)}")
+            }
         } else {
-            println("$dir\n  no changes to apply")
+            println(dir.toString())
+            println("  no changes to apply")
         }
 
         if (usableSpace - diskspaceNeeded < totalSpace / 100 * syncFilesParams.minDiskFreeSpacePercent

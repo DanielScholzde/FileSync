@@ -41,6 +41,7 @@ fun guardWithLockFile(lockfile: File, block: () -> Unit) {
     } catch (e: IOException) {
         println("Lockfile could not be created: ${e.message}")
     }
+
     if (exception != null) {
         throw exception
     }
