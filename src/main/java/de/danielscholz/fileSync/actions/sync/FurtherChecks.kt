@@ -57,9 +57,10 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
             println("  no changes to apply")
         }
 
-        if (usableSpace - diskspaceNeeded < totalSpace / 100 * syncFilesParams.minDiskFreeSpacePercent
-            || usableSpace - diskspaceNeeded < syncFilesParams.minDiskFreeSpaceMB * 1024L * 1024
-        ) {
+        val minDiskFreeSpaceByPercent = totalSpace / 100 * syncFilesParams.minDiskFreeSpacePercent
+        val minDiskFreeSpaceByAbsolute = syncFilesParams.minDiskFreeSpaceMB * 1024L * 1024
+        val freeSpaceAfterSync = usableSpace - diskspaceNeeded
+        if (freeSpaceAfterSync < minDiskFreeSpaceByPercent || freeSpaceAfterSync < minDiskFreeSpaceByAbsolute) {
 
             val msg = "Not enough free space on the target medium available.\n" +
                     "Required is ${diskspaceNeeded.formatAsFileSize()}, but only ${usableSpace.formatAsFileSize()} is available\n" +

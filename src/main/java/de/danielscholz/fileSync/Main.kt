@@ -36,116 +36,115 @@ fun main(args: Array<String>) {
 
 
 @Suppress("DuplicatedCode")
-private fun createParser() = ArgParserBuilder(GlobalParams())
-    .buildWith(ArgParserConfig(ignoreCase = true, noPrefixForActionParams = true)) {
+private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParserConfig(ignoreCase = true, noPrefixForActionParams = true)) {
 
-        addActionParser("help", "Show all available options and commands") {
-            println(printout())
+    addActionParser("help", "Show all available options and commands") {
+        println(printout())
+    }
+
+    addActionParser(
+        Commands.SYNC_FILES.command,
+        ArgParserBuilder(SyncFilesParams()).buildWith {
+            add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
+            add(paramValues::targetDir, FileParam(checkIsDir = true), required = true)
+            add(paramValues::excludedPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
+            add(paramValues::lockfileDir, FileParam(checkIsDir = true))
+            add(paramValues::excludedFiles, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
+            add(paramValues::maxChangedFilesWarningPercent, IntParam())
+            add(paramValues::minAllowedChanges, IntParam())
+            add(paramValues::minDiskFreeSpacePercent, IntParam())
+            add(paramValues::minDiskFreeSpaceMB, IntParam())
+            add(paramValues::confirmations, BooleanParam())
+            add(paramValues::dryRun, BooleanParam())
+            add(paramValues::verbose, BooleanParam())
+        }) {
+
+        val exclFileNamesSimple = mutableSetOf<String>()
+        val exclFileNamesRegex = mutableListOf<Regex>()
+        (paramValues.excludedFiles + paramValues.defaultExcludedFiles).forEach { exclFileName ->
+            if (exclFileName.contains("*")) {
+                val escaped = exclFileName
+                    .replace("(", "\\(")
+                    .replace("[", "\\[")
+                    .replace(".", "\\.")
+                val pattern = escaped
+                    .replace("*", ".*")
+                    .replace("?", ".")
+                exclFileNamesRegex += Regex(pattern)
+            } else {
+                exclFileNamesSimple += exclFileName
+            }
         }
 
-        addActionParser(
-            Commands.SYNC_FILES.command,
-            ArgParserBuilder(SyncFilesParams()).buildWith {
-                add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
-                add(paramValues::targetDir, FileParam(checkIsDir = true), required = true)
-                add(paramValues::excludedPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
-                add(paramValues::lockfileDir, FileParam(checkIsDir = true))
-                add(paramValues::excludedFiles, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
-                add(paramValues::maxChangedFilesWarningPercent, IntParam())
-                add(paramValues::minAllowedChanges, IntParam())
-                add(paramValues::minDiskFreeSpacePercent, IntParam())
-                add(paramValues::minDiskFreeSpaceMB, IntParam())
-                add(paramValues::confirmations, BooleanParam())
-                add(paramValues::dryRun, BooleanParam())
-                add(paramValues::verbose, BooleanParam())
-            }) {
 
-            val exclFileNamesSimple = mutableSetOf<String>()
-            val exclFileNamesRegex = mutableListOf<Regex>()
-            (paramValues.excludedFiles + paramValues.defaultExcludedFiles).forEach { exclFileName ->
-                if (exclFileName.contains("*")) {
-                    val escaped = exclFileName
+        val exclPaths = mutableListOf<PathMatcher>()
+        (paramValues.excludedPaths + paramValues.defaultExcludedPaths).forEach { exclPath ->
+            when {
+                "/" in exclPath && "*" in exclPath -> {
+                    val escaped = exclPath
+                        .replace("(", "\\(")
+                        .replace("[", "\\[")
+                        .replace(".", "\\.")
+                    var pattern = escaped
+                        .replace("*", ".*")
+                        .replace("?", ".")
+                    if (!pattern.endsWith(".*"))
+                        pattern += ".*"
+                    if (!pattern.startsWith("//"))
+                        pattern = ".*$pattern"
+                    val regex = Regex(pattern)
+                    exclPaths += PathMatcher { path, _ ->
+                        regex.matches("/$path")
+                    }
+                }
+                "/" in exclPath -> {
+                    exclPaths += PathMatcher { path, _ ->
+                        if (exclPath.startsWith("//"))
+                            exclPath in "/$path"
+                        else
+                            exclPath in path
+                    }
+                }
+                "*" in exclPath -> {
+                    val escaped = exclPath
                         .replace("(", "\\(")
                         .replace("[", "\\[")
                         .replace(".", "\\.")
                     val pattern = escaped
                         .replace("*", ".*")
                         .replace("?", ".")
-                    exclFileNamesRegex += Regex(pattern)
-                } else {
-                    exclFileNamesSimple += exclFileName
+                    val regex = Regex(pattern)
+                    exclPaths += PathMatcher { _, folderName ->
+                        regex.matches(folderName)
+                    }
+                }
+                else -> {
+                    exclPaths += PathMatcher { _, folderName ->
+                        folderName == exclPath
+                    }
                 }
             }
 
-
-            val exclPaths = mutableListOf<PathMatcher>()
-            (paramValues.excludedPaths + paramValues.defaultExcludedPaths).forEach { exclPath ->
-                when {
-                    "/" in exclPath && "*" in exclPath -> {
-                        val escaped = exclPath
-                            .replace("(", "\\(")
-                            .replace("[", "\\[")
-                            .replace(".", "\\.")
-                        var pattern = escaped
-                            .replace("*", ".*")
-                            .replace("?", ".")
-                        if (!pattern.endsWith(".*"))
-                            pattern += ".*"
-                        if (!pattern.startsWith("//"))
-                            pattern = ".*$pattern"
-                        val regex = Regex(pattern)
-                        exclPaths += PathMatcher { path, _ ->
-                            regex.matches("/$path")
-                        }
-                    }
-                    "/" in exclPath -> {
-                        exclPaths += PathMatcher { path, _ ->
-                            if (exclPath.startsWith("//"))
-                                exclPath in "/$path"
-                            else
-                                exclPath in path
-                        }
-                    }
-                    "*" in exclPath -> {
-                        val escaped = exclPath
-                            .replace("(", "\\(")
-                            .replace("[", "\\[")
-                            .replace(".", "\\.")
-                        val pattern = escaped
-                            .replace("*", ".*")
-                            .replace("?", ".")
-                        val regex = Regex(pattern)
-                        exclPaths += PathMatcher { _, folderName ->
-                            regex.matches(folderName)
-                        }
-                    }
-                    else -> {
-                        exclPaths += PathMatcher { _, folderName ->
-                            folderName == exclPath
-                        }
-                    }
-                }
-
-            }
-
-            val folderFilter = FolderFilter { fullPath, folderName ->
-                if (exclPaths.any { exclPath -> exclPath.matches(fullPath, folderName) }) ExcludedBy.USER else null
-            }
-
-            val fileFilter = FileFilter { _, fileName ->
-                if (fileName in exclFileNamesSimple ||
-                    exclFileNamesRegex.any { exclFile -> exclFile.matches(fileName) }
-                ) ExcludedBy.USER else null
-            }
-
-            val filter = Filter(folderFilter, fileFilter)
-
-            SyncFiles(paramValues).sync(
-                paramValues.sourceDir!!.canonicalFile,
-                paramValues.targetDir!!.canonicalFile,
-                filter
-            )
         }
+
+        val folderFilter = FolderFilter { fullPath, folderName ->
+            if (exclPaths.any { exclPath -> exclPath.matches(fullPath, folderName) }) ExcludedBy.USER else null
+        }
+
+        val fileFilter = FileFilter { _, fileName ->
+            if (fileName in exclFileNamesSimple ||
+                exclFileNamesRegex.any { exclFile -> exclFile.matches(fileName) }
+            ) ExcludedBy.USER else null
+        }
+
+        val filter = Filter(folderFilter, fileFilter)
+
+        SyncFiles(paramValues).sync(
+            paramValues.sourceDir!!.canonicalFile,
+            paramValues.targetDir!!.canonicalFile,
+            filter
+        )
+    }
 
 //      addActionParser(
 //         Commands.BACKUP_FILES.command,
@@ -181,10 +180,10 @@ private fun createParser() = ArgParserBuilder(GlobalParams())
 //            null
 //         }
 //      }
-    }
+}
 
 
-fun interface PathMatcher {
+private fun interface PathMatcher {
     fun matches(path: String, folderName: String): Boolean
 }
 
