@@ -5,38 +5,39 @@ import kotlinx.datetime.Instant
 
 
 class Changes(
-    val added: MutableSet<Addition>,
-    val deleted: MutableSet<Deletion>,
-    val contentChanged: MutableSet<Change>,
-    val attributesChanged: Set<Change>,
-    val movedOrRenamed: MutableSet<Moved>,
+    val added: MutableSet<File2>,
+    val deleted: MutableSet<File2>,
+    val contentChanged: MutableSet<ContentChanged>,
+    val modifiedChanged: Set<ModifiedChanged>,
+    val movedOrRenamed: MutableSet<MovedOrRenamed>,
     val allFilesBeforeSync: Set<File2>,
 ) {
     init {
         // all sets/collections must be disjoint
-        val set: Set<File2> = added.files().toSet() + deleted.files() + contentChanged.to() + attributesChanged.to() + movedOrRenamed.from() + movedOrRenamed.to()
-        if (added.size + deleted.size + contentChanged.size + attributesChanged.size + 2 * movedOrRenamed.size != set.size) {
+        val allAsSet: Set<File2> = added + deleted + contentChanged.to() + modifiedChanged.to() + movedOrRenamed.from() + movedOrRenamed.to()
+        if (added.size + deleted.size + contentChanged.size + modifiedChanged.size + 2 * movedOrRenamed.size != allAsSet.size) {
             throw IllegalStateException()
         }
     }
 
-    fun hasChanges() = added.isNotEmpty() || deleted.isNotEmpty() || contentChanged.isNotEmpty() || attributesChanged.isNotEmpty() || movedOrRenamed.isNotEmpty()
+    fun hasChanges() = added.isNotEmpty() || deleted.isNotEmpty() || contentChanged.isNotEmpty() || modifiedChanged.isNotEmpty() || movedOrRenamed.isNotEmpty()
 }
 
-interface Change2<FROM : File2?, TO : File2?> {
+
+interface IChange<FROM : File2?, TO : File2?> {
     val from: FROM
     val to: TO
 }
 
 /** equals/hashCode: only 'to' is considered! */
-data class Change(override val from: File2, override val to: File2) : Change2<File2, File2> {
+data class ContentChanged(override val from: File2, override val to: File2) : IChange<File2, File2> {
     companion object {
         val DOES_NOT_MATTER_FILE = File2(0, "-", Instant.DISTANT_PAST, Instant.DISTANT_PAST, true, 0, null)
     }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is Change) return false
+        if (other !is ContentChanged) return false
         return to == other.to
     }
 
@@ -44,7 +45,22 @@ data class Change(override val from: File2, override val to: File2) : Change2<Fi
 }
 
 /** equals/hashCode: only 'to' is considered! */
-data class Moved(override val from: File2, override val to: File2) : Change2<File2, File2> {
+data class ModifiedChanged(override val from: File2, override val to: File2) : IChange<File2, File2> {
+    companion object {
+        val DOES_NOT_MATTER_FILE = File2(0, "-", Instant.DISTANT_PAST, Instant.DISTANT_PAST, true, 0, null)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ModifiedChanged) return false
+        return to == other.to
+    }
+
+    override fun hashCode() = to.hashCode()
+}
+
+/** equals/hashCode: only 'to' is considered! */
+data class MovedOrRenamed(override val from: File2, override val to: File2) : IChange<File2, File2> {
     companion object {
         val DOES_NOT_MATTER_FILE = File2(0, "-", Instant.DISTANT_PAST, Instant.DISTANT_PAST, true, 0, null)
     }
@@ -54,7 +70,7 @@ data class Moved(override val from: File2, override val to: File2) : Change2<Fil
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is Moved) return false
+        if (other !is MovedOrRenamed) return false
         return to == other.to
     }
 
@@ -62,7 +78,7 @@ data class Moved(override val from: File2, override val to: File2) : Change2<Fil
 }
 
 /** equals/hashCode: only 'from' is considered! */
-data class Deletion(override val from: File2) : Change2<File2, Nothing?> {
+data class Deletion(override val from: File2) : IChange<File2, Nothing?> {
     override val to = null
 
     val file = from
@@ -77,7 +93,7 @@ data class Deletion(override val from: File2) : Change2<File2, Nothing?> {
 }
 
 /** equals/hashCode: only 'to' is considered! */
-data class Addition(override val to: File2) : Change2<Nothing?, File2> {
+data class Addition(override val to: File2) : IChange<Nothing?, File2> {
     override val from = null
 
     val file = to

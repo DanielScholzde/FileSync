@@ -13,7 +13,7 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
     fun intern(dir: File, changes: Changes): Boolean {
 
         val totalNumberOfFiles = changes.allFilesBeforeSync.size + changes.added.size + changes.deleted.size
-        val changedNumberOfFiles = changes.added.size + changes.contentChanged.size + changes.attributesChanged.size + changes.movedOrRenamed.size + changes.deleted.size
+        val changedNumberOfFiles = changes.added.size + changes.contentChanged.size + changes.modifiedChanged.size + changes.movedOrRenamed.size + changes.deleted.size
 
         // does not regard deleted files since they are not deleted but moved to history folder
         val diskspaceNeeded = changes.added.fileSize() + changes.contentChanged.fileSize()
@@ -34,8 +34,8 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
             if (changes.contentChanged.isNotEmpty()) {
                 p("Files to update content", changes.contentChanged.size, "(${changes.contentChanged.fileSize().formatAsFileSize()})")
             }
-            if (changes.attributesChanged.isNotEmpty()) {
-                p("Files to update modified", changes.attributesChanged.size)
+            if (changes.modifiedChanged.isNotEmpty()) {
+                p("Files to update modified", changes.modifiedChanged.size)
             }
             if (changes.movedOrRenamed.any { it.renamed && !it.moved }) {
                 p("Files to rename", changes.movedOrRenamed.filter { it.renamed && !it.moved }.size)

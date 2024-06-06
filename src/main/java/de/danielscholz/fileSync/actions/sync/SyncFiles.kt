@@ -95,9 +95,9 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
                 fun Changes.createActions(sourceDir: File, targetDir: File) {
 
-                    fun process(action: String, block: () -> Unit) {
+                    fun process(action: String, files: String, block: () -> Unit) {
                         try {
-                            print(action)
+                            print("$action:".padEnd(14) + files)
                             if (!syncFilesParams.dryRun) {
                                 block()
                             }
@@ -109,11 +109,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                         }
                     }
 
-                    added.forEach { (it) ->
+                    added.forEach {
                         actions += Action(it.folderId, it.name) {
                             val sourceFile = File(sourceDir, it.pathAndName())
                             val targetFile = File(targetDir, it.pathAndName())
-                            process("add: $sourceFile -> $targetFile") {
+                            process("add", "$sourceFile -> $targetFile") {
                                 targetFile.parentFile.mkdirs()
                                 Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
                                 syncResult.addWithCheck(it)
@@ -126,7 +126,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                         actions += Action(to.folderId, to.name) {
                             val sourceFile = File(sourceDir, to.pathAndName())
                             val targetFile = File(targetDir, to.pathAndName())
-                            process("copy: $sourceFile -> $targetFile") {
+                            process("copy", "$sourceFile -> $targetFile") {
                                 val backupFile = File(File(targetDir, changedDir), to.pathAndName())
                                 backupFile.parentFile.mkdirs()
                                 Files.move(targetFile.toPath(), backupFile.toPath())
@@ -136,11 +136,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                         }
                     }
 
-                    attributesChanged.forEach { (_, to) ->
+                    modifiedChanged.forEach { (_, to) ->
                         actions += Action(to.folderId, to.name) {
                             val sourceFile = File(sourceDir, to.pathAndName())
                             val targetFile = File(targetDir, to.pathAndName())
-                            process("change 'modified': $sourceFile -> $targetFile") {
+                            process("modified attr", "$sourceFile -> $targetFile") {
                                 targetFile.setLastModified(sourceFile.lastModified()) || throw Exception("set of last modification date failed!")
                                 syncResult.replace(to)
                             }
@@ -153,7 +153,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                             val sourceFile = File(targetDir, from.pathAndName())
                             val targetFile = File(targetDir, to.pathAndName())
                             val s = if (it.moved && it.renamed) "move+rename" else if (it.moved) "move" else "rename"
-                            process("$s: $sourceFile -> $targetFile") {
+                            process(s, "$sourceFile -> $targetFile") {
                                 targetFile.parentFile.mkdirs()
                                 Files.move(sourceFile.toPath(), targetFile.toPath())
                                 syncResult.removeWithCheck(from)
@@ -162,11 +162,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                         }
                     }
 
-                    deleted.forEach { (it) ->
+                    deleted.forEach {
                         actions += Action(it.folderId, it.name) {
                             val toDelete = File(targetDir, it.pathAndName())
                             val backupFile = File(File(targetDir, deletedDir), it.pathAndName())
-                            process("delete: $toDelete") {
+                            process("delete", "$toDelete") {
                                 backupFile.parentFile.mkdirs()
                                 Files.move(toDelete.toPath(), backupFile.toPath())
                                 syncResult.removeWithCheck(it)
@@ -223,65 +223,69 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
             val current = getCurrentFiles(dir, filter, lastSyncResult)
 
+            @Suppress("ConvertArgumentToSet")
             val added = equalsBy(pathAndName) {
                 (current - lastSyncResult).toMutableSet()
             }
 
+            @Suppress("ConvertArgumentToSet")
             val deleted = equalsBy(pathAndName) {
                 (lastSyncResult - current).toMutableSet()
             }
 
-            val moved = mutableSetOf<Moved>()
+            val movedOrRenamed = mutableSetOf<MovedOrRenamed>()
 
             equalsBy(PATH + HASH + MODIFIED, true) {
                 (deleted intersect added)
-                    .map { Moved(it.first, it.second) }
+                    .map { MovedOrRenamed(it.left, it.right) }
                     .ifNotEmpty {
-                        added -= it.to().toSet()
                         deleted -= it.from().toSet()
-                        moved += it
+                        added -= it.to().toSet()
+                        movedOrRenamed += it
                     }
             }
 
             equalsBy(FILENAME + HASH + MODIFIED, true) {
                 (deleted intersect added)
-                    .map { Moved(it.first, it.second) }
+                    .map { MovedOrRenamed(it.left, it.right) }
                     .ifNotEmpty {
-                        added -= it.to().toSet()
                         deleted -= it.from().toSet()
-                        moved += it
+                        added -= it.to().toSet()
+                        movedOrRenamed += it
                     }
             }
 
             equalsBy(HASH + MODIFIED, true) {
                 (deleted intersect added)
-                    .map { Moved(it.first, it.second) }
+                    .map { MovedOrRenamed(it.left, it.right) }
                     .ifNotEmpty {
-                        added -= it.to().toSet()
                         deleted -= it.from().toSet()
-                        moved += it
+                        added -= it.to().toSet()
+                        movedOrRenamed += it
                     }
             }
 
             val contentChanged = equalsBy(pathAndName) {
                 (lastSyncResult intersect current)
                     .filter(HASH_NEQ)
-                    .map { Change(it.first, it.second) }
+                    .map { ContentChanged(it.left, it.right) }
+                    .toMutableSet()
             }
 
-            val attributesChanged = equalsBy(pathAndName) {
+            val modifiedChanged = equalsBy(pathAndName) {
                 (lastSyncResult intersect current)
                     .filter(HASH_EQ and MODIFIED_NEQ)
-                    .map { Change(it.first, it.second) }
+                    .map { ModifiedChanged(it.left, it.right) }
+                    .toMutableSet()
             }
 
             Changes(
-                added.map { Addition(it) }.toMutableSet(),
-                deleted.map { Deletion(it) }.toMutableSet(),
-                contentChanged.toMutableSet(),
-                attributesChanged.toSet(),
-                moved,
-                current.toSet()
+                added = added,
+                deleted = deleted,
+                contentChanged = contentChanged,
+                modifiedChanged = modifiedChanged,
+                movedOrRenamed = movedOrRenamed,
+                allFilesBeforeSync = current.toSet()
             )
         }
     }

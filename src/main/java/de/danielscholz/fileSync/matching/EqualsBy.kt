@@ -5,14 +5,14 @@ import de.danielscholz.fileSync.common.mutableListMultimapOf
 
 class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, private val equalsAndHashcodeSupplier: EqualsAndHashCodeSupplier<T>) {
 
-    infix fun Collection<T>.intersect(collection2: Collection<T>): Collection<Pair<T, T>> {
+    infix fun Collection<T>.intersect(collection2: Collection<T>): Collection<IntersectResult<T>> {
         val collection1 = this
 
         if (collection1.isEmpty() || collection2.isEmpty()) {
             return listOf()
         }
 
-        val result = mutableListOf<Pair<T, T>>()
+        val result = mutableListOf<IntersectResult<T>>()
 
         if (ignoreDuplicatesOnIntersect) {
             val collection1AsMultimap = mutableListMultimapOf<EqualsDelegate<T>, T>()
@@ -31,7 +31,7 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
                 if (set1.size > 1 || set2.size > 1 || set1.size == 0) {
                     return@forEach
                 }
-                result.add(set1[0] to set2[0])
+                result.add(IntersectResult(set1[0], set2[0]))
             }
 
             return result
@@ -54,7 +54,7 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
             }
             val entry1 = collection1AsMap[equalsDelegate2]
             if (entry1 != null) {
-                result.add(Pair(entry1, entry2))
+                result.add(IntersectResult(entry1, entry2))
             }
         }
 
