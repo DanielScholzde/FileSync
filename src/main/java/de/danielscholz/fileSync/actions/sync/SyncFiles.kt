@@ -1,6 +1,7 @@
-package de.danielscholz.fileSync.actions
+package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.SyncFilesParams
+import de.danielscholz.fileSync.actions.FoldersImpl
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.matching.MatchMode.*
@@ -24,7 +25,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
     private val fileSuffix = ".jsn"
 
     fun sync(sourceDir: File, targetDir: File, filter: Filter) {
-        guardWithLockFile(File(targetDir, lockfileName)) {
+        guardWithLockFile(File(syncFilesParams.lockfileDir ?: targetDir, lockfileName)) {
             syncIntern(sourceDir, targetDir, filter)
         }
     }

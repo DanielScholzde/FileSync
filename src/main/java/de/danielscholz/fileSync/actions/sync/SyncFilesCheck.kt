@@ -1,8 +1,8 @@
-package de.danielscholz.fileSync.actions
+package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.SyncFilesParams
-import de.danielscholz.fileSync.actions.SyncFiles.Changes
-import de.danielscholz.fileSync.actions.SyncFiles.ContentChanged
+import de.danielscholz.fileSync.actions.sync.SyncFiles.Changes
+import de.danielscholz.fileSync.actions.sync.SyncFiles.ContentChanged
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.persistence.File2

@@ -1,6 +1,6 @@
 package de.danielscholz.fileSync.common
 
-import de.danielscholz.fileSync.actions.SyncFiles
+import de.danielscholz.fileSync.actions.sync.SyncFiles
 import de.danielscholz.fileSync.persistence.File2
 
 

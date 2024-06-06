@@ -1,6 +1,6 @@
 package de.danielscholz.fileSync
 
-import de.danielscholz.fileSync.actions.*
+import de.danielscholz.fileSync.actions.sync.*
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.kargparser.ArgParseException
 import de.danielscholz.kargparser.ArgParser

@@ -1,4 +1,4 @@
-package de.danielscholz.fileSync.actions
+package de.danielscholz.fileSync.actions.sync
 
 
 enum class ExcludedBy {
@@ -8,12 +8,12 @@ enum class ExcludedBy {
 
 fun interface FolderFilter {
     // folderName is last part of path
-    fun excluded(fullPath: String, folderName: String): ExcludedBy? // true -> include folder
+    fun excluded(fullPath: String, folderName: String): ExcludedBy? // result == null -> include folder
 }
 
 fun interface FileFilter {
     // path does not include fileName!
-    fun excluded(path: String, fileName: String): ExcludedBy? // true -> include file
+    fun excluded(path: String, fileName: String): ExcludedBy? // result == null -> include file
 }
 
 class Filter(
