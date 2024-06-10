@@ -102,10 +102,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                     return
                 }
 
-                val actionEnv = object : ActionEnv {
-                    override val syncResultFiles = syncResultFiles
-                    override val failures = failures
-                }
+                val actionEnv = ActionEnv(syncResultFiles, failures, syncFilesParams.dryRun)
+
                 createActions(sourceDir, targetDir, sourceChanges, targetChanges, changedDir, deletedDir)
                     .sortedWith(compareBy({ foldersCtx.get(it.folderId)!!.fullPath.lowercase() }, { foldersCtx.get(it.folderId)!!.fullPath }, { it.filename }))
                     .forEach { it.action(actionEnv) }
@@ -178,20 +176,6 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
         fun Changes.createActions(sourceDir: File, targetDir: File) {
 
-            fun ActionEnv.process(action: String, files: String, block: () -> Unit) {
-                try {
-                    print("$action:".padEnd(14) + files)
-                    if (!syncFilesParams.dryRun) {
-                        block()
-                    }
-                    println(" ok")
-                } catch (e: Exception) {
-                    val failure = ": " + e.message + " (" + e::class.simpleName + ")"
-                    println(failure)
-                    failures += action + failure
-                }
-            }
-
             added.forEach {
                 actions += Action(it.folderId, it.name) {
                     val sourceFile = File(sourceDir, it.pathAndName())
@@ -235,8 +219,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                 actions += Action(to.folderId, to.name) {
                     val sourceFile = File(targetDir, from.pathAndName())
                     val targetFile = File(targetDir, to.pathAndName())
-                    val s = if (it.moved && it.renamed) "move+rename" else if (it.moved) "move" else "rename"
-                    process(s, "$sourceFile -> $targetFile") {
+                    val action = if (it.moved && it.renamed) "move+rename" else if (it.moved) "move" else "rename"
+                    process(action, "$sourceFile -> $targetFile") {
                         targetFile.parentFile.mkdirs()
                         Files.move(sourceFile.toPath(), targetFile.toPath())
                         syncResultFiles.removeWithCheck(from)
@@ -424,9 +408,24 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         val action: ActionEnv.() -> Unit,
     )
 
-    private interface ActionEnv {
-        val syncResultFiles: MutableSet<File2>
-        val failures: MutableList<String>
+    private class ActionEnv(
+        val syncResultFiles: MutableSet<File2>,
+        val failures: MutableList<String>,
+        val dryRun: Boolean
+    ) {
+        fun process(action: String, files: String, block: () -> Unit) {
+            try {
+                print("$action:".padEnd(14) + files)
+                if (!dryRun) {
+                    block()
+                }
+                println(" ok")
+            } catch (e: Exception) {
+                val failure = ": " + e.message + " (" + e::class.simpleName + ")"
+                println(failure)
+                failures += action + failure
+            }
+        }
     }
 
 }
