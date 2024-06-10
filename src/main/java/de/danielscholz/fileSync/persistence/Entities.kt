@@ -133,11 +133,8 @@ data class File2(
     }
 }
 
-/**
- * IndexRun is the starting point of a single index run
- */
 @Serializable
-data class IndexRun(
+data class SyncResult(
     val otherPath: String,
     val runDate: LocalDateTime, // date of index run
     val files: List<File2>,
@@ -145,17 +142,37 @@ data class IndexRun(
     val failuresOccurred: List<String>
 )
 
+@Serializable
+data class DeletedFiles(
+    val files: List<File2>, // hint: FolderId is always 0
+)
+
 
 @OptIn(ExperimentalSerializationApi::class)
-fun readIndexRun(file: File): IndexRun {
+fun readSyncResult(file: File): SyncResult {
     BufferedInputStream(FileInputStream(file)).use {
-        return Json.decodeFromStream<IndexRun>(it)
+        return Json.decodeFromStream<SyncResult>(it)
     }
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-fun saveIndexRun(file: File, indexRun: IndexRun) {
+fun saveSyncResult(file: File, syncResult: SyncResult) {
     BufferedOutputStream(FileOutputStream(file)).use {
-        Json.encodeToStream(indexRun, it)
+        Json.encodeToStream(syncResult, it)
+    }
+}
+
+
+@OptIn(ExperimentalSerializationApi::class)
+fun readDeletedFiles(file: File): DeletedFiles {
+    BufferedInputStream(FileInputStream(file)).use {
+        return Json.decodeFromStream<DeletedFiles>(it)
+    }
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+fun saveDeletedFiles(file: File, deletedFiles: DeletedFiles) {
+    BufferedOutputStream(FileOutputStream(file)).use {
+        Json.encodeToStream(deletedFiles, it)
     }
 }

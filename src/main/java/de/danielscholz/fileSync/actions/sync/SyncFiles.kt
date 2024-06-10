@@ -22,8 +22,10 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
     private val backupDir = ".syncFilesHistory"
     private val lockfileName = ".syncFiles_lockfile"
-    private val filePrefix = ".syncFiles_"
-    private val fileSuffix = ".jsn"
+    private val syncResultFilePrefix = ".syncedFiles_"
+    private val syncResultFileSuffix = ".jsn"
+    private val deletedFilesFilePrefix = ".deletedFiles_"
+    private val deletedFilesFileSuffix = ".jsn"
 
     fun sync(sourceDir: File, targetDir: File, filter: Filter) {
         guardWithLockFile(File(syncFilesParams.lockfileDir ?: targetDir, lockfileName)) {
@@ -47,12 +49,16 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                     (isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"))
         )
 
-        val indexRunFile = File(sourceDir, "$filePrefix${targetDir.path.hashCode()}$fileSuffix")
+        val syncResultFile = File(sourceDir, "$syncResultFilePrefix${targetDir.path.hashCode()}$syncResultFileSuffix")
+        val deletedFilesFile = File(sourceDir, "$deletedFilesFilePrefix${targetDir.path.hashCode()}$deletedFilesFileSuffix")
+
+        val lastSyncResult = if (syncResultFile.exists()) readSyncResult(syncResultFile) else null
+        var deletedFiles = if (deletedFilesFile.exists()) readDeletedFiles(deletedFilesFile) else null
 
         @Suppress("NAME_SHADOWING")
         val filter = Filter(
             fileFilter = { path, fileName ->
-                if (fileName.startsWith(filePrefix) && fileName.endsWith(fileSuffix) || fileName == lockfileName)
+                if (fileName.startsWith(syncResultFilePrefix) && fileName.endsWith(syncResultFileSuffix) || fileName == lockfileName)
                     ExcludedBy.SYSTEM
                 else
                     filter.fileFilter.excluded(path, fileName)
@@ -65,20 +71,19 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
             }
         )
 
-        val lastIndexRun = if (indexRunFile.exists()) readIndexRun(indexRunFile) else null
 
         val sourceChanges: Changes
         val targetChanges: Changes
-        val syncResult: MutableSet<File2>
+        val syncResultFiles: MutableSet<File2>
 
         with(MutableFoldersContext(folders)) {
-            val lastSyncResult = lastIndexRun?.mapToRead(filter) ?: listOf()
-            syncResult = lastSyncResult.toMutableSet()
-            if (lastSyncResult.size != syncResult.size) throw Exception()
+            val lastSyncResultFiles = lastSyncResult?.mapToRead(filter) ?: listOf()
+            syncResultFiles = lastSyncResultFiles.toMutableSet()
+            if (lastSyncResultFiles.size != syncResultFiles.size) throw Exception()
 
             runBlocking {
-                val sourceChangesDeferred = async { getChanges(sourceDir, lastSyncResult, filter) }
-                val targetChangesDeferred = async { getChanges(targetDir, lastSyncResult, filter) }
+                val sourceChangesDeferred = async { getChanges(sourceDir, lastSyncResultFiles, filter) }
+                val targetChangesDeferred = async { getChanges(targetDir, lastSyncResultFiles, filter) }
                 sourceChanges = sourceChangesDeferred.await()
                 targetChanges = targetChangesDeferred.await()
             }
@@ -89,7 +94,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         with(FoldersContext(folders)) {
             with(caseSensitiveContext) {
 
-                if (!checkAndFix(sourceChanges, targetChanges, syncResult)) {
+                if (!checkAndFix(sourceChanges, targetChanges, syncResultFiles)) {
                     return
                 }
 
@@ -122,7 +127,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                             process("add", "$sourceFile -> $targetFile") {
                                 targetFile.parentFile.mkdirs()
                                 Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
-                                syncResult.addWithCheck(it)
+                                syncResultFiles.addWithCheck(it)
                             }
                         }
                     }
@@ -137,7 +142,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                                 backupFile.parentFile.mkdirs()
                                 Files.move(targetFile.toPath(), backupFile.toPath())
                                 Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
-                                syncResult.replace(to)
+                                syncResultFiles.replace(to)
                             }
                         }
                     }
@@ -148,7 +153,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                             val targetFile = File(targetDir, to.pathAndName())
                             process("modified attr", "$sourceFile -> $targetFile") {
                                 targetFile.setLastModified(sourceFile.lastModified()) || throw Exception("set of last modification date failed!")
-                                syncResult.replace(to)
+                                syncResultFiles.replace(to)
                             }
                         }
                     }
@@ -162,8 +167,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                             process(s, "$sourceFile -> $targetFile") {
                                 targetFile.parentFile.mkdirs()
                                 Files.move(sourceFile.toPath(), targetFile.toPath())
-                                syncResult.removeWithCheck(from)
-                                syncResult.addWithCheck(to)
+                                syncResultFiles.removeWithCheck(from)
+                                syncResultFiles.addWithCheck(to)
                             }
                         }
                     }
@@ -175,7 +180,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                             process("delete", "$toDelete") {
                                 backupFile.parentFile.mkdirs()
                                 Files.move(toDelete.toPath(), backupFile.toPath())
-                                syncResult.removeWithCheck(it)
+                                syncResultFiles.removeWithCheck(it)
                             }
                         }
                     }
@@ -187,6 +192,13 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                 actions
                     .sortedWith(compareBy({ foldersCtx.get(it.folderId)!!.fullPath }, { it.filename }))
                     .forEach { it.action() }
+
+                if (sourceChanges.deleted.isNotEmpty()) {
+                    deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + sourceChanges.deleted.map { it.copy(folderId = 0) })
+                }
+                if (targetChanges.deleted.isNotEmpty()) {
+                    deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + targetChanges.deleted.map { it.copy(folderId = 0) })
+                }
             }
         }
 
@@ -203,40 +215,55 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 //            }
 //        }
 
-        val indexRun = IndexRun(
+        val syncResult = SyncResult(
             targetDir.path,
             now.toKotlinLocalDateTime(),
-            syncResult.toList(),
+            syncResultFiles.toList(),
             folders.get(folders.rootFolderId)!!,
             failures
         )
 
         if (!syncFilesParams.dryRun) {
-            if (indexRunFile.exists()) {
-                Files.move(indexRunFile.toPath(), File(sourceDir, indexRunFile.name.replace(fileSuffix, "_old$fileSuffix")).toPath(), REPLACE_EXISTING)
+            if (syncResultFile.exists()) {
+                Files.move(
+                    syncResultFile.toPath(),
+                    File(sourceDir, syncResultFile.name.replace(syncResultFileSuffix, "_old$syncResultFileSuffix")).toPath(),
+                    REPLACE_EXISTING
+                )
             }
-            saveIndexRun(indexRunFile, indexRun)
+            saveSyncResult(syncResultFile, syncResult)
+
+            if (deletedFiles != null) {
+                if (deletedFilesFile.exists()) {
+                    Files.move(
+                        deletedFilesFile.toPath(),
+                        File(sourceDir, deletedFilesFile.name.replace(deletedFilesFileSuffix, "_old$deletedFilesFileSuffix")).toPath(),
+                        REPLACE_EXISTING
+                    )
+                }
+                saveDeletedFiles(deletedFilesFile, deletedFiles!!)
+            }
         }
     }
 
 
     context(MutableFoldersContext)
-    private fun getChanges(dir: File, lastSyncResult: List<File2>, filter: Filter): Changes {
+    private fun getChanges(dir: File, lastSyncResultFiles: List<File2>, filter: Filter): Changes {
         val caseSensitiveContext = CaseSensitiveContext(
             isCaseSensitiveFileSystem(dir) ?: throw Exception("Unable to determine if filesystem $dir is case sensitive!")
         )
         return with(caseSensitiveContext) {
 
-            val current = getCurrentFiles(dir, filter, lastSyncResult)
+            val current = getCurrentFiles(dir, filter, lastSyncResultFiles)
 
             @Suppress("ConvertArgumentToSet")
             val added = equalsBy(pathAndName) {
-                (current - lastSyncResult).toMutableSet()
+                (current - lastSyncResultFiles).toMutableSet()
             }
 
             @Suppress("ConvertArgumentToSet")
             val deleted = equalsBy(pathAndName) {
-                (lastSyncResult - current).toMutableSet()
+                (lastSyncResultFiles - current).toMutableSet()
             }
 
             val movedOrRenamed = mutableSetOf<MovedOrRenamed>()
@@ -272,14 +299,14 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
             }
 
             val contentChanged = equalsBy(pathAndName) {
-                (lastSyncResult intersect current)
+                (lastSyncResultFiles intersect current)
                     .filter(HASH_NEQ)
                     .map { ContentChanged(it.left, it.right) }
                     .toMutableSet()
             }
 
             val modifiedChanged = equalsBy(pathAndName) {
-                (lastSyncResult intersect current)
+                (lastSyncResultFiles intersect current)
                     .filter(HASH_EQ and MODIFIED_NEQ)
                     .map { ModifiedChanged(it.left, it.right) }
                     .toMutableSet()
@@ -347,7 +374,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
 
     context(MutableFoldersContext)
-    private fun IndexRun.mapToRead(filter: Filter): List<File2> {
+    private fun SyncResult.mapToRead(filter: Filter): List<File2> {
         val mapping = mutableMapOf<Long, Long>()
         mapping[foldersCtx.rootFolderId] = foldersCtx.rootFolderId
 
