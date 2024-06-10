@@ -54,6 +54,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::minAllowedChanges, IntParam())
             add(paramValues::minDiskFreeSpacePercent, IntParam())
             add(paramValues::minDiskFreeSpaceMB, IntParam())
+            add(paramValues::parallelIndexing, BooleanParam())
             add(paramValues::confirmations, BooleanParam())
             add(paramValues::dryRun, BooleanParam())
             add(paramValues::verbose, BooleanParam())

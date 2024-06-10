@@ -56,14 +56,6 @@ data class Folder(
         if (name.contains("/")) throw Exception()
     }
 
-    /**
-     * includes folder name itself as last node.
-     * starts and ends with '/'
-     */
-    context(FoldersContext)
-    val fullPath: String
-        get() = (parentFolderId?.let { foldersCtx.get(it)!!.fullPath } ?: "") + name + "/"
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Folder) return false
@@ -110,12 +102,12 @@ data class File2(
 
     context(FoldersContext)
     fun path(): String {
-        return foldersCtx.get(folderId)!!.fullPath
+        return foldersCtx.getFullPath(folderId)
     }
 
     context(FoldersContext)
     fun pathAndName(): String {
-        return foldersCtx.get(folderId)!!.fullPath + name
+        return foldersCtx.getFullPath(folderId) + name
     }
 
     override fun equals(other: Any?): Boolean {

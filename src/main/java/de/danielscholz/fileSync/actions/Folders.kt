@@ -7,7 +7,9 @@ import de.danielscholz.fileSync.persistence.Folder
 
 interface Folders {
     val rootFolderId: Long
-    fun get(id: Long): Folder?
+    fun get(id: Long): Folder
+    fun getFullPath(id: Long): String
+    fun getFullPath(folder: Folder): String
 }
 
 interface FoldersMutable : Folders {
@@ -23,14 +25,35 @@ class FoldersImpl : FoldersMutable {
     private val folders = mutableMapOf<Long, Folder>()
 
     private val foldersByParent = mutableListMultimapOf<Long, Folder>()
+    private val foldersFullPath = mutableMapOf<Long, String>()
 
     init {
         folders[rootFolderId] = Folder(rootFolderId, null, "")
     }
 
     @Synchronized
-    override fun get(id: Long): Folder? {
-        return folders[id]
+    override fun get(id: Long): Folder {
+        return folders[id]!!
+    }
+
+    /**
+     * includes folder name itself as last node.
+     * starts and ends with '/'
+     */
+    @Synchronized
+    override fun getFullPath(id: Long): String {
+
+        fun getFullPathIntern(id: Long): String {
+            return foldersFullPath.getOrPut(id) {
+                val folder = folders[id]!!
+                (folder.parentFolderId?.let { getFullPathIntern(it) } ?: "") + folder.name + "/"
+            }
+        }
+        return getFullPathIntern(id)
+    }
+
+    override fun getFullPath(folder: Folder): String {
+        return (folder.parentFolderId?.let { getFullPath(it) } ?: "") + folder.name + "/"
     }
 
     @Synchronized
