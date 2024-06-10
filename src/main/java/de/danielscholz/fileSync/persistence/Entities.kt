@@ -62,7 +62,7 @@ data class Folder(
      */
     context(FoldersContext)
     val fullPath: String
-        get() = (parentFolderId?.let { foldersCtx.folders[it]!!.fullPath } ?: "") + name + "/"
+        get() = (parentFolderId?.let { foldersCtx.get(it)!!.fullPath } ?: "") + name + "/"
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -110,12 +110,12 @@ data class File2(
 
     context(FoldersContext)
     fun path(): String {
-        return foldersCtx.folders[folderId]!!.fullPath
+        return foldersCtx.get(folderId)!!.fullPath
     }
 
     context(FoldersContext)
     fun pathAndName(): String {
-        return foldersCtx.folders[folderId]!!.fullPath + name
+        return foldersCtx.get(folderId)!!.fullPath + name
     }
 
     override fun equals(other: Any?): Boolean {

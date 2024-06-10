@@ -58,9 +58,11 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
                 println("  Diskspace needed:    " + diskspaceNeeded.formatAsFileSize())
                 println("  Diskspace available: " + usableSpace.formatAsFileSize())
             }
+            println()
         } else {
             println(dir.toString())
             println("  no changes to apply")
+            println()
         }
 
         val minDiskFreeSpaceByPercent = totalSpace / 100 * syncFilesParams.minDiskFreeSpacePercent

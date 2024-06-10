@@ -7,7 +7,7 @@ import de.danielscholz.fileSync.persistence.Folder
 
 interface Folders {
     val rootFolderId: Long
-    val folders: Map<Long, Folder>
+    fun get(id: Long): Folder?
 }
 
 interface FoldersMutable : Folders {
@@ -20,16 +20,20 @@ class FoldersImpl : FoldersMutable {
 
     private var maxAssignedFolderId = 0L
 
-    private val _folders = mutableMapOf<Long, Folder>()
-    override val folders: Map<Long, Folder>
-        get() = _folders
+    private val folders = mutableMapOf<Long, Folder>()
 
     private val foldersByParent = mutableListMultimapOf<Long, Folder>()
 
     init {
-        _folders[rootFolderId] = Folder(rootFolderId, null, "")
+        folders[rootFolderId] = Folder(rootFolderId, null, "")
     }
 
+    @Synchronized
+    override fun get(id: Long): Folder? {
+        return folders[id]
+    }
+
+    @Synchronized
     override fun getOrCreate(name: String, parentFolderId: Long): Folder {
         if (!folders.containsKey(parentFolderId)) {
             throw IllegalStateException()
@@ -40,9 +44,9 @@ class FoldersImpl : FoldersMutable {
         }
         val id = ++maxAssignedFolderId
         val folder = Folder(id, parentFolderId, name)
-        _folders[id] = folder
+        folders[id] = folder
         foldersByParent[parentFolderId] = folder
-        _folders[parentFolderId]!!.children += folder
+        folders[parentFolderId]!!.children += folder
         return folder
     }
 }

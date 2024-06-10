@@ -6,6 +6,8 @@ import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.matching.MatchMode.*
 import de.danielscholz.fileSync.persistence.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.io.File
@@ -74,8 +76,12 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
             syncResult = lastSyncResult.toMutableSet()
             if (lastSyncResult.size != syncResult.size) throw Exception()
 
-            sourceChanges = getChanges(sourceDir, lastSyncResult, filter)
-            targetChanges = getChanges(targetDir, lastSyncResult, filter)
+            runBlocking {
+                val sourceChangesDeferred = async { getChanges(sourceDir, lastSyncResult, filter) }
+                val targetChangesDeferred = async { getChanges(targetDir, lastSyncResult, filter) }
+                sourceChanges = sourceChangesDeferred.await()
+                targetChanges = targetChangesDeferred.await()
+            }
         }
 
         val failures = mutableListOf<String>()
@@ -179,29 +185,29 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                 targetChanges.createActions(targetDir, sourceDir)
 
                 actions
-                    .sortedWith(compareBy({ foldersCtx.folders[it.folderId]!!.fullPath }, { it.filename }))
+                    .sortedWith(compareBy({ foldersCtx.get(it.folderId)!!.fullPath }, { it.filename }))
                     .forEach { it.action() }
             }
         }
 
         // TODO use
-        val usedFolderIds = buildSet {
-            syncResult.forEach { add(it.folderId) }
-
-            while (true) {
-                val sizeBefore = size
-                folders.folders.values.forEach {
-                    if (it.id in this && it.parentFolderId != null) add(it.parentFolderId)
-                }
-                if (sizeBefore == size) break // no changes; break
-            }
-        }
+//        val usedFolderIds = buildSet {
+//            syncResult.forEach { add(it.folderId) }
+//
+//            while (true) {
+//                val sizeBefore = size
+//                folders.folders.values.forEach {
+//                    if (it.id in this && it.parentFolderId != null) add(it.parentFolderId)
+//                }
+//                if (sizeBefore == size) break // no changes; break
+//            }
+//        }
 
         val indexRun = IndexRun(
             targetDir.path,
             now.toKotlinLocalDateTime(),
             syncResult.toList(),
-            folders.folders[folders.rootFolderId]!!,
+            folders.get(folders.rootFolderId)!!,
             failures
         )
 
