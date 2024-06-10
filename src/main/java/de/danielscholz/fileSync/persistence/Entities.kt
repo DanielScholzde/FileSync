@@ -135,7 +135,8 @@ data class File2(
 
 @Serializable
 data class SyncResult(
-    val otherPath: String,
+    val sourcePath: String,
+    val targetPath: String,
     val runDate: LocalDateTime, // date of index run
     val files: List<File2>,
     val folder: Folder, // root folder (references all other sub folders)

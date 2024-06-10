@@ -6,7 +6,7 @@ import de.danielscholz.fileSync.persistence.File2
 
 
 context(FoldersContext, CaseSensitiveContext)
-fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: MutableSet<File2>): Boolean {
+fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, syncResult: MutableSet<File2>): Boolean {
 
     val failures = mutableListOf<String>()
 
@@ -71,7 +71,7 @@ fun checkAndFix(sourceChanges: Changes, targetChanges: Changes, syncResult: Muta
     }
 
 
-    fun directionalChecks(changed1: Changes, changed2: Changes) {
+    fun directionalChecks(changed1: MutableChanges, changed2: MutableChanges) {
         equalsBy(pathAndName) {
             (changed1.added intersect changed2.allFilesBeforeSync)
                 .filter(HASH_NEQ or MODIFIED_NEQ)

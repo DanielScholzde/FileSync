@@ -4,14 +4,24 @@ import de.danielscholz.fileSync.persistence.File2
 import kotlinx.datetime.Instant
 
 
-class Changes(
-    val added: MutableSet<File2>,
-    val deleted: MutableSet<File2>,
-    val contentChanged: MutableSet<ContentChanged>,
-    val modifiedChanged: Set<ModifiedChanged>,
-    val movedOrRenamed: MutableSet<MovedOrRenamed>,
-    val allFilesBeforeSync: Set<File2>,
-) {
+interface Changes {
+    val added: Set<File2>
+    val deleted: Set<File2>
+    val contentChanged: Set<ContentChanged>
+    val modifiedChanged: Set<ModifiedChanged>
+    val movedOrRenamed: Set<MovedOrRenamed>
+    val allFilesBeforeSync: Set<File2>
+    fun hasChanges(): Boolean
+}
+
+class MutableChanges(
+    override val added: MutableSet<File2>,
+    override val deleted: MutableSet<File2>,
+    override val contentChanged: MutableSet<ContentChanged>,
+    override val modifiedChanged: Set<ModifiedChanged>,
+    override val movedOrRenamed: MutableSet<MovedOrRenamed>,
+    override val allFilesBeforeSync: Set<File2>,
+) : Changes {
     init {
         // all sets/collections must be disjoint
         val allAsSet: Set<File2> = added + deleted + contentChanged.to() + modifiedChanged.to() + movedOrRenamed.from() + movedOrRenamed.to()
@@ -20,7 +30,7 @@ class Changes(
         }
     }
 
-    fun hasChanges() = added.isNotEmpty() || deleted.isNotEmpty() || contentChanged.isNotEmpty() || modifiedChanged.isNotEmpty() || movedOrRenamed.isNotEmpty()
+    override fun hasChanges() = added.isNotEmpty() || deleted.isNotEmpty() || contentChanged.isNotEmpty() || modifiedChanged.isNotEmpty() || movedOrRenamed.isNotEmpty()
 }
 
 
