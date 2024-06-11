@@ -9,14 +9,9 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.FileTime
 
 
-data class ReadDirResult(
-    val content: FolderResult,
-    val caseSensitiveFileSystem: Boolean
-)
-
 data class FolderResult(
     val folders: List<FolderEntry>,
-    val files: List<FileResult>
+    val files: List<FileEntry>
 )
 
 class FolderEntry(
@@ -33,7 +28,7 @@ class FolderEntry(
     }
 }
 
-class FileResult(
+class FileEntry(
     val name: String,
     /**
      * excluding file name!
@@ -54,37 +49,40 @@ class FileResult(
 
 
 fun readDir(dir: File, subPath: String = "/"): FolderResult {
-    val files = mutableListOf<FileResult>()
+    val files = mutableListOf<FileEntry>()
     val folders = mutableListOf<FolderEntry>()
     val filesAndFolders = dir.listFiles()
     if (filesAndFolders != null) {
-        for (fileEntry in filesAndFolders.sortedBy { it.name.lowercase() }) {
-            val attributes = getBasicFileAttributes(fileEntry)
+        for (file in filesAndFolders.sortedBy { it.name.lowercase() }) {
+            val attributes = getBasicFileAttributes(file)
             if (attributes.isDirectory) {
-                val path = subPath + fileEntry.name + "/"
+                val path = subPath + file.name + "/"
                 folders += FolderEntry(
-                    name = fileEntry.name,
+                    name = file.name,
                     fullPath = path,
-                    content = { readDir(fileEntry, path) }
+                    content = { readDir(file, path) }
                 )
             } else if (attributes.isRegularFile) {
                 val size = attributes.size()
-                files += FileResult(
-                    name = fileEntry.name,
+                val created = attributes.creationTime().toKotlinInstantIgnoreMillis()
+                val modified = attributes.lastModifiedTime().toKotlinInstantIgnoreMillis()
+                files += FileEntry(
+                    name = file.name,
                     path = subPath,
-                    created = attributes.creationTime().toKotlinInstantIgnoreMillis(),
-                    modified = attributes.lastModifiedTime().toKotlinInstantIgnoreMillis(),
-                    hidden = fileEntry.isHidden,
+                    created = created,
+                    modified = modified,
+                    hidden = file.isHidden,
                     size = size,
                     hash = myLazy {
-                        if (size > 0) {
-                            // TODO size may have changed
-                            computeSHA1(fileEntry)
-                        } else null
+                        val attr = getBasicFileAttributes(file)
+                        if (attr.size() != size || modified != attr.lastModifiedTime().toKotlinInstantIgnoreMillis()) {
+                            throw Exception("File changed!")
+                        }
+                        if (size > 0) computeSHA1(file) else null
                     }
                 )
             } else {
-                println("$fileEntry not processed because it is not a directory nor a regular file")
+                println("$file not processed because it is not a directory nor a regular file")
             }
         }
     } else {

@@ -19,4 +19,3 @@ fun computeSHA1(file: File): String {
         return Base64.getEncoder().encodeToString(msgDigest.digest())
     }
 }
-

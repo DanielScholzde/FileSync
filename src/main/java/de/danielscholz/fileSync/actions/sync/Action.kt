@@ -35,9 +35,9 @@ class ActionEnv(
 }
 
 class ProcessEnv {
-    fun checkIsUnchanged(file: File, attr: File2) {
+    fun checkIsUnchanged(file: File, attributes: File2) {
         getBasicFileAttributes(file).let {
-            if (it.lastModifiedTime().toKotlinInstantIgnoreMillis() != attr.modified || it.size() != attr.size) {
+            if (it.lastModifiedTime().toKotlinInstantIgnoreMillis() != attributes.modified || it.size() != attributes.size) {
                 throw Exception("File has changed since indexing!")
             }
         }

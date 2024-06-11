@@ -1,6 +1,7 @@
 package de.danielscholz.fileSync.common
 
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.temporal.ChronoField
 
 //fun Instant.convertToLocalZone(): ZonedDateTime {
@@ -14,6 +15,9 @@ import java.time.temporal.ChronoField
 fun Instant.ignoreMillis(): Instant {
     return this.with(ChronoField.NANO_OF_SECOND, 0)
 }
+
+fun LocalDateTime.ignoreMillis(): LocalDateTime = this.withNano(0)
+
 
 // Formatter are thread-safe
 //private val dateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)

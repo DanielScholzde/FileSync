@@ -5,11 +5,6 @@ import de.danielscholz.fileSync.actions.sync.ContentChanged
 import de.danielscholz.fileSync.persistence.File2
 
 
-fun String.getSha1Chunk(): String {
-    return substring(0, 12)
-}
-
-
 fun String.ensureSuffix(suffix: String): String {
     return if (this.endsWith(suffix)) this else this + suffix
 }
@@ -21,10 +16,6 @@ fun String.ensurePrefix(prefix: String): String {
 fun String.getFileExtension(): String? {
     val ext = substringAfterLast('.', "")
     return if (ext.isNotBlank()) ext else null
-}
-
-fun leftPad(num: Int, length: Int): String {
-    return num.toString().padStart(length)
 }
 
 

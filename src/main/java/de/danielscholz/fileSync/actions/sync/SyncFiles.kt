@@ -33,7 +33,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         println("Source dir: $sourceDir")
         println("Target dir: $targetDir\n")
 
-        val now = LocalDateTime.now().withNano(0)
+        val now = LocalDateTime.now().ignoreMillis()
         val dateTimeStr = now.toString().replace(":", "").replace("T", " ")
         val changedDir = "$backupDir/modified/$dateTimeStr"
         val deletedDir = "$backupDir/deleted/$dateTimeStr"
