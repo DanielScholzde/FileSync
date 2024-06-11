@@ -24,8 +24,10 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
     private val deletedFilesFileSuffix = ".jsn"
 
     fun sync(sourceDir: File, targetDir: File, filter: Filter) {
-        guardWithLockFile(File(syncFilesParams.lockfileDir ?: targetDir, lockfileName)) {
-            syncIntern(sourceDir, targetDir, filter)
+        guardWithLockFile(File(syncFilesParams.lockfileSourceDir ?: sourceDir, lockfileName)) {
+            guardWithLockFile(File(syncFilesParams.lockfileTargetDir ?: targetDir, lockfileName)) {
+                syncIntern(sourceDir, targetDir, filter)
+            }
         }
     }
 
