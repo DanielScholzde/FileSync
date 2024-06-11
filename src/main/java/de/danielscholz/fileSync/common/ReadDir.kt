@@ -6,6 +6,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.FileTime
 
 
 data class ReadDirResult(
@@ -58,7 +59,7 @@ fun readDir(dir: File, subPath: String = "/"): FolderResult {
     val filesAndFolders = dir.listFiles()
     if (filesAndFolders != null) {
         for (fileEntry in filesAndFolders.sortedBy { it.name.lowercase() }) {
-            val attributes = Files.readAttributes(fileEntry.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+            val attributes = getBasicFileAttributes(fileEntry)
             if (attributes.isDirectory) {
                 val path = subPath + fileEntry.name + "/"
                 folders += FolderEntry(
@@ -71,8 +72,8 @@ fun readDir(dir: File, subPath: String = "/"): FolderResult {
                 files += FileResult(
                     name = fileEntry.name,
                     path = subPath,
-                    created = attributes.creationTime().toInstant().ignoreMillis().toKotlinInstant(),
-                    modified = attributes.lastModifiedTime().toInstant().ignoreMillis().toKotlinInstant(),
+                    created = attributes.creationTime().toKotlinInstantIgnoreMillis(),
+                    modified = attributes.lastModifiedTime().toKotlinInstantIgnoreMillis(),
                     hidden = fileEntry.isHidden,
                     size = size,
                     hash = myLazy {
@@ -92,6 +93,12 @@ fun readDir(dir: File, subPath: String = "/"): FolderResult {
     }
     return FolderResult(folders, files)
 }
+
+
+fun getBasicFileAttributes(file: File): BasicFileAttributes =
+    Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+
+fun FileTime.toKotlinInstantIgnoreMillis(): Instant = toInstant().ignoreMillis().toKotlinInstant()
 
 
 //class Path(val path: String, val originalPath: String, var used: Boolean = false)

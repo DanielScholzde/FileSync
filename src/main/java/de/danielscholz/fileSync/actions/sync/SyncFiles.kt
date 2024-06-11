@@ -53,7 +53,10 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         @Suppress("NAME_SHADOWING")
         val filter = Filter(
             fileFilter = { path, fileName ->
-                if (fileName.startsWith(syncResultFilePrefix) && fileName.endsWith(syncResultFileSuffix) || fileName == lockfileName)
+                if (fileName.startsWith(syncResultFilePrefix) && fileName.endsWith(syncResultFileSuffix) ||
+                    fileName.startsWith(deletedFilesFilePrefix) && fileName.endsWith(deletedFilesFileSuffix) ||
+                    fileName == lockfileName
+                )
                     ExcludedBy.SYSTEM
                 else
                     filter.fileFilter.excluded(path, fileName)
@@ -107,7 +110,10 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
                 createActions(sourceDir, targetDir, sourceChanges, targetChanges, changedDir, deletedDir)
                     .sortedWith(compareBy({ foldersCtx.getFullPath(it.folderId).lowercase() }, { foldersCtx.getFullPath(it.folderId) }, { it.filename }))
-                    .forEach { it.action(actionEnv) }
+                    .forEach {
+                        it.action(actionEnv)
+                        testIfCancel()
+                    }
 
                 if (sourceChanges.deleted.isNotEmpty()) {
                     deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + sourceChanges.deleted.map { it.copy(folderId = 0) })

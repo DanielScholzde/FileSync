@@ -1,6 +1,9 @@
 package de.danielscholz.fileSync.actions.sync
 
+import de.danielscholz.fileSync.common.getBasicFileAttributes
+import de.danielscholz.fileSync.common.toKotlinInstantIgnoreMillis
 import de.danielscholz.fileSync.persistence.File2
+import java.io.File
 
 
 class Action(
@@ -14,17 +17,29 @@ class ActionEnv(
     private val failures: MutableList<String>,
     private val dryRun: Boolean
 ) {
-    fun process(action: String, files: String, block: () -> Unit) {
+    private val processEnv = ProcessEnv()
+
+    fun process(action: String, files: String, block: ProcessEnv.() -> Unit) {
         try {
             print("$action:".padEnd(14) + files)
             if (!dryRun) {
-                block()
+                processEnv.block()
             }
             println(" ok")
         } catch (e: Exception) {
             val failure = ": " + e.message + " (" + e::class.simpleName + ")"
             println(failure)
             failures += action + failure
+        }
+    }
+}
+
+class ProcessEnv {
+    fun checkIsUnchanged(file: File, attr: File2) {
+        getBasicFileAttributes(file).let {
+            if (it.lastModifiedTime().toKotlinInstantIgnoreMillis() != attr.modified || it.size() != attr.size) {
+                throw Exception("File has changed since indexing!")
+            }
         }
     }
 }

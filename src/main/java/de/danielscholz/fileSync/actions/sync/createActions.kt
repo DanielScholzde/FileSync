@@ -28,6 +28,7 @@ fun createActions(
                 val sourceFile = File(sourceDir, it.pathAndName())
                 val targetFile = File(targetDir, it.pathAndName())
                 process("add", "$sourceFile -> $targetFile") {
+                    checkIsUnchanged(sourceFile, it)
                     targetFile.parentFile.mkdirs()
                     Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
                     syncResultFiles.addWithCheck(it)
@@ -35,12 +36,14 @@ fun createActions(
             }
         }
 
-        contentChanged.forEach { (_, to) ->
+        contentChanged.forEach { (from, to) ->
             // pathAndName() must be equals in 'from' and 'to'
             actions += Action(to.folderId, to.name) {
                 val sourceFile = File(sourceDir, to.pathAndName())
                 val targetFile = File(targetDir, to.pathAndName())
                 process("copy", "$sourceFile -> $targetFile") {
+                    checkIsUnchanged(sourceFile, to)
+                    checkIsUnchanged(targetFile, from)
                     val backupFile = File(File(targetDir, changedDir), to.pathAndName())
                     backupFile.parentFile.mkdirs()
                     Files.move(targetFile.toPath(), backupFile.toPath())
@@ -50,11 +53,13 @@ fun createActions(
             }
         }
 
-        modifiedChanged.forEach { (_, to) ->
+        modifiedChanged.forEach { (from, to) ->
             actions += Action(to.folderId, to.name) {
                 val sourceFile = File(sourceDir, to.pathAndName())
                 val targetFile = File(targetDir, to.pathAndName())
                 process("modified attr", "$sourceFile -> $targetFile") {
+                    checkIsUnchanged(sourceFile, to)
+                    checkIsUnchanged(targetFile, from)
                     targetFile.setLastModified(sourceFile.lastModified()) || throw Exception("set of last modification date failed!")
                     syncResultFiles.replace(to)
                 }
@@ -68,6 +73,7 @@ fun createActions(
                 val targetFile = File(targetDir, to.pathAndName())
                 val action = if (it.moved && it.renamed) "move+rename" else if (it.moved) "move" else "rename"
                 process(action, "$sourceFile -> $targetFile") {
+                    checkIsUnchanged(sourceFile, to)
                     targetFile.parentFile.mkdirs()
                     Files.move(sourceFile.toPath(), targetFile.toPath())
                     syncResultFiles.removeWithCheck(from)
@@ -81,6 +87,7 @@ fun createActions(
                 val toDelete = File(targetDir, it.pathAndName())
                 val backupFile = File(File(targetDir, deletedDir), it.pathAndName())
                 process("delete", "$toDelete") {
+                    checkIsUnchanged(toDelete, it)
                     backupFile.parentFile.mkdirs()
                     Files.move(toDelete.toPath(), backupFile.toPath())
                     syncResultFiles.removeWithCheck(it)

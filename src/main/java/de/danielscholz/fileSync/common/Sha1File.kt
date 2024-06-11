@@ -13,6 +13,7 @@ fun computeSHA1(file: File): String {
         val buffer = ByteArray(4096)
         while (digestInputStream.read(buffer, 0, buffer.size) != -1) {
             // read file stream without buffer
+            testIfCancel()
         }
         val msgDigest = digestInputStream.messageDigest
         return Base64.getEncoder().encodeToString(msgDigest.digest())
