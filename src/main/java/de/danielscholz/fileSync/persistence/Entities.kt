@@ -71,6 +71,15 @@ data class Folder(
     }
 }
 
+fun Folder.stripUnusedFolder(usedFolderIds: Set<Long>): Folder {
+    return this.copy(
+        children = this.children
+            .filter { it.id in usedFolderIds }
+            .map { it.stripUnusedFolder(usedFolderIds) }
+            .toMutableList()
+    )
+}
+
 /**
  * equals: only Folder + Filename
  */

@@ -123,31 +123,38 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                 val actionEnv = ActionEnv(syncResultFiles, failures, syncFilesParams.dryRun)
 
                 createActions(sourceDir, targetDir, sourceChanges, targetChanges, changedDir, deletedDir)
-                    .sortedWith(compareBy({ it.priority }, { foldersCtx.getFullPath(it.folderId).lowercase() }, { foldersCtx.getFullPath(it.folderId) }, { it.filename }))
+                    .sortedWith(
+                        compareBy(
+                            { it.priority },
+                            { foldersCtx.getFullPath(it.folderId).lowercase() },
+                            { foldersCtx.getFullPath(it.folderId) },
+                            { it.filename })
+                    )
                     .forEach {
                         it.action(actionEnv)
                         testIfCancel()
                     }
 
-                if (sourceChanges.deleted.isNotEmpty()) {
-                    deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + sourceChanges.deleted.map { it.copy(folderId = 0) })
+
+                val sourceDeletedFiles = sourceChanges.deleted.filter { !it.isFolderIsPresentMarker }
+                if (sourceDeletedFiles.isNotEmpty()) {
+                    deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + sourceDeletedFiles.map { it.copy(folderId = 0) })
                 }
-                if (targetChanges.deleted.isNotEmpty()) {
-                    deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + targetChanges.deleted.map { it.copy(folderId = 0) })
+                val targetDeletedFiles = targetChanges.deleted.filter { !it.isFolderIsPresentMarker }
+                if (targetDeletedFiles.isNotEmpty()) {
+                    deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + targetDeletedFiles.map { it.copy(folderId = 0) })
                 }
             }
         }
 
-        // TODO use
         val usedFolderIds = syncResultFiles.asSequence().filter { it.isFolderIsPresentMarker }.map { it.folderId }.toSet()
-
 
         val syncResult = SyncResult(
             sourcePath = sourceDir.path,
             targetPath = targetDir.path,
             runDate = now.toKotlinLocalDateTime(),
             files = syncResultFiles.toList(),
-            folder = folders.get(folders.rootFolderId),
+            folder = folders.get(folders.rootFolderId).stripUnusedFolder(usedFolderIds),
             failuresOccurred = failures
         )
 
