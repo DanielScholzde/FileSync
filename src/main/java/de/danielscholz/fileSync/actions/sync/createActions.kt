@@ -4,7 +4,7 @@ import de.danielscholz.fileSync.common.FoldersContext
 import de.danielscholz.fileSync.common.addWithCheck
 import de.danielscholz.fileSync.common.removeWithCheck
 import de.danielscholz.fileSync.common.replace
-import de.danielscholz.fileSync.persistence.isFolderIsPresentMarker
+import de.danielscholz.fileSync.persistence.isFolderMarker
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
@@ -25,7 +25,7 @@ fun createActions(
     fun Changes.createActions(sourceDir: File, targetDir: File) {
 
         added.forEach {
-            if (it.isFolderIsPresentMarker) {
+            if (it.isFolderMarker) {
                 actions += Action(it.folderId, "", -1) {
                     val targetFile = File(targetDir, it.path())
                     process("create dir", "$targetFile") {
@@ -100,7 +100,7 @@ fun createActions(
         }
 
         deleted.forEach {
-            if (it.isFolderIsPresentMarker) {
+            if (it.isFolderMarker) {
                 actions += Action(it.folderId, "", 1) {
                     val toDelete = File(targetDir, it.path())
                     process("delete dir", "$toDelete") {

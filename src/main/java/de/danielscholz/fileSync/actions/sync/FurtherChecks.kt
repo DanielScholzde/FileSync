@@ -3,7 +3,7 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.common.formatAsFileSize
-import de.danielscholz.fileSync.persistence.isFolderIsPresentMarker
+import de.danielscholz.fileSync.persistence.isFolderMarker
 import java.io.File
 import java.nio.file.Files
 import javax.swing.JOptionPane
@@ -13,11 +13,11 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
 
     fun intern(dir: File, changes: Changes): Boolean {
 
-        val addedFiles = changes.added.filter { !it.isFolderIsPresentMarker }
-        val deletedFiles = changes.deleted.filter { !it.isFolderIsPresentMarker }
+        val addedFiles = changes.added.filter { !it.isFolderMarker }
+        val deletedFiles = changes.deleted.filter { !it.isFolderMarker }
 
-        val addedFolders = changes.added.filter { it.isFolderIsPresentMarker }
-        val deletedFolders = changes.deleted.filter { it.isFolderIsPresentMarker }
+        val addedFolders = changes.added.filter { it.isFolderMarker }
+        val deletedFolders = changes.deleted.filter { it.isFolderMarker }
 
         val totalNumberOfFiles = changes.allFilesBeforeSync.size + addedFiles.size + deletedFiles.size
         val changedNumberOfFiles = addedFiles.size + changes.contentChanged.size + changes.modifiedChanged.size + changes.movedOrRenamed.size + deletedFiles.size

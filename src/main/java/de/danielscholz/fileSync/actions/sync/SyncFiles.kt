@@ -136,18 +136,18 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                     }
 
 
-                val sourceDeletedFiles = sourceChanges.deleted.filter { !it.isFolderIsPresentMarker }
+                val sourceDeletedFiles = sourceChanges.deleted.filter { !it.isFolderMarker }
                 if (sourceDeletedFiles.isNotEmpty()) {
                     deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + sourceDeletedFiles.map { it.copy(folderId = 0) })
                 }
-                val targetDeletedFiles = targetChanges.deleted.filter { !it.isFolderIsPresentMarker }
+                val targetDeletedFiles = targetChanges.deleted.filter { !it.isFolderMarker }
                 if (targetDeletedFiles.isNotEmpty()) {
                     deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + targetDeletedFiles.map { it.copy(folderId = 0) })
                 }
             }
         }
 
-        val usedFolderIds = syncResultFiles.asSequence().filter { it.isFolderIsPresentMarker }.map { it.folderId }.toSet()
+        val usedFolderIds = syncResultFiles.asSequence().filter { it.isFolderMarker }.map { it.folderId }.toSet()
 
         val syncResult = SyncResult(
             sourcePath = sourceDir.path,
