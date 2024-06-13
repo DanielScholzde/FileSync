@@ -84,10 +84,21 @@ fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, sy
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
                 }
 
+            (changed1.contentChanged.from() - changed2.allFilesBeforeSync)
+                .ifNotEmptyCreateConflicts("content changed file does not exists within target dir")
+
             (changed1.movedOrRenamed.from() - changed2.allFilesBeforeSync)
                 .ifNotEmptyCreateConflicts("source of moved file does not exists within target dir")
 
+            (changed1.movedAndContentChanged.from() - changed2.allFilesBeforeSync)
+                .ifNotEmptyCreateConflicts("source of moved file does not exists within target dir")
+
             (changed1.movedOrRenamed.to() intersect changed2.allFilesBeforeSync)
+                .ifNotEmptyCreateConflicts("target of moved file already exists within target dir") {
+                    "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
+                }
+
+            (changed1.movedAndContentChanged.to() intersect changed2.allFilesBeforeSync)
                 .ifNotEmptyCreateConflicts("target of moved file already exists within target dir") {
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
                 }

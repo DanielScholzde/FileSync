@@ -63,6 +63,7 @@ fun getChanges(dir: File, lastSyncResultFiles: List<File2>, filter: Filter, stat
                 }
         }
 
+        // special case: folder renamed and content changed
         equalsBy(object : EqualsAndHashCodeSupplier<File2> {
             override fun equals(obj1: File2, obj2: File2) =
                 obj1.name == obj2.name &&
