@@ -58,16 +58,18 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                 if (fileName.startsWith(syncResultFilePrefix) && fileName.endsWith(syncResultFileSuffix) ||
                     fileName.startsWith(deletedFilesFilePrefix) && fileName.endsWith(deletedFilesFileSuffix) ||
                     fileName == lockfileName
-                )
+                ) {
                     ExcludedBy.SYSTEM
-                else
+                } else {
                     filter.fileFilter.excluded(path, fileName)
+                }
             },
             folderFilter = { fullPath, folderName ->
-                if (folderName == backupDir)
+                if (folderName == backupDir) {
                     ExcludedBy.SYSTEM
-                else
+                } else {
                     filter.folderFilter.excluded(fullPath, folderName)
+                }
             }
         )
 
