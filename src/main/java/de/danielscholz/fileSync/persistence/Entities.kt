@@ -125,6 +125,11 @@ data class File2(
     }
 }
 
+const val folderIsPresentMarkerName = ".folderIsPresentMarker"
+val File2.isFolderIsPresentMarker
+    get() = this.size == 0L && this.name == folderIsPresentMarkerName
+
+
 @Serializable
 data class SyncResult(
     val sourcePath: String,

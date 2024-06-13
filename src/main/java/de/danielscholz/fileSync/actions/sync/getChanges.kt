@@ -7,6 +7,7 @@ import de.danielscholz.fileSync.common.isCaseSensitiveFileSystem
 import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.matching.MatchMode.*
 import de.danielscholz.fileSync.persistence.File2
+import de.danielscholz.fileSync.persistence.isFolderIsPresentMarker
 import java.io.File
 
 
@@ -72,7 +73,7 @@ fun getChanges(dir: File, lastSyncResultFiles: List<File2>, filter: Filter, stat
             override fun hashCode(obj: File2) = obj.name.hashCode()
 
         }) {
-            (deleted intersect added)
+            (deleted.filter { !it.isFolderIsPresentMarker } intersect added.filter { !it.isFolderIsPresentMarker })
                 .map { MovedAndContentChanged(it.left, it.right) }
                 .ifNotEmpty {
                     deleted -= it.from().toSet()
@@ -103,7 +104,6 @@ fun getChanges(dir: File, lastSyncResultFiles: List<File2>, filter: Filter, stat
             movedAndContentChanged = movedAndContentChanged,
             modifiedChanged = modifiedChanged,
             allFilesBeforeSync = currentFiles.toSet(),
-            foldersRenamed = current.folderRenamed.entries.map { it.key to it.value }.toSet()
         )
     }
 }

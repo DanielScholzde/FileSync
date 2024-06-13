@@ -3,6 +3,8 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.persistence.File2
 import de.danielscholz.fileSync.persistence.FileHash
+import de.danielscholz.fileSync.persistence.folderIsPresentMarkerName
+import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinInstant
 import java.io.File
 
@@ -67,6 +69,17 @@ fun getCurrentFiles(dir: File, filter: Filter, lastSyncResult: List<File2>, stat
 
             testIfCancel()
         }
+
+        // add marker for an existing folder
+        files += File2(
+            hash = null,
+            folderId = folderId,
+            name = folderIsPresentMarkerName,
+            created = Instant.DISTANT_PAST,
+            modified = Instant.DISTANT_PAST,
+            hidden = true,
+            size = 0
+        )
 
         if (filesMovedFromDifferentFolderId.isInitialized()) {
             val fromFolderId = filesMovedFromDifferentFolderId.value

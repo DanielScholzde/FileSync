@@ -123,7 +123,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                 val actionEnv = ActionEnv(syncResultFiles, failures, syncFilesParams.dryRun)
 
                 createActions(sourceDir, targetDir, sourceChanges, targetChanges, changedDir, deletedDir)
-                    .sortedWith(compareBy({ foldersCtx.getFullPath(it.folderId).lowercase() }, { foldersCtx.getFullPath(it.folderId) }, { it.filename }))
+                    .sortedWith(compareBy({ it.priority }, { foldersCtx.getFullPath(it.folderId).lowercase() }, { foldersCtx.getFullPath(it.folderId) }, { it.filename }))
                     .forEach {
                         it.action(actionEnv)
                         testIfCancel()
@@ -139,17 +139,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         }
 
         // TODO use
-//        val usedFolderIds = buildSet {
-//            syncResult.forEach { add(it.folderId) }
-//
-//            while (true) {
-//                val sizeBefore = size
-//                folders.folders.values.forEach {
-//                    if (it.id in this && it.parentFolderId != null) add(it.parentFolderId)
-//                }
-//                if (sizeBefore == size) break // no changes; break
-//            }
-//        }
+        val usedFolderIds = syncResultFiles.asSequence().filter { it.isFolderIsPresentMarker }.map { it.folderId }.toSet()
+
 
         val syncResult = SyncResult(
             sourcePath = sourceDir.path,

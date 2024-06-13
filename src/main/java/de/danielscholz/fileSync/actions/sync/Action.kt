@@ -9,6 +9,7 @@ import java.io.File
 class Action(
     val folderId: Long,
     val filename: String,
+    val priority: Int = 0,
     val action: ActionEnv.() -> Unit,
 )
 

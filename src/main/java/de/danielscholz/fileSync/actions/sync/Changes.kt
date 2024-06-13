@@ -12,7 +12,6 @@ interface Changes {
     val movedOrRenamed: Set<MovedOrRenamed>
     val modifiedChanged: Set<ModifiedChanged>
     val allFilesBeforeSync: Set<File2>
-    val foldersRenamed: Set<Pair<Long, Long>>
     fun hasChanges(): Boolean
 }
 
@@ -24,7 +23,6 @@ class MutableChanges(
     override val movedOrRenamed: MutableSet<MovedOrRenamed>,
     override val modifiedChanged: Set<ModifiedChanged>,
     override val allFilesBeforeSync: Set<File2>,
-    override val foldersRenamed: Set<Pair<Long, Long>>,
 ) : Changes {
     init {
         // all sets/collections must be disjoint

@@ -4,6 +4,7 @@ import de.danielscholz.fileSync.common.FoldersContext
 import de.danielscholz.fileSync.common.addWithCheck
 import de.danielscholz.fileSync.common.removeWithCheck
 import de.danielscholz.fileSync.common.replace
+import de.danielscholz.fileSync.persistence.isFolderIsPresentMarker
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
@@ -24,14 +25,24 @@ fun createActions(
     fun Changes.createActions(sourceDir: File, targetDir: File) {
 
         added.forEach {
-            actions += Action(it.folderId, it.name) {
-                val sourceFile = File(sourceDir, it.pathAndName())
-                val targetFile = File(targetDir, it.pathAndName())
-                process("add", "$sourceFile -> $targetFile") {
-                    checkIsUnchanged(sourceFile, it)
-                    targetFile.parentFile.mkdirs()
-                    Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
-                    syncResultFiles.addWithCheck(it)
+            if (it.isFolderIsPresentMarker) {
+                actions += Action(it.folderId, "", -1) {
+                    val targetFile = File(targetDir, it.path())
+                    process("create dir", "$targetFile") {
+                        targetFile.mkdirs()
+                        syncResultFiles.addWithCheck(it)
+                    }
+                }
+            } else {
+                actions += Action(it.folderId, it.name) {
+                    val sourceFile = File(sourceDir, it.pathAndName())
+                    val targetFile = File(targetDir, it.pathAndName())
+                    process("add", "$sourceFile -> $targetFile") {
+                        checkIsUnchanged(sourceFile, it)
+                        //targetFile.parentFile.mkdirs()
+                        Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
+                        syncResultFiles.addWithCheck(it)
+                    }
                 }
             }
         }
@@ -80,7 +91,7 @@ fun createActions(
                     val backupFile = File(File(targetDir, changedDir), from.pathAndName())
                     backupFile.parentFile.mkdirs()
                     Files.move(targetFromFile.toPath(), backupFile.toPath())
-                    targetToFile.parentFile.mkdirs()
+                    //targetToFile.parentFile.mkdirs()
                     Files.copy(sourceFile.toPath(), targetToFile.toPath(), COPY_ATTRIBUTES)
                     syncResultFiles.removeWithCheck(from)
                     syncResultFiles.addWithCheck(to)
@@ -89,14 +100,25 @@ fun createActions(
         }
 
         deleted.forEach {
-            actions += Action(it.folderId, it.name) {
-                val toDelete = File(targetDir, it.pathAndName())
-                val backupFile = File(File(targetDir, deletedDir), it.pathAndName())
-                process("delete", "$toDelete") {
-                    checkIsUnchanged(toDelete, it)
-                    backupFile.parentFile.mkdirs()
-                    Files.move(toDelete.toPath(), backupFile.toPath())
-                    syncResultFiles.removeWithCheck(it)
+            if (it.isFolderIsPresentMarker) {
+                actions += Action(it.folderId, "", 1) {
+                    val toDelete = File(targetDir, it.path())
+                    process("delete dir", "$toDelete") {
+                        if (toDelete.delete()) {
+                            syncResultFiles.removeWithCheck(it)
+                        }
+                    }
+                }
+            } else {
+                actions += Action(it.folderId, it.name) {
+                    val toDelete = File(targetDir, it.pathAndName())
+                    val backupFile = File(File(targetDir, deletedDir), it.pathAndName())
+                    process("delete", "$toDelete") {
+                        checkIsUnchanged(toDelete, it)
+                        backupFile.parentFile.mkdirs()
+                        Files.move(toDelete.toPath(), backupFile.toPath())
+                        syncResultFiles.removeWithCheck(it)
+                    }
                 }
             }
         }

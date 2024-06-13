@@ -30,7 +30,7 @@ fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, sy
                 val (sourceTo, targetTo) = pair
                 if (sourceTo.modified == targetTo.modified) {
                     // here: sourceTo must be identical to targetTo!
-                    syncResult.removeWithCheck(sourceTo) // remove old instance (optional)
+                    syncResult -= sourceTo // remove old instance (optional)
                     syncResult.addWithCheck(sourceTo) // add new with changed hash
                     sourceChanges.added.remove(sourceTo) ||
                             // equals of ContentChanged considers only second property

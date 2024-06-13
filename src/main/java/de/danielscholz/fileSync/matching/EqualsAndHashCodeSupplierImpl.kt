@@ -11,12 +11,14 @@ class EqualsAndHashCodeSupplierImpl(private val mode: EnumSet<MatchMode>) : Equa
             if (obj1.size != obj2.size || obj1.hash?.hash != obj2.hash?.hash) return false
         }
 
-        // Workaround for empty files (which do not have a hash)
-        if (obj1.hash == null && obj2.hash == null && MatchMode.HASH in mode && MatchMode.FILENAME !in mode) {
-            if (obj1.name != obj2.name) return false
-        }
-        if (obj1.hash == null && obj2.hash == null && MatchMode.HASH in mode && MatchMode.PATH !in mode) {
-            if (obj1.folderId != obj2.folderId) return false
+        // Workaround for empty files (which do not have a hash): compare filename and path too!
+        if (obj1.hash == null && obj2.hash == null && MatchMode.HASH in mode) {
+            if (MatchMode.FILENAME !in mode) {
+                if (obj1.name != obj2.name) return false
+            }
+            if (MatchMode.PATH !in mode) {
+                if (obj1.folderId != obj2.folderId) return false
+            }
         }
 
         if (MatchMode.PATH in mode) {

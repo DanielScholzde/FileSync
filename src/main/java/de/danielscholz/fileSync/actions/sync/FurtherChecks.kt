@@ -3,6 +3,7 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.common.formatAsFileSize
+import de.danielscholz.fileSync.persistence.isFolderIsPresentMarker
 import java.io.File
 import java.nio.file.Files
 import javax.swing.JOptionPane
@@ -12,11 +13,17 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
 
     fun intern(dir: File, changes: Changes): Boolean {
 
-        val totalNumberOfFiles = changes.allFilesBeforeSync.size + changes.added.size + changes.deleted.size
-        val changedNumberOfFiles = changes.added.size + changes.contentChanged.size + changes.modifiedChanged.size + changes.movedOrRenamed.size + changes.deleted.size
+        val addedFiles = changes.added.filter { !it.isFolderIsPresentMarker }
+        val deletedFiles = changes.deleted.filter { !it.isFolderIsPresentMarker }
+
+        val addedFolders = changes.added.filter { it.isFolderIsPresentMarker }
+        val deletedFolders = changes.deleted.filter { it.isFolderIsPresentMarker }
+
+        val totalNumberOfFiles = changes.allFilesBeforeSync.size + addedFiles.size + deletedFiles.size
+        val changedNumberOfFiles = addedFiles.size + changes.contentChanged.size + changes.modifiedChanged.size + changes.movedOrRenamed.size + deletedFiles.size
 
         // does not regard deleted files since they are not deleted but moved to history folder
-        val diskspaceNeeded = changes.added.fileSize() + changes.contentChanged.fileSize()
+        val diskspaceNeeded = addedFiles.fileSize() + changes.contentChanged.fileSize()
 
         val fileStore = Files.getFileStore(dir.toPath())
         val usableSpace = fileStore.usableSpace
@@ -28,8 +35,8 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
             fun p(str: String, str2: Any, str3: Any? = null) {
                 list += Triple("  $str: ", str2.toString(), str3?.toString()?.let { " $it" })
             }
-            if (changes.added.isNotEmpty()) {
-                p("Files to add", changes.added.size, "(${changes.added.fileSize().formatAsFileSize()})")
+            if (addedFiles.isNotEmpty()) {
+                p("Files to add", addedFiles.size, "(${addedFiles.fileSize().formatAsFileSize()})")
             }
             if (changes.contentChanged.isNotEmpty()) {
                 p("Files to update content", changes.contentChanged.size, "(${changes.contentChanged.fileSize().formatAsFileSize()})")
@@ -46,8 +53,14 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
             if (changes.movedOrRenamed.any { it.renamed && it.moved }) {
                 p("Files to rename+move", changes.movedOrRenamed.filter { it.renamed && it.moved }.size)
             }
-            if (changes.deleted.isNotEmpty()) {
-                p("Files to delete", changes.deleted.size)
+            if (deletedFiles.isNotEmpty()) {
+                p("Files to delete", deletedFiles.size)
+            }
+            if (addedFolders.isNotEmpty()) {
+                p("Folders to create", addedFolders.size)
+            }
+            if (deletedFolders.isNotEmpty()) {
+                p("Folders to delete", deletedFolders.size)
             }
             val max1 = list.maxOf { it.first.length }
             val max2 = list.maxOf { it.second.length }
@@ -88,7 +101,7 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
         if (changedPercent >= syncFilesParams.maxChangedFilesWarningPercent && changedNumberOfFiles > syncFilesParams.minAllowedChanges) {
 
             val msg = "More files were changed or deleted than allowed\n" +
-                    "(changed: ${changedNumberOfFiles - changes.deleted.size}, deleted: ${changes.deleted.size}. This corresponds to: $changedPercent%). " +
+                    "(changed: ${changedNumberOfFiles - deletedFiles.size}, deleted: ${deletedFiles.size}. This corresponds to: $changedPercent%). " +
                     "Do you want to continue the sync process?"
 
             if (!syncFilesParams.confirmations) {

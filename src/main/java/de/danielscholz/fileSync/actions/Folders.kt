@@ -7,9 +7,22 @@ import de.danielscholz.fileSync.persistence.Folder
 
 interface Folders {
     val rootFolderId: Long
+
     fun get(id: Long): Folder
+
+    /**
+     * includes folder name itself as last node.
+     * starts and ends with '/'
+     */
     fun getFullPath(id: Long): String
+
+    /**
+     * includes folder name itself as last node.
+     * starts and ends with '/'
+     */
     fun getFullPath(folder: Folder): String
+
+    fun getAll(): List<Folder>
 }
 
 interface FoldersMutable : Folders {
@@ -36,10 +49,11 @@ class FoldersImpl : FoldersMutable {
         return folders[id]!!
     }
 
-    /**
-     * includes folder name itself as last node.
-     * starts and ends with '/'
-     */
+    @Synchronized
+    override fun getAll(): List<Folder> {
+        return folders.values.toList()
+    }
+
     @Synchronized
     override fun getFullPath(id: Long): String {
 
