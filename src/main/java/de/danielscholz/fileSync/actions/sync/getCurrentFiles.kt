@@ -4,7 +4,6 @@ import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.persistence.File2
 import de.danielscholz.fileSync.persistence.FileHash
 import de.danielscholz.fileSync.persistence.folderMarkerName
-import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinInstant
 import java.io.File
 
@@ -75,8 +74,8 @@ fun getCurrentFiles(dir: File, filter: Filter, lastSyncResult: List<File2>, stat
             hash = null,
             folderId = folderId,
             name = folderMarkerName,
-            created = Instant.DISTANT_PAST,
-            modified = Instant.DISTANT_PAST,
+            created = folderMarkerInstant,
+            modified = folderMarkerInstant,
             hidden = true,
             size = 0
         )
