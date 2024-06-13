@@ -76,6 +76,9 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         val targetChanges: MutableChanges
         val syncResultFiles: MutableSet<File2>
 
+        val sourceStatistics = Statistics()
+        val targetStatistics = Statistics()
+
         val folders = FoldersImpl()
         with(MutableFoldersContext(folders)) {
             val lastSyncResultFiles = lastSyncResult?.mapToRead(filter) ?: listOf()
@@ -84,14 +87,14 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
             if (syncFilesParams.parallelIndexing) {
                 runBlocking {
-                    val sourceChangesDeferred = async { getChanges(sourceDir, lastSyncResultFiles, filter) }
-                    val targetChangesDeferred = async { getChanges(targetDir, lastSyncResultFiles, filter) }
+                    val sourceChangesDeferred = async { getChanges(sourceDir, lastSyncResultFiles, filter, sourceStatistics) }
+                    val targetChangesDeferred = async { getChanges(targetDir, lastSyncResultFiles, filter, targetStatistics) }
                     sourceChanges = sourceChangesDeferred.await()
                     targetChanges = targetChangesDeferred.await()
                 }
             } else {
-                sourceChanges = getChanges(sourceDir, lastSyncResultFiles, filter)
-                targetChanges = getChanges(targetDir, lastSyncResultFiles, filter)
+                sourceChanges = getChanges(sourceDir, lastSyncResultFiles, filter, sourceStatistics)
+                targetChanges = getChanges(targetDir, lastSyncResultFiles, filter, targetStatistics)
             }
         }
 
