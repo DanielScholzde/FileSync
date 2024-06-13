@@ -24,6 +24,12 @@ inline fun <E> Collection<E>.ifNotEmpty(block: (Collection<E>) -> Unit) {
     }
 }
 
+fun <E, T> Collection<E>.multiAssociateBy(keyExtractor: (E) -> T): ListMultimap<T, E> {
+    val multimap = mutableListMultimapOf<T, E>()
+    this.forEach { multimap.put(keyExtractor(it), it) }
+    return multimap
+}
+
 
 fun <E> MutableSet<E>.replace(element: E) {
     this.remove(element) || throw IllegalStateException()

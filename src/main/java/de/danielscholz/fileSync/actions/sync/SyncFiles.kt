@@ -98,6 +98,15 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
             }
         }
 
+        println("Files / Folders (sourceDir): ${sourceStatistics.files} / ${sourceStatistics.folders}")
+        println("Files / Folders (targetDir): ${targetStatistics.files} / ${targetStatistics.folders}")
+        if (sourceStatistics.files > 0) {
+            println("Hash reused (sourceDir): ${100 - 100 * sourceStatistics.hashCalculated / sourceStatistics.files}%")
+        }
+        if (targetStatistics.files > 0) {
+            println("Hash reused (targetDir): ${100 - 100 * targetStatistics.hashCalculated / targetStatistics.files}%")
+        }
+
         val failures = mutableListOf<String>()
 
         with(FoldersContext(folders)) {

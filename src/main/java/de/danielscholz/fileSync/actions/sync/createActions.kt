@@ -53,19 +53,6 @@ fun createActions(
             }
         }
 
-        modifiedChanged.forEach { (from, to) ->
-            actions += Action(to.folderId, to.name) {
-                val sourceFile = File(sourceDir, to.pathAndName())
-                val targetFile = File(targetDir, to.pathAndName())
-                process("modified attr", "$sourceFile -> $targetFile") {
-                    checkIsUnchanged(sourceFile, to)
-                    checkIsUnchanged(targetFile, from)
-                    targetFile.setLastModified(sourceFile.lastModified()) || throw Exception("set of last modification date failed!")
-                    syncResultFiles.replace(to)
-                }
-            }
-        }
-
         movedOrRenamed.forEach {
             val (from, to) = it
             actions += Action(to.folderId, to.name) {
@@ -82,6 +69,25 @@ fun createActions(
             }
         }
 
+        movedAndContentChanged.forEach {
+            val (from, to) = it
+            actions += Action(to.folderId, to.name) {
+                val sourceFile = File(sourceDir, to.pathAndName())
+                val targetFromFile = File(targetDir, from.pathAndName())
+                val targetToFile = File(targetDir, to.pathAndName())
+                process("move+copy", "$sourceFile -> $targetToFile") {
+                    checkIsUnchanged(sourceFile, to)
+                    val backupFile = File(File(targetDir, changedDir), from.pathAndName())
+                    backupFile.parentFile.mkdirs()
+                    Files.move(targetFromFile.toPath(), backupFile.toPath())
+                    targetToFile.parentFile.mkdirs()
+                    Files.copy(sourceFile.toPath(), targetToFile.toPath(), COPY_ATTRIBUTES)
+                    syncResultFiles.removeWithCheck(from)
+                    syncResultFiles.addWithCheck(to)
+                }
+            }
+        }
+
         deleted.forEach {
             actions += Action(it.folderId, it.name) {
                 val toDelete = File(targetDir, it.pathAndName())
@@ -91,6 +97,19 @@ fun createActions(
                     backupFile.parentFile.mkdirs()
                     Files.move(toDelete.toPath(), backupFile.toPath())
                     syncResultFiles.removeWithCheck(it)
+                }
+            }
+        }
+
+        modifiedChanged.forEach { (from, to) ->
+            actions += Action(to.folderId, to.name) {
+                val sourceFile = File(sourceDir, to.pathAndName())
+                val targetFile = File(targetDir, to.pathAndName())
+                process("modified attr", "$sourceFile -> $targetFile") {
+                    checkIsUnchanged(sourceFile, to)
+                    checkIsUnchanged(targetFile, from)
+                    targetFile.setLastModified(sourceFile.lastModified()) || throw Exception("set of last modification date failed!")
+                    syncResultFiles.replace(to)
                 }
             }
         }

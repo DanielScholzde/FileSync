@@ -18,18 +18,20 @@ fun getChanges(dir: File, lastSyncResultFiles: List<File2>, filter: Filter, stat
     return with(caseSensitiveContext) {
 
         val current = getCurrentFiles(dir, filter, lastSyncResultFiles, statistics)
+        val currentFiles = current.files
 
         @Suppress("ConvertArgumentToSet")
         val added = equalsBy(pathAndName) {
-            (current - lastSyncResultFiles).toMutableSet()
+            (currentFiles - lastSyncResultFiles).toMutableSet()
         }
 
         @Suppress("ConvertArgumentToSet")
         val deleted = equalsBy(pathAndName) {
-            (lastSyncResultFiles - current).toMutableSet()
+            (lastSyncResultFiles - currentFiles).toMutableSet()
         }
 
         val movedOrRenamed = mutableSetOf<MovedOrRenamed>()
+        val movedAndContentChanged = mutableSetOf<MovedAndContentChanged>()
 
         equalsBy(PATH + HASH + MODIFIED, true) {
             (deleted intersect added)
@@ -61,15 +63,32 @@ fun getChanges(dir: File, lastSyncResultFiles: List<File2>, filter: Filter, stat
                 }
         }
 
+        equalsBy(object : EqualsAndHashCodeSupplier<File2> {
+            override fun equals(obj1: File2, obj2: File2) =
+                obj1.name == obj2.name &&
+                        (current.folderPathRenamed[obj1.folderId] ?: obj1.folderId) == (current.folderPathRenamed[obj2.folderId] ?: obj2.folderId)
+
+            override fun hashCode(obj: File2) = obj.name.hashCode()
+
+        }) {
+            (deleted intersect added)
+                .map { MovedAndContentChanged(it.left, it.right) }
+                .ifNotEmpty {
+                    deleted -= it.from().toSet()
+                    added -= it.to().toSet()
+                    movedAndContentChanged += it
+                }
+        }
+
         val contentChanged = equalsBy(pathAndName) {
-            (lastSyncResultFiles intersect current)
+            (lastSyncResultFiles intersect currentFiles)
                 .filter(HASH_NEQ)
                 .map { ContentChanged(it.left, it.right) }
                 .toMutableSet()
         }
 
         val modifiedChanged = equalsBy(pathAndName) {
-            (lastSyncResultFiles intersect current)
+            (lastSyncResultFiles intersect currentFiles)
                 .filter(HASH_EQ and MODIFIED_NEQ)
                 .map { ModifiedChanged(it.left, it.right) }
                 .toMutableSet()
@@ -79,9 +98,11 @@ fun getChanges(dir: File, lastSyncResultFiles: List<File2>, filter: Filter, stat
             added = added,
             deleted = deleted,
             contentChanged = contentChanged,
-            modifiedChanged = modifiedChanged,
             movedOrRenamed = movedOrRenamed,
-            allFilesBeforeSync = current.toSet()
+            movedAndContentChanged = movedAndContentChanged,
+            modifiedChanged = modifiedChanged,
+            allFilesBeforeSync = currentFiles.toSet(),
+            foldersRenamed = current.folderRenamed.entries.map { it.key to it.value }.toSet()
         )
     }
 }
