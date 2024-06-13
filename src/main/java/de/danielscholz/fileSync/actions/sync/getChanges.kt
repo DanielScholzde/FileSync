@@ -96,6 +96,8 @@ fun getChanges(dir: File, lastSyncResultFiles: List<FileEntity>, filter: Filter,
                 .toMutableSet()
         }
 
+        println("$dir successfully read")
+
         MutableChanges(
             added = added,
             deleted = deleted,

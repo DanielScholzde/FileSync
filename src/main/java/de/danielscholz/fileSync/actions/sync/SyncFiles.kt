@@ -108,6 +108,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         }
 
         val failures = mutableListOf<String>()
+        var hasChanges = false
 
         with(FoldersContext(folders)) {
             with(caseSensitiveContext) {
@@ -131,6 +132,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                             { it.filename })
                     )
                     .forEach {
+                        hasChanges = true
                         it.action(actionEnv)
                         testIfCancel()
                     }
@@ -158,7 +160,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
             failuresOccurred = failures
         )
 
-        if (!syncFilesParams.dryRun) {
+        if (!syncFilesParams.dryRun && hasChanges) {
             if (syncResultFile.exists()) {
                 Files.move(
                     syncResultFile.toPath(),
