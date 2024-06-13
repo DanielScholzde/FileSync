@@ -1,32 +1,32 @@
 package de.danielscholz.fileSync.actions.sync
 
-import de.danielscholz.fileSync.persistence.File2
+import de.danielscholz.fileSync.persistence.FileEntity
 import kotlinx.datetime.Instant
 
 
 interface Changes {
-    val added: Set<File2>
-    val deleted: Set<File2>
+    val added: Set<FileEntity>
+    val deleted: Set<FileEntity>
     val contentChanged: Set<ContentChanged>
     val movedAndContentChanged: Set<MovedAndContentChanged>
     val movedOrRenamed: Set<MovedOrRenamed>
     val modifiedChanged: Set<ModifiedChanged>
-    val allFilesBeforeSync: Set<File2>
+    val allFilesBeforeSync: Set<FileEntity>
     fun hasChanges(): Boolean
 }
 
 class MutableChanges(
-    override val added: MutableSet<File2>,
-    override val deleted: MutableSet<File2>,
+    override val added: MutableSet<FileEntity>,
+    override val deleted: MutableSet<FileEntity>,
     override val contentChanged: MutableSet<ContentChanged>,
     override val movedAndContentChanged: MutableSet<MovedAndContentChanged>,
     override val movedOrRenamed: MutableSet<MovedOrRenamed>,
     override val modifiedChanged: Set<ModifiedChanged>,
-    override val allFilesBeforeSync: Set<File2>,
+    override val allFilesBeforeSync: Set<FileEntity>,
 ) : Changes {
     init {
         // all sets/collections must be disjoint
-        val allAsSet: Set<File2> = added +
+        val allAsSet: Set<FileEntity> = added +
                 deleted +
                 contentChanged.to() +
                 movedAndContentChanged.from() +
@@ -54,15 +54,15 @@ class MutableChanges(
 }
 
 
-interface IChange<FROM : File2?, TO : File2?> {
+interface IChange<FROM : FileEntity?, TO : FileEntity?> {
     val from: FROM
     val to: TO
 }
 
 /** equals/hashCode: only 'to' is considered! */
-data class ContentChanged(override val from: File2, override val to: File2) : IChange<File2, File2> {
+data class ContentChanged(override val from: FileEntity, override val to: FileEntity) : IChange<FileEntity, FileEntity> {
     companion object {
-        val DOES_NOT_MATTER_FILE = File2(0, "-", Instant.DISTANT_PAST, Instant.DISTANT_PAST, true, 0, null)
+        val DOES_NOT_MATTER_FILE = FileEntity(0, "-", Instant.DISTANT_PAST, Instant.DISTANT_PAST, true, 0, null)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -75,10 +75,7 @@ data class ContentChanged(override val from: File2, override val to: File2) : IC
 }
 
 /** equals/hashCode: only 'to' is considered! */
-data class ModifiedChanged(override val from: File2, override val to: File2) : IChange<File2, File2> {
-    companion object {
-        val DOES_NOT_MATTER_FILE = File2(0, "-", Instant.DISTANT_PAST, Instant.DISTANT_PAST, true, 0, null)
-    }
+data class ModifiedChanged(override val from: FileEntity, override val to: FileEntity) : IChange<FileEntity, FileEntity> {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -90,10 +87,7 @@ data class ModifiedChanged(override val from: File2, override val to: File2) : I
 }
 
 /** equals/hashCode: only 'to' is considered! */
-data class MovedOrRenamed(override val from: File2, override val to: File2) : IChange<File2, File2> {
-    companion object {
-        val DOES_NOT_MATTER_FILE = File2(0, "-", Instant.DISTANT_PAST, Instant.DISTANT_PAST, true, 0, null)
-    }
+data class MovedOrRenamed(override val from: FileEntity, override val to: FileEntity) : IChange<FileEntity, FileEntity> {
 
     val renamed get() = from.name != to.name
     val moved get() = from.folderId != to.folderId
@@ -108,10 +102,7 @@ data class MovedOrRenamed(override val from: File2, override val to: File2) : IC
 }
 
 /** equals/hashCode: only 'to' is considered! */
-data class MovedAndContentChanged(override val from: File2, override val to: File2) : IChange<File2, File2> {
-    companion object {
-        val DOES_NOT_MATTER_FILE = File2(0, "-", Instant.DISTANT_PAST, Instant.DISTANT_PAST, true, 0, null)
-    }
+data class MovedAndContentChanged(override val from: FileEntity, override val to: FileEntity) : IChange<FileEntity, FileEntity> {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -123,7 +114,7 @@ data class MovedAndContentChanged(override val from: File2, override val to: Fil
 }
 
 /** equals/hashCode: only 'from' is considered! */
-data class Deletion(override val from: File2) : IChange<File2, Nothing?> {
+data class Deletion(override val from: FileEntity) : IChange<FileEntity, Nothing?> {
     override val to = null
 
     val file = from
@@ -138,7 +129,7 @@ data class Deletion(override val from: File2) : IChange<File2, Nothing?> {
 }
 
 /** equals/hashCode: only 'to' is considered! */
-data class Addition(override val to: File2) : IChange<Nothing?, File2> {
+data class Addition(override val to: FileEntity) : IChange<Nothing?, FileEntity> {
     override val from = null
 
     val file = to

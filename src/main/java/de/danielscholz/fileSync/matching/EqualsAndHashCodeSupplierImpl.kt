@@ -1,12 +1,12 @@
 package de.danielscholz.fileSync.matching
 
-import de.danielscholz.fileSync.persistence.File2
+import de.danielscholz.fileSync.persistence.FileEntity
 import java.util.*
 
 
-class EqualsAndHashCodeSupplierImpl(private val mode: EnumSet<MatchMode>) : EqualsAndHashCodeSupplier<File2> {
+class EqualsAndHashCodeSupplierImpl(private val mode: EnumSet<MatchMode>) : EqualsAndHashCodeSupplier<FileEntity> {
 
-    override fun equals(obj1: File2, obj2: File2): Boolean {
+    override fun equals(obj1: FileEntity, obj2: FileEntity): Boolean {
         if (MatchMode.HASH in mode) {
             if (obj1.size != obj2.size || obj1.hash?.hash != obj2.hash?.hash) return false
         }
@@ -33,7 +33,7 @@ class EqualsAndHashCodeSupplierImpl(private val mode: EnumSet<MatchMode>) : Equa
         return true
     }
 
-    override fun hashCode(obj: File2): Int {
+    override fun hashCode(obj: FileEntity): Int {
         var result = 1
         if (MatchMode.HASH in mode) {
             result = 31 * result + (obj.hash?.hash?.hashCode() ?: 0)

@@ -1,24 +1,24 @@
 package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.common.*
-import de.danielscholz.fileSync.persistence.File2
-import de.danielscholz.fileSync.persistence.FileHash
+import de.danielscholz.fileSync.persistence.FileEntity
+import de.danielscholz.fileSync.persistence.FileHashEntity
 import de.danielscholz.fileSync.persistence.folderMarkerName
 import kotlinx.datetime.toKotlinInstant
 import java.io.File
 
 
 class CurrentFilesResult(
-    val files: List<File2>,
+    val files: List<FileEntity>,
     val folderRenamed: Map</* from folderId */ Long, /* to folderId */ Long>,
     val folderPathRenamed: Map</* from folderId */ Long, /* to folderId */ Long>,
 )
 
 
 context(MutableFoldersContext)
-fun getCurrentFiles(dir: File, filter: Filter, lastSyncResult: List<File2>, statistics: Statistics): CurrentFilesResult {
+fun getCurrentFiles(dir: File, filter: Filter, lastSyncResult: List<FileEntity>, statistics: Statistics): CurrentFilesResult {
 
-    val files = mutableListOf<File2>()
+    val files = mutableListOf<FileEntity>()
     val folderRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
     val folderPathRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
 
@@ -52,10 +52,10 @@ fun getCurrentFiles(dir: File, filter: Filter, lastSyncResult: List<File2>, stat
                     ?.hash
                 ?: file.hash.value?.let {
                     statistics.hashCalculated++
-                    FileHash(java.time.Instant.now().toKotlinInstant(), it)
+                    FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
                 }
 
-            files += File2(
+            files += FileEntity(
                 hash = hash,
                 folderId = folderId,
                 name = file.name,
@@ -70,7 +70,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastSyncResult: List<File2>, stat
         }
 
         // add marker for an existing folder
-        files += File2(
+        files += FileEntity(
             hash = null,
             folderId = folderId,
             name = folderMarkerName,

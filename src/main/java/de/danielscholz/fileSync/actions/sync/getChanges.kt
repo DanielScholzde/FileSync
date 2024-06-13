@@ -6,13 +6,13 @@ import de.danielscholz.fileSync.common.ifNotEmpty
 import de.danielscholz.fileSync.common.isCaseSensitiveFileSystem
 import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.matching.MatchMode.*
-import de.danielscholz.fileSync.persistence.File2
+import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.isFolderMarker
 import java.io.File
 
 
 context(MutableFoldersContext)
-fun getChanges(dir: File, lastSyncResultFiles: List<File2>, filter: Filter, statistics: Statistics): MutableChanges {
+fun getChanges(dir: File, lastSyncResultFiles: List<FileEntity>, filter: Filter, statistics: Statistics): MutableChanges {
     val caseSensitiveContext = CaseSensitiveContext(
         isCaseSensitiveFileSystem(dir) ?: throw Exception("Unable to determine if filesystem $dir is case sensitive!")
     )
@@ -65,12 +65,12 @@ fun getChanges(dir: File, lastSyncResultFiles: List<File2>, filter: Filter, stat
         }
 
         // special case: folder renamed and content changed
-        equalsBy(object : EqualsAndHashCodeSupplier<File2> {
-            override fun equals(obj1: File2, obj2: File2) =
+        equalsBy(object : EqualsAndHashCodeSupplier<FileEntity> {
+            override fun equals(obj1: FileEntity, obj2: FileEntity) =
                 obj1.name == obj2.name &&
                         (current.folderPathRenamed[obj1.folderId] ?: obj1.folderId) == (current.folderPathRenamed[obj2.folderId] ?: obj2.folderId)
 
-            override fun hashCode(obj: File2) = obj.name.hashCode()
+            override fun hashCode(obj: FileEntity) = obj.name.hashCode()
 
         }) {
             (deleted.filter { !it.isFolderMarker } intersect added.filter { !it.isFolderMarker })

@@ -2,21 +2,21 @@ package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.*
-import de.danielscholz.fileSync.persistence.File2
+import de.danielscholz.fileSync.persistence.FileEntity
 
 
 context(FoldersContext, CaseSensitiveContext)
-fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, syncResult: MutableSet<File2>): Boolean {
+fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, syncResult: MutableSet<FileEntity>): Boolean {
 
     val failures = mutableListOf<String>()
 
-    fun Collection<File2>.ifNotEmptyCreateConflicts(detailMsg: String) {
+    fun Collection<FileEntity>.ifNotEmptyCreateConflicts(detailMsg: String) {
         forEach {
             failures += "${it.pathAndName()} $detailMsg"
         }
     }
 
-    fun Collection<IntersectResult<File2>>.ifNotEmptyCreateConflicts(detailMsg: String, diffExtractor: (File2) -> String) {
+    fun Collection<IntersectResult<FileEntity>>.ifNotEmptyCreateConflicts(detailMsg: String, diffExtractor: (FileEntity) -> String) {
         forEach {
             failures += "${it.left.pathAndName()} $detailMsg: ${diffExtractor(it.left)} != ${diffExtractor(it.right)}"
         }

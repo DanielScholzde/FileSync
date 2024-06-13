@@ -2,7 +2,7 @@ package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.common.getBasicFileAttributes
 import de.danielscholz.fileSync.common.toKotlinInstantIgnoreMillis
-import de.danielscholz.fileSync.persistence.File2
+import de.danielscholz.fileSync.persistence.FileEntity
 import java.io.File
 
 
@@ -14,7 +14,7 @@ class Action(
 )
 
 class ActionEnv(
-    val syncResultFiles: MutableSet<File2>,
+    val syncResultFiles: MutableSet<FileEntity>,
     private val failures: MutableList<String>,
     private val dryRun: Boolean
 ) {
@@ -36,7 +36,7 @@ class ActionEnv(
 }
 
 class ProcessEnv {
-    fun checkIsUnchanged(file: File, attributes: File2) {
+    fun checkIsUnchanged(file: File, attributes: FileEntity) {
         getBasicFileAttributes(file).let {
             if (it.lastModifiedTime().toKotlinInstantIgnoreMillis() != attributes.modified || it.size() != attributes.size) {
                 throw Exception("File has changed since indexing!")

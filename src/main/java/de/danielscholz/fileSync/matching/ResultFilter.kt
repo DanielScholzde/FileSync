@@ -2,10 +2,10 @@
 
 package de.danielscholz.fileSync.matching
 
-import de.danielscholz.fileSync.persistence.File2
+import de.danielscholz.fileSync.persistence.FileEntity
 
 
-typealias ResultFilter = (IntersectResult<File2>) -> Boolean
+typealias ResultFilter = (IntersectResult<FileEntity>) -> Boolean
 
 
 val HASH_EQ: ResultFilter = { (file1, file2) ->

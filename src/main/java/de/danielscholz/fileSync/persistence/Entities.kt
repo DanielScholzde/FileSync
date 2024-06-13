@@ -18,7 +18,7 @@ sealed interface EntityBase
 
 
 @Serializable
-data class FileHash(
+data class FileHashEntity(
     @SerialName("c")
     val calculated: Instant,
     @SerialName("h")
@@ -31,7 +31,7 @@ data class FileHash(
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is FileHash) return false
+        if (other !is FileHashEntity) return false
         if (hash != other.hash) return false
         return true
     }
@@ -40,14 +40,14 @@ data class FileHash(
 }
 
 @Serializable
-data class Folder(
+data class FolderEntity(
     val id: Long,
     @SerialName("pId")
     val parentFolderId: Long?,
     @SerialName("n")
     val name: String, // last part of the path
     @SerialName("c")
-    val children: MutableList<Folder> = mutableListOf(),
+    val children: MutableList<FolderEntity> = mutableListOf(),
 ) : EntityBase {
 
     init {
@@ -58,7 +58,7 @@ data class Folder(
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is Folder) return false
+        if (other !is FolderEntity) return false
         if (parentFolderId != other.parentFolderId) return false
         if (name != other.name) return false
         return true
@@ -71,7 +71,7 @@ data class Folder(
     }
 }
 
-fun Folder.stripUnusedFolder(usedFolderIds: Set<Long>): Folder {
+fun FolderEntity.stripUnusedFolder(usedFolderIds: Set<Long>): FolderEntity {
     return this.copy(
         children = this.children
             .filter { it.id in usedFolderIds }
@@ -84,7 +84,7 @@ fun Folder.stripUnusedFolder(usedFolderIds: Set<Long>): Folder {
  * equals: only Folder + Filename
  */
 @Serializable
-data class File2(
+data class FileEntity(
     @SerialName("fId")
     val folderId: Long,
     @SerialName("n")
@@ -97,7 +97,7 @@ data class File2(
     val hidden: Boolean,
     @SerialName("s")
     val size: Long, // file size in byte
-    val hash: FileHash?, // only set if the file is not empty
+    val hash: FileHashEntity?, // only set if the file is not empty
 ) : EntityBase {
     init {
         if (size < 0) throw Exception()
@@ -121,7 +121,7 @@ data class File2(
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is File2) return false
+        if (other !is FileEntity) return false
         if (folderId != other.folderId) return false
         if (name != other.name) return false
         return true
@@ -135,7 +135,7 @@ data class File2(
 }
 
 const val folderMarkerName = ".@folderMarker@"
-val File2.isFolderMarker
+val FileEntity.isFolderMarker
     get() = this.size == 0L && this.name == folderMarkerName
 
 
@@ -144,14 +144,14 @@ data class SyncResult(
     val sourcePath: String,
     val targetPath: String,
     val runDate: LocalDateTime, // date of index run
-    val files: List<File2>,
-    val folder: Folder, // root folder (references all other sub folders)
+    val files: List<FileEntity>,
+    val folder: FolderEntity, // root folder (references all other sub folders)
     val failuresOccurred: List<String>
 )
 
 @Serializable
 data class DeletedFiles(
-    val files: List<File2>, // hint: FolderId is always 0
+    val files: List<FileEntity>, // hint: FolderId is always 0
 )
 
 

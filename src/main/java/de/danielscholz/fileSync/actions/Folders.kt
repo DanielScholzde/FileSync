@@ -2,13 +2,13 @@ package de.danielscholz.fileSync.actions
 
 import de.danielscholz.fileSync.common.mutableListMultimapOf
 import de.danielscholz.fileSync.common.set
-import de.danielscholz.fileSync.persistence.Folder
+import de.danielscholz.fileSync.persistence.FolderEntity
 
 
 interface Folders {
     val rootFolderId: Long
 
-    fun get(id: Long): Folder
+    fun get(id: Long): FolderEntity
 
     /**
      * includes folder name itself as last node.
@@ -20,13 +20,13 @@ interface Folders {
      * includes folder name itself as last node.
      * starts and ends with '/'
      */
-    fun getFullPath(folder: Folder): String
+    fun getFullPath(folder: FolderEntity): String
 
-    fun getAll(): List<Folder>
+    fun getAll(): List<FolderEntity>
 }
 
 interface FoldersMutable : Folders {
-    fun getOrCreate(name: String, parentFolderId: Long): Folder
+    fun getOrCreate(name: String, parentFolderId: Long): FolderEntity
 }
 
 class FoldersImpl : FoldersMutable {
@@ -35,22 +35,22 @@ class FoldersImpl : FoldersMutable {
 
     private var maxAssignedFolderId = 0L
 
-    private val folders = mutableMapOf<Long, Folder>()
+    private val folders = mutableMapOf<Long, FolderEntity>()
 
-    private val foldersByParent = mutableListMultimapOf<Long, Folder>()
+    private val foldersByParent = mutableListMultimapOf<Long, FolderEntity>()
     private val foldersFullPath = mutableMapOf<Long, String>()
 
     init {
-        folders[rootFolderId] = Folder(rootFolderId, null, "")
+        folders[rootFolderId] = FolderEntity(rootFolderId, null, "")
     }
 
     @Synchronized
-    override fun get(id: Long): Folder {
+    override fun get(id: Long): FolderEntity {
         return folders[id]!!
     }
 
     @Synchronized
-    override fun getAll(): List<Folder> {
+    override fun getAll(): List<FolderEntity> {
         return folders.values.toList()
     }
 
@@ -66,12 +66,12 @@ class FoldersImpl : FoldersMutable {
         return getFullPathIntern(id)
     }
 
-    override fun getFullPath(folder: Folder): String {
+    override fun getFullPath(folder: FolderEntity): String {
         return (folder.parentFolderId?.let { getFullPath(it) } ?: "") + folder.name + "/"
     }
 
     @Synchronized
-    override fun getOrCreate(name: String, parentFolderId: Long): Folder {
+    override fun getOrCreate(name: String, parentFolderId: Long): FolderEntity {
         if (!folders.containsKey(parentFolderId)) {
             throw IllegalStateException()
         }
@@ -80,7 +80,7 @@ class FoldersImpl : FoldersMutable {
             return it
         }
         val id = ++maxAssignedFolderId
-        val folder = Folder(id, parentFolderId, name)
+        val folder = FolderEntity(id, parentFolderId, name)
         folders[id] = folder
         foldersByParent[parentFolderId] = folder
         folders[parentFolderId]!!.children += folder

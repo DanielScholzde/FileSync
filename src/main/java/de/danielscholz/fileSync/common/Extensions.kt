@@ -2,7 +2,7 @@ package de.danielscholz.fileSync.common
 
 import de.danielscholz.fileSync.actions.sync.Addition
 import de.danielscholz.fileSync.actions.sync.ContentChanged
-import de.danielscholz.fileSync.persistence.File2
+import de.danielscholz.fileSync.persistence.FileEntity
 
 
 fun String.ensureSuffix(suffix: String): String {
@@ -20,7 +20,7 @@ fun String.getFileExtension(): String? {
 
 
 @JvmName("fileSize1")
-fun Collection<File2>.fileSize() = sumOf { it.size }
+fun Collection<FileEntity>.fileSize() = sumOf { it.size }
 
 @JvmName("fileSize2")
 fun Collection<ContentChanged>.fileSize() = sumOf { it.to.size }

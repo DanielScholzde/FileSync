@@ -74,7 +74,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
         val sourceChanges: MutableChanges
         val targetChanges: MutableChanges
-        val syncResultFiles: MutableSet<File2>
+        val syncResultFiles: MutableSet<FileEntity>
 
         val sourceStatistics = Statistics()
         val targetStatistics = Statistics()
@@ -183,11 +183,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
 
     context(MutableFoldersContext)
-    private fun SyncResult.mapToRead(filter: Filter): List<File2> {
+    private fun SyncResult.mapToRead(filter: Filter): List<FileEntity> {
         val mapping = mutableMapOf<Long, Long>()
         mapping[foldersCtx.rootFolderId] = foldersCtx.rootFolderId
 
-        fun sync(folder: Folder, parentFolderId: Long) {
+        fun sync(folder: FolderEntity, parentFolderId: Long) {
             if (filter.folderFilter.excluded(foldersCtx.getFullPath(folder), folder.name) != null) {
                 return
             }
