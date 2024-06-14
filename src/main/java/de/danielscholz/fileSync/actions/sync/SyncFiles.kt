@@ -22,11 +22,9 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
     private val backupDir = ".syncFilesHistory"
     private val lockfileName = ".syncFiles_lockfile"
     private val indexedFilesFilePrefix = ".syncFilesIndex_"
-    private val indexedFilesFileSuffix = ".jsn"
     private val syncResultFilePrefix = ".syncFilesResult_"
-    private val syncResultFileSuffix = ".jsn"
     private val deletedFilesFilePrefix = ".deletedFiles"
-    private val deletedFilesFileSuffix = ".jsn"
+    private val commonFileSuffix = ".jsn"
 
     fun sync(sourceDir: File, targetDir: File, filter: Filter) {
         guardWithLockFile(File(syncFilesParams.lockfileSourceDir ?: sourceDir, lockfileName)) {
@@ -53,11 +51,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
         val syncName = syncFilesParams.syncName ?: (sourceDir.canonicalPath.toString() + "|" + targetDir.canonicalPath.toString()).hashCode().toString()
 
-        val indexedFilesFileSource = File(sourceDir, "$indexedFilesFilePrefix$syncName$indexedFilesFileSuffix")
-        val indexedFilesFileTarget = File(targetDir, "$indexedFilesFilePrefix$syncName$indexedFilesFileSuffix")
-        val syncResultFile = File(sourceDir, "$syncResultFilePrefix$syncName$syncResultFileSuffix")
-        val deletedFilesFileSource = File(sourceDir, "$deletedFilesFilePrefix$deletedFilesFileSuffix")
-        val deletedFilesFileTarget = File(targetDir, "$deletedFilesFilePrefix$deletedFilesFileSuffix")
+        val indexedFilesFileSource = File(sourceDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix")
+        val indexedFilesFileTarget = File(targetDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix")
+        val syncResultFile = File(sourceDir, "$syncResultFilePrefix$syncName$commonFileSuffix")
+        val deletedFilesFileSource = File(sourceDir, "$deletedFilesFilePrefix$commonFileSuffix")
+        val deletedFilesFileTarget = File(targetDir, "$deletedFilesFilePrefix$commonFileSuffix")
 
         val lastSyncResult = if (syncResultFile.exists()) readSyncResult(syncResultFile) else null
 
@@ -73,9 +71,9 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         @Suppress("NAME_SHADOWING")
         val filter = Filter(
             fileFilter = { path, fileName ->
-                if (fileName.startsWith(indexedFilesFilePrefix) && fileName.endsWith(indexedFilesFileSuffix) ||
-                    fileName.startsWith(syncResultFilePrefix) && fileName.endsWith(syncResultFileSuffix) ||
-                    fileName.startsWith(deletedFilesFilePrefix) && fileName.endsWith(deletedFilesFileSuffix) ||
+                if (fileName.startsWith(indexedFilesFilePrefix) && fileName.endsWith(commonFileSuffix) ||
+                    fileName.startsWith(syncResultFilePrefix) && fileName.endsWith(commonFileSuffix) ||
+                    fileName.startsWith(deletedFilesFilePrefix) && fileName.endsWith(commonFileSuffix) ||
                     fileName == lockfileName
                 ) {
                     ExcludedBy.SYSTEM
@@ -179,11 +177,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         }
 
 
-        fun backup(rootDir: File, file: File, suffix: String) {
+        fun backup(rootDir: File, file: File) {
             if (file.exists()) {
                 Files.move(
                     file.toPath(),
-                    File(rootDir, file.name.replace(suffix, "_old$suffix")).toPath(),
+                    File(rootDir, file.name.replace(commonFileSuffix, "_old$commonFileSuffix")).toPath(),
                     REPLACE_EXISTING
                 )
             }
@@ -216,22 +214,22 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
             )
         }
 
-        backup(sourceDir, indexedFilesFileSource, indexedFilesFileSuffix)
-        backup(targetDir, indexedFilesFileTarget, indexedFilesFileSuffix)
+        backup(sourceDir, indexedFilesFileSource)
+        backup(targetDir, indexedFilesFileTarget)
         sourceChanges.allFilesBeforeSync.saveIndexedFilesTo(indexedFilesFileSource)
         targetChanges.allFilesBeforeSync.saveIndexedFilesTo(indexedFilesFileTarget)
 
         if (hasChanges) {
 
             if (!syncFilesParams.dryRun) {
-                backup(sourceDir, syncResultFile, syncResultFileSuffix)
+                backup(sourceDir, syncResultFile)
 
                 syncResultFiles.saveSyncResultTo(syncResultFile)
             }
 
             if (!syncFilesParams.dryRun && deletedFiles.isNotEmpty()) {
-                backup(sourceDir, deletedFilesFileSource, deletedFilesFileSuffix)
-                backup(targetDir, deletedFilesFileTarget, deletedFilesFileSuffix)
+                backup(sourceDir, deletedFilesFileSource)
+                backup(targetDir, deletedFilesFileTarget)
 
                 saveDeletedFiles(deletedFilesFileSource, DeletedFiles(deletedFiles))
                 Files.copy(deletedFilesFileSource.toPath(), deletedFilesFileTarget.toPath(), COPY_ATTRIBUTES)

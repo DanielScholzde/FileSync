@@ -22,8 +22,8 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity
     val folderRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
     val folderPathRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
 
-    val lastIndexedFilesMap1 = lastIndexedFiles.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
-    val lastIndexedFilesMap2 by myLazy { lastIndexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
+    val lastIndexedFilesAsMap1 = lastIndexedFiles.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
+    val lastIndexedFilesAsMap2 by myLazy { lastIndexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
 
     fun process(folderResult: FolderResult, folderId: Long) {
 
@@ -32,7 +32,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity
 
         val filesMovedFromDifferentFolderId = myLazy {
             filteredFiles
-                .mapNotNull { file -> lastIndexedFilesMap2[Triple(file.name, file.size, file.modified)].let { if (it.size == 1) it.first().folderId else null } }
+                .mapNotNull { file -> lastIndexedFilesAsMap2[Triple(file.name, file.size, file.modified)].let { if (it.size == 1) it.first().folderId else null } }
                 .groupingBy { it }
                 .eachCount()
                 .entries
@@ -46,8 +46,8 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity
 
         filteredFiles.forEach { file ->
 
-            val hash = lastIndexedFilesMap1[Quad(folderId, file.name, file.size, file.modified)]?.hash
-                ?: lastIndexedFilesMap2[Triple(file.name, file.size, file.modified)]
+            val hash = lastIndexedFilesAsMap1[Quad(folderId, file.name, file.size, file.modified)]?.hash
+                ?: lastIndexedFilesAsMap2[Triple(file.name, file.size, file.modified)]
                     .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
                     ?.hash
                 ?: file.hash.value?.let {
