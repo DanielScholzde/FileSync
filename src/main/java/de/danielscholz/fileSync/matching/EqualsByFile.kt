@@ -4,6 +4,9 @@ import de.danielscholz.fileSync.persistence.FileEntity
 import java.util.*
 
 
+fun <R> equalsBy(mode: MatchMode, ignoreDuplicatesOnIntersect: Boolean = false, block: EqualsBy<FileEntity>.() -> R): R =
+    equalsBy(EnumSet.of(mode), ignoreDuplicatesOnIntersect, block)
+
 fun <R> equalsBy(mode: EnumSet<MatchMode>, ignoreDuplicatesOnIntersect: Boolean = false, block: EqualsBy<FileEntity>.() -> R): R =
     equalsBy(EqualsAndHashCodeSupplierImpl(mode), ignoreDuplicatesOnIntersect, block)
 

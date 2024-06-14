@@ -6,10 +6,7 @@ import de.danielscholz.kargparser.ArgParseException
 import de.danielscholz.kargparser.ArgParser
 import de.danielscholz.kargparser.ArgParserBuilder
 import de.danielscholz.kargparser.ArgParserConfig
-import de.danielscholz.kargparser.parser.BooleanParam
-import de.danielscholz.kargparser.parser.FileParam
-import de.danielscholz.kargparser.parser.IntParam
-import de.danielscholz.kargparser.parser.StringSetParam
+import de.danielscholz.kargparser.parser.*
 
 
 fun main(args: Array<String>) {
@@ -45,6 +42,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
     addActionParser(
         Commands.SYNC_FILES.command,
         ArgParserBuilder(SyncFilesParams()).buildWith {
+            add(paramValues::syncName, StringParam())
             add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
             add(paramValues::targetDir, FileParam(checkIsDir = true), required = true)
             add(paramValues::excludedPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
@@ -58,6 +56,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::parallelIndexing, BooleanParam())
             add(paramValues::confirmations, BooleanParam())
             add(paramValues::dryRun, BooleanParam())
+            //add(paramValues::saveIndexResultDespiteDryRun, BooleanParam())
             add(paramValues::verbose, BooleanParam())
         }) {
 

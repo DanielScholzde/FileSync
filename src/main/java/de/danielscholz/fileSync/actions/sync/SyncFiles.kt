@@ -3,12 +3,15 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.actions.FoldersImpl
 import de.danielscholz.fileSync.common.*
+import de.danielscholz.fileSync.matching.MatchMode.HASH
+import de.danielscholz.fileSync.matching.equalsBy
 import de.danielscholz.fileSync.persistence.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.io.File
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.time.LocalDateTime
 import kotlin.collections.set
@@ -18,9 +21,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
     private val backupDir = ".syncFilesHistory"
     private val lockfileName = ".syncFiles_lockfile"
-    private val syncResultFilePrefix = ".syncedFiles_"
+    private val indexedFilesFilePrefix = ".syncFilesIndex_"
+    private val indexedFilesFileSuffix = ".jsn"
+    private val syncResultFilePrefix = ".syncFilesResult_"
     private val syncResultFileSuffix = ".jsn"
-    private val deletedFilesFilePrefix = ".deletedFiles_"
+    private val deletedFilesFilePrefix = ".deletedFiles"
     private val deletedFilesFileSuffix = ".jsn"
 
     fun sync(sourceDir: File, targetDir: File, filter: Filter) {
@@ -46,16 +51,30 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                     (isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"))
         )
 
-        val syncResultFile = File(sourceDir, "$syncResultFilePrefix${targetDir.path.hashCode()}$syncResultFileSuffix")
-        val deletedFilesFile = File(sourceDir, "$deletedFilesFilePrefix${targetDir.path.hashCode()}$deletedFilesFileSuffix")
+        val syncName = syncFilesParams.syncName ?: (sourceDir.canonicalPath.toString() + "|" + targetDir.canonicalPath.toString()).hashCode().toString()
+
+        val indexedFilesFileSource = File(sourceDir, "$indexedFilesFilePrefix$syncName$indexedFilesFileSuffix")
+        val indexedFilesFileTarget = File(targetDir, "$indexedFilesFilePrefix$syncName$indexedFilesFileSuffix")
+        val syncResultFile = File(sourceDir, "$syncResultFilePrefix$syncName$syncResultFileSuffix")
+        val deletedFilesFileSource = File(sourceDir, "$deletedFilesFilePrefix$deletedFilesFileSuffix")
+        val deletedFilesFileTarget = File(targetDir, "$deletedFilesFilePrefix$deletedFilesFileSuffix")
 
         val lastSyncResult = if (syncResultFile.exists()) readSyncResult(syncResultFile) else null
-        var deletedFiles = if (deletedFilesFile.exists()) readDeletedFiles(deletedFilesFile) else null
+
+        var deletedFiles = let {
+            val deletedFilesSource = if (deletedFilesFileSource.exists()) readDeletedFiles(deletedFilesFileSource) else null
+            val deletedFilesTarget = if (deletedFilesFileTarget.exists()) readDeletedFiles(deletedFilesFileTarget) else null
+
+            equalsBy(HASH) {
+                (deletedFilesSource?.files ?: listOf()) + (deletedFilesTarget?.files ?: listOf())
+            }.toList()
+        }
 
         @Suppress("NAME_SHADOWING")
         val filter = Filter(
             fileFilter = { path, fileName ->
-                if (fileName.startsWith(syncResultFilePrefix) && fileName.endsWith(syncResultFileSuffix) ||
+                if (fileName.startsWith(indexedFilesFilePrefix) && fileName.endsWith(indexedFilesFileSuffix) ||
+                    fileName.startsWith(syncResultFilePrefix) && fileName.endsWith(syncResultFileSuffix) ||
                     fileName.startsWith(deletedFilesFilePrefix) && fileName.endsWith(deletedFilesFileSuffix) ||
                     fileName == lockfileName
                 ) {
@@ -82,21 +101,27 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         val targetStatistics = Statistics()
 
         val folders = FoldersImpl()
+
         with(MutableFoldersContext(folders)) {
+            val lastIndexedFilesSource = if (indexedFilesFileSource.exists()) readIndexedFiles(indexedFilesFileSource) else null
+            val lastIndexedFilesTarget = if (indexedFilesFileTarget.exists()) readIndexedFiles(indexedFilesFileTarget) else null
+            val lastIndexedFilesSourceFiles = lastIndexedFilesSource?.mapToRead(filter) ?: listOf()
+            val lastIndexedFilesTargetFiles = lastIndexedFilesTarget?.mapToRead(filter) ?: listOf()
+
             val lastSyncResultFiles = lastSyncResult?.mapToRead(filter) ?: listOf()
             syncResultFiles = lastSyncResultFiles.toMutableSet()
             if (lastSyncResultFiles.size != syncResultFiles.size) throw Exception()
 
             if (syncFilesParams.parallelIndexing) {
                 runBlocking {
-                    val sourceChangesDeferred = async { getChanges(sourceDir, lastSyncResultFiles, filter, sourceStatistics) }
-                    val targetChangesDeferred = async { getChanges(targetDir, lastSyncResultFiles, filter, targetStatistics) }
-                    sourceChanges = sourceChangesDeferred.await()
-                    targetChanges = targetChangesDeferred.await()
+                    val sourceChangesFuture = async { getChanges(sourceDir, lastSyncResultFiles, lastIndexedFilesSourceFiles, filter, sourceStatistics) }
+                    val targetChangesFuture = async { getChanges(targetDir, lastSyncResultFiles, lastIndexedFilesTargetFiles, filter, targetStatistics) }
+                    sourceChanges = sourceChangesFuture.await()
+                    targetChanges = targetChangesFuture.await()
                 }
             } else {
-                sourceChanges = getChanges(sourceDir, lastSyncResultFiles, filter, sourceStatistics)
-                targetChanges = getChanges(targetDir, lastSyncResultFiles, filter, targetStatistics)
+                sourceChanges = getChanges(sourceDir, lastSyncResultFiles, lastIndexedFilesSourceFiles, filter, sourceStatistics)
+                targetChanges = getChanges(targetDir, lastSyncResultFiles, lastIndexedFilesTargetFiles, filter, targetStatistics)
             }
         }
 
@@ -140,54 +165,83 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
                     }
 
 
-                val sourceDeletedFiles = sourceChanges.deleted.filter { !it.isFolderMarker }
-                if (sourceDeletedFiles.isNotEmpty()) {
-                    deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + sourceDeletedFiles.map { it.copy(folderId = 0) })
+                sourceChanges.deleted.filter { !it.isFolderMarker }.let {
+                    if (it.isNotEmpty()) {
+                        deletedFiles = equalsBy(HASH) { deletedFiles + it.map { it.copy(folderId = 0) } }.toList()
+                    }
                 }
-                val targetDeletedFiles = targetChanges.deleted.filter { !it.isFolderMarker }
-                if (targetDeletedFiles.isNotEmpty()) {
-                    deletedFiles = DeletedFiles((deletedFiles?.files ?: listOf()) + targetDeletedFiles.map { it.copy(folderId = 0) })
+                targetChanges.deleted.filter { !it.isFolderMarker }.let {
+                    if (it.isNotEmpty()) {
+                        deletedFiles = equalsBy(HASH) { deletedFiles + it.map { it.copy(folderId = 0) } }.toList()
+                    }
                 }
             }
         }
 
-        val usedFolderIds = syncResultFiles.asSequence().filter { it.isFolderMarker }.map { it.folderId }.toSet()
 
-        val syncResult = SyncResult(
-            sourcePath = sourceDir.path,
-            targetPath = targetDir.path,
-            runDate = now.toKotlinLocalDateTime(),
-            files = syncResultFiles.toList(),
-            folder = folders.get(folders.rootFolderId).stripUnusedFolder(usedFolderIds),
-            failuresOccurred = failures
-        )
-
-        if (!syncFilesParams.dryRun && hasChanges) {
-            if (syncResultFile.exists()) {
+        fun backup(rootDir: File, file: File, suffix: String) {
+            if (file.exists()) {
                 Files.move(
-                    syncResultFile.toPath(),
-                    File(sourceDir, syncResultFile.name.replace(syncResultFileSuffix, "_old$syncResultFileSuffix")).toPath(),
+                    file.toPath(),
+                    File(rootDir, file.name.replace(suffix, "_old$suffix")).toPath(),
                     REPLACE_EXISTING
                 )
             }
-            saveSyncResult(syncResultFile, syncResult)
+        }
 
-            if (deletedFiles != null) {
-                if (deletedFilesFile.exists()) {
-                    Files.move(
-                        deletedFilesFile.toPath(),
-                        File(sourceDir, deletedFilesFile.name.replace(deletedFilesFileSuffix, "_old$deletedFilesFileSuffix")).toPath(),
-                        REPLACE_EXISTING
-                    )
-                }
-                saveDeletedFiles(deletedFilesFile, deletedFiles!!)
+        fun Collection<FileEntity>.usedFolderIds() = this.asSequence().filter { it.isFolderMarker }.map { it.folderId }.toSet()
+
+        fun Collection<FileEntity>.saveIndexedFilesTo(file: File) {
+            saveIndexedFiles(
+                file,
+                IndexedFilesEntity(
+                    runDate = now.toKotlinLocalDateTime(),
+                    files = this.toList(),
+                    folder = folders.get(folders.rootFolderId).stripUnusedFolder(usedFolderIds()),
+                )
+            )
+        }
+
+        fun Collection<FileEntity>.saveSyncResultTo(file: File) {
+            saveSyncResult(
+                file,
+                SyncResultEntity(
+                    sourcePath = sourceDir.canonicalPath,
+                    targetPath = targetDir.canonicalPath,
+                    runDate = now.toKotlinLocalDateTime(),
+                    failuresOccurred = failures,
+                    files = this.toList(),
+                    folder = folders.get(folders.rootFolderId).stripUnusedFolder(usedFolderIds()),
+                )
+            )
+        }
+
+        backup(sourceDir, indexedFilesFileSource, indexedFilesFileSuffix)
+        backup(targetDir, indexedFilesFileTarget, indexedFilesFileSuffix)
+        sourceChanges.allFilesBeforeSync.saveIndexedFilesTo(indexedFilesFileSource)
+        targetChanges.allFilesBeforeSync.saveIndexedFilesTo(indexedFilesFileTarget)
+
+        if (hasChanges) {
+
+            if (!syncFilesParams.dryRun) {
+                backup(sourceDir, syncResultFile, syncResultFileSuffix)
+
+                syncResultFiles.saveSyncResultTo(syncResultFile)
+            }
+
+            if (!syncFilesParams.dryRun && deletedFiles.isNotEmpty()) {
+                backup(sourceDir, deletedFilesFileSource, deletedFilesFileSuffix)
+                backup(targetDir, deletedFilesFileTarget, deletedFilesFileSuffix)
+
+                saveDeletedFiles(deletedFilesFileSource, DeletedFiles(deletedFiles))
+                Files.copy(deletedFilesFileSource.toPath(), deletedFilesFileTarget.toPath(), COPY_ATTRIBUTES)
             }
         }
     }
 
 
     context(MutableFoldersContext)
-    private fun SyncResult.mapToRead(filter: Filter): List<FileEntity> {
+    private fun FilesAndFolder.mapToRead(filter: Filter): List<FileEntity> {
         val mapping = mutableMapOf<Long, Long>()
         mapping[foldersCtx.rootFolderId] = foldersCtx.rootFolderId
 

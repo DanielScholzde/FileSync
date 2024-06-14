@@ -17,6 +17,9 @@ import java.io.*
 sealed interface EntityBase
 
 
+/**
+ * Immutable!
+ */
 @Serializable
 data class FileHashEntity(
     @SerialName("c")
@@ -81,6 +84,7 @@ fun FolderEntity.stripUnusedFolder(usedFolderIds: Set<Long>): FolderEntity {
 }
 
 /**
+ * Immutable!
  * equals: only Folder + Filename
  */
 @Serializable
@@ -139,15 +143,27 @@ val FileEntity.isFolderMarker
     get() = this.size == 0L && this.name == folderMarkerName
 
 
+interface FilesAndFolder {
+    val files: List<FileEntity>
+    val folder: FolderEntity
+}
+
 @Serializable
-data class SyncResult(
+data class IndexedFilesEntity(
+    val runDate: LocalDateTime, // date of index run
+    override val files: List<FileEntity>,
+    override val folder: FolderEntity, // root folder (references all other sub folders)
+) : FilesAndFolder
+
+@Serializable
+data class SyncResultEntity(
     val sourcePath: String,
     val targetPath: String,
     val runDate: LocalDateTime, // date of index run
-    val files: List<FileEntity>,
-    val folder: FolderEntity, // root folder (references all other sub folders)
-    val failuresOccurred: List<String>
-)
+    val failuresOccurred: List<String>,
+    override val files: List<FileEntity>,
+    override val folder: FolderEntity, // root folder (references all other sub folders)
+) : FilesAndFolder
 
 @Serializable
 data class DeletedFiles(
@@ -156,14 +172,29 @@ data class DeletedFiles(
 
 
 @OptIn(ExperimentalSerializationApi::class)
-fun readSyncResult(file: File): SyncResult {
+fun readIndexedFiles(file: File): IndexedFilesEntity {
     BufferedInputStream(FileInputStream(file)).use {
-        return Json.decodeFromStream<SyncResult>(it)
+        return Json.decodeFromStream<IndexedFilesEntity>(it)
     }
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-fun saveSyncResult(file: File, syncResult: SyncResult) {
+fun saveIndexedFiles(file: File, syncResult: IndexedFilesEntity) {
+    BufferedOutputStream(FileOutputStream(file)).use {
+        Json.encodeToStream(syncResult, it)
+    }
+}
+
+
+@OptIn(ExperimentalSerializationApi::class)
+fun readSyncResult(file: File): SyncResultEntity {
+    BufferedInputStream(FileInputStream(file)).use {
+        return Json.decodeFromStream<SyncResultEntity>(it)
+    }
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+fun saveSyncResult(file: File, syncResult: SyncResultEntity) {
     BufferedOutputStream(FileOutputStream(file)).use {
         Json.encodeToStream(syncResult, it)
     }

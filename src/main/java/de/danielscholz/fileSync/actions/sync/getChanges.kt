@@ -12,13 +12,13 @@ import java.io.File
 
 
 context(MutableFoldersContext)
-fun getChanges(dir: File, lastSyncResultFiles: List<FileEntity>, filter: Filter, statistics: Statistics): MutableChanges {
+fun getChanges(dir: File, lastSyncResultFiles: List<FileEntity>, lastIndexedFiles: List<FileEntity>, filter: Filter, statistics: Statistics): MutableChanges {
     val caseSensitiveContext = CaseSensitiveContext(
         isCaseSensitiveFileSystem(dir) ?: throw Exception("Unable to determine if filesystem $dir is case sensitive!")
     )
     return with(caseSensitiveContext) {
 
-        val current = getCurrentFiles(dir, filter, lastSyncResultFiles, statistics)
+        val current = getCurrentFiles(dir, filter, lastIndexedFiles, statistics)
         val currentFiles = current.files
 
         @Suppress("ConvertArgumentToSet")

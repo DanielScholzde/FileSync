@@ -6,7 +6,7 @@ import de.danielscholz.fileSync.persistence.FileEntity
 
 
 context(FoldersContext, CaseSensitiveContext)
-fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, syncResult: MutableSet<FileEntity>): Boolean {
+fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, syncResultFiles: MutableSet<FileEntity>): Boolean {
 
     val failures = mutableListOf<String>()
 
@@ -30,8 +30,8 @@ fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, sy
                 val (sourceTo, targetTo) = pair
                 if (sourceTo.modified == targetTo.modified) {
                     // here: sourceTo must be identical to targetTo!
-                    syncResult -= sourceTo // remove old instance (optional)
-                    syncResult.addWithCheck(sourceTo) // add new with changed hash
+                    syncResultFiles -= sourceTo // remove old instance (optional)
+                    syncResultFiles.addWithCheck(sourceTo) // add new with changed hash
                     sourceChanges.added.remove(sourceTo) ||
                             // equals of ContentChanged considers only second property
                             sourceChanges.contentChanged.remove(ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, sourceTo)) ||
@@ -49,7 +49,7 @@ fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, sy
         // fix scenario: same deleted files in both locations
         (sourceChanges.deleted intersect targetChanges.deleted)
             .forEach { (source, target) ->
-                syncResult.removeWithCheck(source)
+                syncResultFiles.removeWithCheck(source)
                 sourceChanges.deleted.removeWithCheck(source)
                 targetChanges.deleted.removeWithCheck(target)
             }

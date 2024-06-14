@@ -16,14 +16,14 @@ class CurrentFilesResult(
 
 
 context(MutableFoldersContext)
-fun getCurrentFiles(dir: File, filter: Filter, lastSyncResult: List<FileEntity>, statistics: Statistics): CurrentFilesResult {
+fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity>, statistics: Statistics): CurrentFilesResult {
 
     val files = mutableListOf<FileEntity>()
     val folderRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
     val folderPathRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
 
-    val lastSyncMap1 = lastSyncResult.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
-    val lastSyncMap2 by myLazy { lastSyncResult.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
+    val lastIndexedFilesMap1 = lastIndexedFiles.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
+    val lastIndexedFilesMap2 by myLazy { lastIndexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
 
     fun process(folderResult: FolderResult, folderId: Long) {
 
@@ -32,7 +32,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastSyncResult: List<FileEntity>,
 
         val filesMovedFromDifferentFolderId = myLazy {
             filteredFiles
-                .mapNotNull { file -> lastSyncMap2[Triple(file.name, file.size, file.modified)].let { if (it.size == 1) it.first().folderId else null } }
+                .mapNotNull { file -> lastIndexedFilesMap2[Triple(file.name, file.size, file.modified)].let { if (it.size == 1) it.first().folderId else null } }
                 .groupingBy { it }
                 .eachCount()
                 .entries
@@ -46,8 +46,8 @@ fun getCurrentFiles(dir: File, filter: Filter, lastSyncResult: List<FileEntity>,
 
         filteredFiles.forEach { file ->
 
-            val hash = lastSyncMap1[Quad(folderId, file.name, file.size, file.modified)]?.hash
-                ?: lastSyncMap2[Triple(file.name, file.size, file.modified)]
+            val hash = lastIndexedFilesMap1[Quad(folderId, file.name, file.size, file.modified)]?.hash
+                ?: lastIndexedFilesMap2[Triple(file.name, file.size, file.modified)]
                     .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
                     ?.hash
                 ?: file.hash.value?.let {

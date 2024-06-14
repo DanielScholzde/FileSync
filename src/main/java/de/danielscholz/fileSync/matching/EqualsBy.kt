@@ -61,6 +61,24 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
         return result
     }
 
+    operator fun Collection<T>.plus(collection2: Collection<T>): Collection<T> {
+        val collection1 = this
+
+        val result = mutableSetOf<EqualsDelegate<T>>()
+
+        collection1.forEach {
+            if (!result.add(EqualsDelegate(it, equalsAndHashcodeSupplier))) {
+                throw Exception("Error: The match mode creates duplicates within collection 1!")
+            }
+        }
+
+        collection2.forEach {
+            result.add(EqualsDelegate(it, equalsAndHashcodeSupplier))
+        }
+
+        return result.map { it.obj }
+    }
+
     operator fun Collection<T>.minus(other: Collection<T>): Collection<T> {
 
         if (this.isEmpty()) return listOf()

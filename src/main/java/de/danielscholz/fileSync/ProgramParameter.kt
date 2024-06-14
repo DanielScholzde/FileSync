@@ -8,6 +8,9 @@ class GlobalParams
 
 class SyncFilesParams {
 
+    @Description("Name for sync of this pair of directories")
+    var syncName: String? = null
+
     @Description("Source directory")
     var sourceDir: File? = null
 
@@ -49,6 +52,9 @@ class SyncFilesParams {
 
     @Description("Should a test run be done without any file changes (except the database)?")
     var dryRun = false
+
+//    @Description("Save indexed files metadata despite dry run")
+//    var saveIndexResultDespiteDryRun = false
 
     @Description("Should a confirmation popup window file changes (e.g. more files than allowed were changed) be shown?")
     var confirmations = true
