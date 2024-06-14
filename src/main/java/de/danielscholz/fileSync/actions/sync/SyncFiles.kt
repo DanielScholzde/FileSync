@@ -57,15 +57,15 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         val deletedFilesFileSource = File(sourceDir, "$deletedFilesFilePrefix$commonFileSuffix")
         val deletedFilesFileTarget = File(targetDir, "$deletedFilesFilePrefix$commonFileSuffix")
 
-        val lastSyncResult = if (syncResultFile.exists()) readSyncResult(syncResultFile) else null
+        val lastSyncResult = readSyncResult(syncResultFile)
 
         var deletedFiles = let {
-            val deletedFilesSource = if (deletedFilesFileSource.exists()) readDeletedFiles(deletedFilesFileSource) else null
-            val deletedFilesTarget = if (deletedFilesFileTarget.exists()) readDeletedFiles(deletedFilesFileTarget) else null
+            val deletedFilesSource = readDeletedFiles(deletedFilesFileSource)
+            val deletedFilesTarget = readDeletedFiles(deletedFilesFileTarget)
 
             equalsBy(HASH) {
                 (deletedFilesSource?.files ?: listOf()) + (deletedFilesTarget?.files ?: listOf())
-            }.toList()
+            }
         }
 
         @Suppress("NAME_SHADOWING")
@@ -101,10 +101,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         val folders = FoldersImpl()
 
         with(MutableFoldersContext(folders)) {
-            val lastIndexedFilesSource = if (indexedFilesFileSource.exists()) readIndexedFiles(indexedFilesFileSource) else null
-            val lastIndexedFilesTarget = if (indexedFilesFileTarget.exists()) readIndexedFiles(indexedFilesFileTarget) else null
-            val lastIndexedFilesSourceFiles = lastIndexedFilesSource?.mapToRead(filter) ?: listOf()
-            val lastIndexedFilesTargetFiles = lastIndexedFilesTarget?.mapToRead(filter) ?: listOf()
+            val lastIndexedFilesSourceFiles = readIndexedFiles(indexedFilesFileSource)?.mapToRead(filter) ?: listOf()
+            val lastIndexedFilesTargetFiles = readIndexedFiles(indexedFilesFileTarget)?.mapToRead(filter) ?: listOf()
 
             val lastSyncResultFiles = lastSyncResult?.mapToRead(filter) ?: listOf()
             syncResultFiles = lastSyncResultFiles.toMutableSet()
@@ -165,12 +163,12 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
 
                 sourceChanges.deleted.filter { !it.isFolderMarker }.let {
                     if (it.isNotEmpty()) {
-                        deletedFiles = equalsBy(HASH) { deletedFiles + it.map { it.copy(folderId = 0) } }.toList()
+                        deletedFiles = equalsBy(HASH) { deletedFiles + it.map { it.copy(folderId = 0) } }
                     }
                 }
                 targetChanges.deleted.filter { !it.isFolderMarker }.let {
                     if (it.isNotEmpty()) {
-                        deletedFiles = equalsBy(HASH) { deletedFiles + it.map { it.copy(folderId = 0) } }.toList()
+                        deletedFiles = equalsBy(HASH) { deletedFiles + it.map { it.copy(folderId = 0) } }
                     }
                 }
             }

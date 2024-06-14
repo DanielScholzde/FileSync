@@ -61,7 +61,7 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
         return result
     }
 
-    operator fun Collection<T>.plus(collection2: Collection<T>): Collection<T> {
+    operator fun Collection<T>.plus(collection2: Collection<T>): List<T> {
         val collection1 = this
 
         val result = mutableSetOf<EqualsDelegate<T>>()
