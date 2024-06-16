@@ -6,7 +6,13 @@ import de.danielscholz.fileSync.persistence.FileEntity
 
 
 context(FoldersContext, CaseSensitiveContext)
-fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, syncResultFiles: MutableSet<FileEntity>): Boolean {
+fun checkAndFix(
+    sourceChanges: MutableChanges,
+    targetChanges: MutableChanges,
+    currentFilesSource: CurrentFilesResult,
+    currentFilesTarget: CurrentFilesResult,
+    syncResultFiles: MutableSet<FileEntity>
+): Boolean {
 
     val failures = mutableListOf<String>()
 
@@ -71,9 +77,10 @@ fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, sy
     }
 
 
-    fun directionalChecks(changed1: MutableChanges, changed2: MutableChanges) {
+    @Suppress("ConvertArgumentToSet")
+    fun directionalChecks(changed1: MutableChanges, changed2: MutableChanges, currentFiles2: List<FileEntity>) {
         equalsBy(pathAndName) {
-            (changed1.added intersect changed2.allFilesBeforeSync)
+            (changed1.added intersect currentFiles2)
                 .filter(HASH_NEQ or MODIFIED_NEQ)
                 .ifNotEmptyCreateConflicts("already exists within target dir (and has different content or modification date)") {
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
@@ -84,29 +91,29 @@ fun checkAndFix(sourceChanges: MutableChanges, targetChanges: MutableChanges, sy
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
                 }
 
-            (changed1.contentChanged.from() - changed2.allFilesBeforeSync)
+            (changed1.contentChanged.from() - currentFiles2)
                 .ifNotEmptyCreateConflicts("content changed file does not exists within target dir")
 
-            (changed1.movedOrRenamed.from() - changed2.allFilesBeforeSync)
+            (changed1.movedOrRenamed.from() - currentFiles2)
                 .ifNotEmptyCreateConflicts("source of moved file does not exists within target dir")
 
-            (changed1.movedAndContentChanged.from() - changed2.allFilesBeforeSync)
+            (changed1.movedAndContentChanged.from() - currentFiles2)
                 .ifNotEmptyCreateConflicts("source of moved file does not exists within target dir")
 
-            (changed1.movedOrRenamed.to() intersect changed2.allFilesBeforeSync)
+            (changed1.movedOrRenamed.to() intersect currentFiles2)
                 .ifNotEmptyCreateConflicts("target of moved file already exists within target dir") {
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
                 }
 
-            (changed1.movedAndContentChanged.to() intersect changed2.allFilesBeforeSync)
+            (changed1.movedAndContentChanged.to() intersect currentFiles2)
                 .ifNotEmptyCreateConflicts("target of moved file already exists within target dir") {
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
                 }
         }
     }
 
-    directionalChecks(sourceChanges, targetChanges)
-    directionalChecks(targetChanges, sourceChanges)
+    directionalChecks(sourceChanges, targetChanges, currentFilesTarget.files)
+    directionalChecks(targetChanges, sourceChanges, currentFilesSource.files)
 
     if (failures.isNotEmpty()) {
         println("Conflicts:\n${failures.joinToString("\n")}")

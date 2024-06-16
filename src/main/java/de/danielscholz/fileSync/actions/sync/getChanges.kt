@@ -96,6 +96,5 @@ fun getChanges(dir: File, lastSyncResultFiles: List<FileEntity>, currentFilesRes
         movedOrRenamed = movedOrRenamed,
         movedAndContentChanged = movedAndContentChanged,
         modifiedChanged = modifiedChanged,
-        allFilesBeforeSync = currentFiles.toSet(),
     )
 }

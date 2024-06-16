@@ -140,11 +140,12 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
 
         val filter = Filter(folderFilter, fileFilter)
 
-        SyncFiles(paramValues).sync(
+        SyncFiles(
+            paramValues,
             paramValues.sourceDir!!.canonicalFile,
             paramValues.targetDir!!.canonicalFile,
             filter
-        )
+        ).sync()
     }
 
 //      addActionParser(

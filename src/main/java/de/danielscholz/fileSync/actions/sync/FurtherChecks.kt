@@ -3,15 +3,24 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.common.formatAsFileSize
+import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.isFolderMarker
 import java.io.File
 import java.nio.file.Files
 import javax.swing.JOptionPane
 
 
-fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targetChanges: Changes, syncFilesParams: SyncFilesParams): Boolean {
+fun furtherChecks(
+    sourceDir: File,
+    targetDir: File,
+    sourceChanges: Changes,
+    targetChanges: Changes,
+    currentFilesSource: CurrentFilesResult,
+    currentFilesTarget: CurrentFilesResult,
+    syncFilesParams: SyncFilesParams
+): Boolean {
 
-    fun intern(dir: File, changes: Changes): Boolean {
+    fun intern(dir: File, changes: Changes, currentFiles: List<FileEntity>): Boolean {
 
         val addedFiles = changes.added.filter { !it.isFolderMarker }
         val deletedFiles = changes.deleted.filter { !it.isFolderMarker }
@@ -19,7 +28,7 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
         val addedFolders = changes.added.filter { it.isFolderMarker }
         val deletedFolders = changes.deleted.filter { it.isFolderMarker }
 
-        val totalNumberOfFiles = changes.allFilesBeforeSync.size + addedFiles.size + deletedFiles.size
+        val totalNumberOfFiles = currentFiles.size + addedFiles.size + deletedFiles.size
         val changedNumberOfFiles = addedFiles.size + changes.contentChanged.size + changes.modifiedChanged.size + changes.movedOrRenamed.size + deletedFiles.size
 
         // does not regard deleted files since they are not deleted but moved to history folder
@@ -117,6 +126,6 @@ fun furtherChecks(sourceDir: File, targetDir: File, sourceChanges: Changes, targ
     }
 
     println()
-    return intern(sourceDir, targetChanges) &&
-            intern(targetDir, sourceChanges)
+    return intern(sourceDir, targetChanges, currentFilesTarget.files) &&
+            intern(targetDir, sourceChanges, currentFilesSource.files)
 }

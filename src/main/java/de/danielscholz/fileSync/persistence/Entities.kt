@@ -167,9 +167,16 @@ data class SyncResultEntity(
     override val folder: FolderEntity, // root folder (references all other sub folders)
 ) : FilesAndFolder
 
+
 @Serializable
-data class DeletedFiles(
-    val files: List<FileEntity>, // hint: FolderId is always 0
+data class DeletedFileEntity(
+    val hash: String?,
+    val name: String,
+)
+
+@Serializable
+data class DeletedFilesEntity(
+    val files: List<DeletedFileEntity>,
 )
 
 
@@ -210,17 +217,17 @@ fun saveSyncResult(file: File, syncResult: SyncResultEntity) {
 
 
 @OptIn(ExperimentalSerializationApi::class)
-fun readDeletedFiles(file: File): DeletedFiles? {
+fun readDeletedFiles(file: File): DeletedFilesEntity? {
     if (file.exists()) {
         BufferedInputStream(FileInputStream(file)).use {
-            return Json.decodeFromStream<DeletedFiles>(it)
+            return Json.decodeFromStream<DeletedFilesEntity>(it)
         }
     }
     return null
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-fun saveDeletedFiles(file: File, deletedFiles: DeletedFiles) {
+fun saveDeletedFiles(file: File, deletedFiles: DeletedFilesEntity) {
     BufferedOutputStream(FileOutputStream(file)).use {
         Json.encodeToStream(deletedFiles, it)
     }
