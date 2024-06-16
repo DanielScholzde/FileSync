@@ -6,8 +6,6 @@ import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.MatchMode.HASH
 import de.danielscholz.fileSync.matching.equalsBy
 import de.danielscholz.fileSync.persistence.*
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.io.File
 import java.nio.file.Files
@@ -34,15 +32,14 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         }
     }
 
+    private val now = LocalDateTime.now().ignoreMillis()
+    private val dateTimeStr = now.toString().replace(":", "").replace("T", " ")
+    private val changedDir = "$backupDir/modified/$dateTimeStr"
+    private val deletedDir = "$backupDir/deleted/$dateTimeStr"
+
     private fun syncIntern(sourceDir: File, targetDir: File, filter: Filter) {
         println("Source dir: $sourceDir")
         println("Target dir: $targetDir\n")
-
-        val now = LocalDateTime.now().ignoreMillis()
-        val dateTimeStr = now.toString().replace(":", "").replace("T", " ")
-        val changedDir = "$backupDir/modified/$dateTimeStr"
-        val deletedDir = "$backupDir/deleted/$dateTimeStr"
-
 
         val caseSensitiveContext = CaseSensitiveContext(
             (isCaseSensitiveFileSystem(sourceDir) ?: throw Exception("Unable to determine if filesystem $sourceDir is case sensitive!")) &&
@@ -101,24 +98,28 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         val folders = FoldersImpl()
 
         with(MutableFoldersContext(folders)) {
-            val lastIndexedFilesSourceFiles = readIndexedFiles(indexedFilesFileSource)?.mapToRead(filter) ?: listOf()
-            val lastIndexedFilesTargetFiles = readIndexedFiles(indexedFilesFileTarget)?.mapToRead(filter) ?: listOf()
 
             val lastSyncResultFiles = lastSyncResult?.mapToRead(filter) ?: listOf()
             syncResultFiles = lastSyncResultFiles.toMutableSet()
             if (lastSyncResultFiles.size != syncResultFiles.size) throw Exception()
 
-            if (syncFilesParams.parallelIndexing) {
-                runBlocking {
-                    val sourceChangesFuture = async { getChanges(sourceDir, lastSyncResultFiles, lastIndexedFilesSourceFiles, filter, sourceStatistics) }
-                    val targetChangesFuture = async { getChanges(targetDir, lastSyncResultFiles, lastIndexedFilesTargetFiles, filter, targetStatistics) }
-                    sourceChanges = sourceChangesFuture.await()
-                    targetChanges = targetChangesFuture.await()
-                }
-            } else {
-                sourceChanges = getChanges(sourceDir, lastSyncResultFiles, lastIndexedFilesSourceFiles, filter, sourceStatistics)
-                targetChanges = getChanges(targetDir, lastSyncResultFiles, lastIndexedFilesTargetFiles, filter, targetStatistics)
-            }
+            parallel(
+                {
+                    val lastIndexedFilesSourceFiles = readIndexedFiles(indexedFilesFileSource)?.mapToRead(filter) ?: listOf()
+                    val currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesSourceFiles, sourceStatistics)
+                    sourceChanges = getChanges(sourceDir, lastSyncResultFiles, currentFilesSource)
+                    backup(sourceDir, indexedFilesFileSource)
+                    sourceChanges.allFilesBeforeSync.saveIndexedFilesTo(indexedFilesFileSource)
+                },
+                {
+                    val lastIndexedFilesTargetFiles = readIndexedFiles(indexedFilesFileTarget)?.mapToRead(filter) ?: listOf()
+                    val currentFilesTarget = getCurrentFiles(targetDir, filter, lastIndexedFilesTargetFiles, targetStatistics)
+                    targetChanges = getChanges(targetDir, lastSyncResultFiles, currentFilesTarget)
+                    backup(targetDir, indexedFilesFileTarget)
+                    targetChanges.allFilesBeforeSync.saveIndexedFilesTo(indexedFilesFileTarget)
+                },
+                syncFilesParams.parallelIndexing
+            )
         }
 
         println("Files / Folders (sourceDir): ${sourceStatistics.files} / ${sourceStatistics.folders}")
@@ -174,58 +175,16 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
             }
         }
 
+        hasChanges = hasChanges || !syncResultFile.exists() // if syncResultFile does not exist, set hasChanges to true
 
-        fun backup(rootDir: File, file: File) {
-            if (file.exists()) {
-                Files.move(
-                    file.toPath(),
-                    File(rootDir, file.name.replace(commonFileSuffix, "_old$commonFileSuffix")).toPath(),
-                    REPLACE_EXISTING
-                )
-            }
-        }
+        if (hasChanges && !syncFilesParams.dryRun) {
+            backup(sourceDir, syncResultFile)
 
-        fun Collection<FileEntity>.usedFolderIds() = this.asSequence().filter { it.isFolderMarker }.map { it.folderId }.toSet()
-
-        fun Collection<FileEntity>.saveIndexedFilesTo(file: File) {
-            saveIndexedFiles(
-                file,
-                IndexedFilesEntity(
-                    runDate = now.toKotlinLocalDateTime(),
-                    files = this.toList(),
-                    folder = folders.get(folders.rootFolderId).stripUnusedFolder(usedFolderIds()),
-                )
-            )
-        }
-
-        fun Collection<FileEntity>.saveSyncResultTo(file: File) {
-            saveSyncResult(
-                file,
-                SyncResultEntity(
-                    sourcePath = sourceDir.canonicalPath,
-                    targetPath = targetDir.canonicalPath,
-                    runDate = now.toKotlinLocalDateTime(),
-                    failuresOccurred = failures,
-                    files = this.toList(),
-                    folder = folders.get(folders.rootFolderId).stripUnusedFolder(usedFolderIds()),
-                )
-            )
-        }
-
-        backup(sourceDir, indexedFilesFileSource)
-        backup(targetDir, indexedFilesFileTarget)
-        sourceChanges.allFilesBeforeSync.saveIndexedFilesTo(indexedFilesFileSource)
-        targetChanges.allFilesBeforeSync.saveIndexedFilesTo(indexedFilesFileTarget)
-
-        if (hasChanges) {
-
-            if (!syncFilesParams.dryRun) {
-                backup(sourceDir, syncResultFile)
-
-                syncResultFiles.saveSyncResultTo(syncResultFile)
+            with(FoldersContext(folders)) {
+                syncResultFiles.saveSyncResultTo(syncResultFile, sourceDir, targetDir, failures)
             }
 
-            if (!syncFilesParams.dryRun && deletedFiles.isNotEmpty()) {
+            if (deletedFiles.isNotEmpty()) {
                 backup(sourceDir, deletedFilesFileSource)
                 backup(targetDir, deletedFilesFileTarget)
 
@@ -235,6 +194,42 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams) {
         }
     }
 
+    private fun backup(rootDir: File, file: File) {
+        if (file.exists()) {
+            Files.move(
+                file.toPath(),
+                File(rootDir, file.name.replace(commonFileSuffix, "_old$commonFileSuffix")).toPath(),
+                REPLACE_EXISTING
+            )
+        }
+    }
+
+    context(FoldersContext)
+    private fun Collection<FileEntity>.saveIndexedFilesTo(file: File) {
+        saveIndexedFiles(
+            file,
+            IndexedFilesEntity(
+                runDate = now.toKotlinLocalDateTime(),
+                files = this.toList(),
+                folder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
+            )
+        )
+    }
+
+    context(FoldersContext)
+    private fun Collection<FileEntity>.saveSyncResultTo(file: File, sourceDir: File, targetDir: File, failures: List<String>) {
+        saveSyncResult(
+            file,
+            SyncResultEntity(
+                sourcePath = sourceDir.canonicalPath,
+                targetPath = targetDir.canonicalPath,
+                runDate = now.toKotlinLocalDateTime(),
+                failuresOccurred = failures,
+                files = this.toList(),
+                folder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
+            )
+        )
+    }
 
     context(MutableFoldersContext)
     private fun FilesAndFolder.mapToRead(filter: Filter): List<FileEntity> {
