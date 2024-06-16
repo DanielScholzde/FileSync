@@ -147,14 +147,15 @@ fun Collection<FileEntity>.usedFolderIds() = this.asSequence().filter { it.isFol
 
 interface FilesAndFolder {
     val files: List<FileEntity>
-    val folder: FolderEntity
+    val rootFolder: FolderEntity
 }
 
 @Serializable
 data class IndexedFilesEntity(
     val runDate: LocalDateTime, // date of index run
     override val files: List<FileEntity>,
-    override val folder: FolderEntity, // root folder (references all other sub folders)
+    @SerialName("folder")
+    override val rootFolder: FolderEntity, // root folder (references all other sub folders)
 ) : FilesAndFolder
 
 @Serializable
@@ -164,7 +165,8 @@ data class SyncResultEntity(
     val runDate: LocalDateTime, // date of index run
     val failuresOccurred: List<String>,
     override val files: List<FileEntity>,
-    override val folder: FolderEntity, // root folder (references all other sub folders)
+    @SerialName("folder")
+    override val rootFolder: FolderEntity, // root folder (references all other sub folders)
 ) : FilesAndFolder
 
 

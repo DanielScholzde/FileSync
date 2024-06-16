@@ -27,6 +27,8 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity
 
     fun process(folderResult: FolderResult, folderId: Long) {
 
+        println("$dir${foldersCtx.getFullPath(folderId)}")
+
         val filteredFiles = folderResult.files
             .filter { filter.fileFilter.excluded(it.path, it.name) == null }
 

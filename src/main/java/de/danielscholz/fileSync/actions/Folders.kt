@@ -21,13 +21,9 @@ interface Folders {
      */
     fun getDepth(id: Long): Int
 
-    /**
-     * includes folder name itself as last node.
-     * starts and ends with '/'
-     */
-    fun getFullPath(folder: FolderEntity): String
-
     fun getAll(): List<FolderEntity>
+
+    fun check()
 }
 
 
@@ -61,15 +57,11 @@ class MutableFolders : Folders {
 
         fun getFullPathIntern(id: Long): String {
             return foldersFullPath.getOrPut(id) {
-                val folder = folders[id]!!
+                val folder = folders[id] ?: throw Exception("Folder with id $id not found!")
                 (folder.parentFolderId?.let { getFullPathIntern(it) } ?: "") + folder.name + "/"
             }
         }
         return getFullPathIntern(id)
-    }
-
-    override fun getFullPath(folder: FolderEntity): String {
-        return (folder.parentFolderId?.let { getFullPath(it) } ?: "") + folder.name + "/"
     }
 
     override fun getDepth(id: Long): Int {
@@ -85,11 +77,24 @@ class MutableFolders : Folders {
         foldersByParent[parentFolderId].firstOrNull { it.name == name }?.let {
             return it
         }
+
         val id = ++maxAssignedFolderId
         val folder = FolderEntity(id, parentFolderId, name)
         folders[id] = folder
         foldersByParent[parentFolderId] = folder
         folders[parentFolderId]!!.children += folder
         return folder
+    }
+
+    @Synchronized
+    override fun check() {
+        folders.entries.forEach {
+            if (it.key != it.value.id) throw Exception()
+            val parentFolderId = it.value.parentFolderId
+            if (parentFolderId != null) {
+                if (folders[parentFolderId] == null) throw Exception()
+                if (it.value !in foldersByParent[parentFolderId]) throw Exception()
+            }
+        }
     }
 }

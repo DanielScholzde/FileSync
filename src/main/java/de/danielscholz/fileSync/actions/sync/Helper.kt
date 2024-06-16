@@ -1,6 +1,7 @@
 package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.persistence.FileEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDateTime
@@ -34,9 +35,16 @@ fun execute(block1: () -> Unit, block2: () -> Unit, parallel: Boolean = true) {
         callsInPlace(block2, InvocationKind.EXACTLY_ONCE)
     }
     val blocks = listOf(block1, block2)
+    //println("Thread: " + Thread.currentThread().name)
     if (parallel) {
-        runBlocking {
-            blocks.map { async { it() } }.forEach { it.await() }
+        runBlocking(Dispatchers.IO) {
+            blocks
+                .map {
+                    async { it() }
+                }
+                .forEach {
+                    it.await()
+                }
         }
     } else {
         blocks.forEach { it() }

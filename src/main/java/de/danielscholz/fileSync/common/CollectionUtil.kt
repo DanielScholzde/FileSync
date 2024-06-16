@@ -10,11 +10,11 @@ fun <K, V> mutableSetMultimapOf(): SetMultimap<K, V> = HashMultimap.create<K, V>
 fun <K, V> mutableListMultimapOf(): ListMultimap<K, V> = ArrayListMultimap.create<K, V>()
 
 operator fun <K, V> ListMultimap<K, V>.set(key: K, value: V) {
-    put(key, value)
+    this.put(key, value)
 }
 
 operator fun <K, V> SetMultimap<K, V>.set(key: K, value: V) {
-    put(key, value)
+    this.put(key, value)
 }
 
 

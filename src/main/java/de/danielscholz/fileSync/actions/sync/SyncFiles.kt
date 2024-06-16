@@ -133,6 +133,9 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             println("Hash reused (targetDir): ${100 - 100 * targetStatistics.hashCalculated / targetStatistics.files}%")
         }
 
+        println("Duplicates (source): ${getDuplicateFilesSize(currentFilesSource).let { it.second.formatAsFileSize() + " (${it.first} files)" }}")
+        println("Duplicates (target): ${getDuplicateFilesSize(currentFilesTarget).let { it.second.formatAsFileSize() + " (${it.first} files)" }}")
+
         val failures = mutableListOf<String>()
         val hasChanges: Boolean
 
@@ -190,6 +193,17 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         }
     }
 
+    private fun getDuplicateFilesSize(currentFilesSource: CurrentFilesResult): Pair<Int, Long> {
+        val map = mutableListMultimapOf<String, Long>()
+        currentFilesSource.files.forEach { file ->
+            file.hash?.hash?.let {
+                map.put(it, file.size)
+            }
+        }
+        val list = map.asMap().entries.filter { it.value.size > 1 }.flatMap { it.value }
+        return list.size to list.sum()
+    }
+
     private fun backup(rootDir: File, file: File) {
         if (file.exists()) {
             Files.move(
@@ -207,7 +221,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             IndexedFilesEntity(
                 runDate = now.toKotlinLocalDateTime(),
                 files = this.toList(),
-                folder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
+                rootFolder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
             )
         )
     }
@@ -222,7 +236,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 runDate = now.toKotlinLocalDateTime(),
                 failuresOccurred = failures,
                 files = this.toList(),
-                folder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
+                rootFolder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
             )
         )
     }
@@ -233,19 +247,24 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         mapping[foldersCtx.rootFolderId] = foldersCtx.rootFolderId
 
         fun sync(folder: FolderEntity, parentFolderId: Long) {
-            if (filter.folderFilter.excluded(foldersCtx.getFullPath(folder), folder.name) != null) {
+            if (filter.folderFilter.excluded(foldersCtx.getFullPath(parentFolderId) + folder.name + "/", folder.name) != null) {
                 return
             }
 
-            val folder1 = foldersCtx.getOrCreate(folder.name, parentFolderId)
-            mapping[folder.id] = folder1.id
-            folder.children.forEach {
-                sync(it, folder1.id)
+            val folderMapped = foldersCtx.getOrCreate(folder.name, parentFolderId)
+            mapping[folder.id] = folderMapped.id
+            folder.children.forEach { childFolder ->
+                sync(childFolder, folderMapped.id)
             }
         }
-        this.folder.children.forEach {
-            sync(it, foldersCtx.rootFolderId)
+
+        foldersCtx.check()
+
+        this.rootFolder.children.forEach { childFolder ->
+            sync(childFolder, foldersCtx.rootFolderId)
         }
+
+        foldersCtx.check()
 
         return this.files.mapNotNull { file ->
             mapping[file.folderId]?.let { folderId ->
