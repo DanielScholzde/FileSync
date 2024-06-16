@@ -27,7 +27,7 @@ class SyncFilesParams {
     var minAllowedChanges = 50
 
     @Description("Minimum of free disk space in percent. If there is not enough disk space, the whole task is not started.")
-    var minDiskFreeSpacePercent = 10
+    var minDiskFreeSpacePercent = 5
 
     @Description("Minimum of free disk space in MB. If there is not enough disk space, the whole task is not started.")
     var minDiskFreeSpaceMB = 1000

@@ -133,14 +133,25 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             println("Hash reused (targetDir): ${100 - 100 * targetStatistics.hashCalculated / targetStatistics.files}%")
         }
 
-        println("Duplicates (source): ${getDuplicateFilesSize(currentFilesSource).let { it.second.formatAsFileSize() + " (${it.first} files)" }}")
-        println("Duplicates (target): ${getDuplicateFilesSize(currentFilesTarget).let { it.second.formatAsFileSize() + " (${it.first} files)" }}")
 
         val failures = mutableListOf<String>()
         val hasChanges: Boolean
 
         with(FoldersContext(folders)) {
             with(caseSensitiveContext) {
+
+                val duplicateFilesSource = getDuplicateFiles(currentFilesSource)
+                val duplicateFilesTarget = getDuplicateFiles(currentFilesTarget)
+
+                println("Duplicates (source): ${duplicateFilesSource.let { it.sumOfDuplFileSizes.formatAsFileSize() + " (${it.totalDuplFiles} files, redundancy-free storage space needed: ${it.space.formatAsFileSize()})" }}")
+                duplicateFilesSource.foldersWithDuplFiles.take(10).forEach {
+                    println(sourceDir.toString() + it)
+                }
+
+                println("Duplicates (target): ${duplicateFilesTarget.let { it.sumOfDuplFileSizes.formatAsFileSize() + " (${it.totalDuplFiles} files, redundancy-free storage space needed: ${it.space.formatAsFileSize()})" }}")
+                duplicateFilesTarget.foldersWithDuplFiles.take(10).forEach {
+                    println(targetDir.toString() + it)
+                }
 
                 if (!checkAndFix(sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFiles)) {
                     return
@@ -193,15 +204,32 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         }
     }
 
-    private fun getDuplicateFilesSize(currentFilesSource: CurrentFilesResult): Pair<Int, Long> {
-        val map = mutableListMultimapOf<String, Long>()
+    class DuplFilesResult(
+        val totalDuplFiles: Int,
+        val sumOfDuplFileSizes: Long,
+        val space: Long,
+        val foldersWithDuplFiles: List<String>
+    )
+
+    context(FoldersContext)
+    private fun getDuplicateFiles(currentFilesSource: CurrentFilesResult): DuplFilesResult {
+        val map = mutableListMultimapOf<String, FileEntity>()
         currentFilesSource.files.forEach { file ->
             file.hash?.hash?.let {
-                map.put(it, file.size)
+                map.put(it, file)
             }
         }
-        val list = map.asMap().entries.filter { it.value.size > 1 }.flatMap { it.value }
-        return list.size to list.sum()
+        val list = map.asMap().values.filter { it.size > 1 }
+
+        val foldersWithDuplFiles = list
+            .flatMap { duplFiles -> duplFiles.map { foldersCtx.getFullPath(it.folderId) to it.size } }
+            .groupingBy { it.first }
+            .fold(0L) { m, c -> m + c.second }
+            .entries
+            .sortedByDescending { it.value }
+            .map { it.key }
+
+        return DuplFilesResult(list.sumOf { it.size }, list.sumOf { it.sumOf { it.size } }, list.sumOf { it.first().size }, foldersWithDuplFiles)
     }
 
     private fun backup(rootDir: File, file: File) {
