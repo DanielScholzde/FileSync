@@ -90,8 +90,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
         val syncResultFiles: MutableSet<FileEntity>
 
-        val sourceStatistics = Statistics()
-        val targetStatistics = Statistics()
+        val sourceStatistics = MutableStatistics()
+        val targetStatistics = MutableStatistics()
 
         val folders = MutableFolders()
 
@@ -104,14 +104,18 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             execute(
                 {
                     val lastIndexedFilesSource = readIndexedFiles(indexedFilesFileSource)?.mapToRead(filter) ?: listOf()
-                    currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesSource, sourceStatistics)
+                    with(MutableStatisticsContext(sourceStatistics)) {
+                        currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesSource)
+                    }
                     backup(sourceDir, indexedFilesFileSource)
                     currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource)
                     sourceChanges = getChanges(sourceDir, lastSyncResultFiles, currentFilesSource)
                 },
                 {
                     val lastIndexedFilesTarget = readIndexedFiles(indexedFilesFileTarget)?.mapToRead(filter) ?: listOf()
-                    currentFilesTarget = getCurrentFiles(targetDir, filter, lastIndexedFilesTarget, targetStatistics)
+                    with(MutableStatisticsContext(targetStatistics)) {
+                        currentFilesTarget = getCurrentFiles(targetDir, filter, lastIndexedFilesTarget)
+                    }
                     backup(targetDir, indexedFilesFileTarget)
                     currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget)
                     targetChanges = getChanges(targetDir, lastSyncResultFiles, currentFilesTarget)

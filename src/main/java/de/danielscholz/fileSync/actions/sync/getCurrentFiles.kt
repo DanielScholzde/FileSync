@@ -15,8 +15,8 @@ class CurrentFilesResult(
 )
 
 
-context(MutableFoldersContext)
-fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity>, statistics: Statistics): CurrentFilesResult {
+context(MutableFoldersContext, MutableStatisticsContext)
+fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity>): CurrentFilesResult {
 
     val files = mutableListOf<FileEntity>()
     val folderRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
@@ -51,7 +51,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity
                     .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
                     ?.hash
                 ?: file.hash.value?.let {
-                    statistics.hashCalculated++
+                    statisticsCtx.hashCalculated++
                     FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
                 }
 
@@ -64,7 +64,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity
                 hidden = file.hidden,
                 size = file.size
             )
-            statistics.files++
+            statisticsCtx.files++
 
             testIfCancel()
         }
@@ -99,7 +99,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity
             }
             .forEach {
                 val folder = foldersCtx.getOrCreate(it.name, folderId)
-                statistics.folders++
+                statisticsCtx.folders++
                 process(it.content(), folder.id)
             }
     }
