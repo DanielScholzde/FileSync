@@ -28,7 +28,7 @@ val folderMarkerInstant = LocalDateTime(0, 1, 1, 0, 0).toInstant(UtcOffset.ZERO)
 
 
 @OptIn(ExperimentalContracts::class)
-fun parallel(block1: () -> Unit, block2: () -> Unit, parallel: Boolean = true) {
+fun execute(block1: () -> Unit, block2: () -> Unit, parallel: Boolean = true) {
     contract {
         callsInPlace(block1, InvocationKind.EXACTLY_ONCE)
         callsInPlace(block2, InvocationKind.EXACTLY_ONCE)

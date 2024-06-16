@@ -1,7 +1,7 @@
 package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.SyncFilesParams
-import de.danielscholz.fileSync.actions.FoldersImpl
+import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.persistence.*
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -93,7 +93,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         val sourceStatistics = Statistics()
         val targetStatistics = Statistics()
 
-        val folders = FoldersImpl()
+        val folders = MutableFolders()
 
         with(MutableFoldersContext(folders)) {
 
@@ -101,7 +101,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             syncResultFiles = lastSyncResultFiles.toMutableSet()
             if (lastSyncResultFiles.size != syncResultFiles.size) throw Exception()
 
-            parallel(
+            execute(
                 {
                     val lastIndexedFilesSource = readIndexedFiles(indexedFilesFileSource)?.mapToRead(filter) ?: listOf()
                     currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesSource, sourceStatistics)
@@ -116,7 +116,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                     currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget)
                     targetChanges = getChanges(targetDir, lastSyncResultFiles, currentFilesTarget)
                 },
-                syncFilesParams.parallelIndexing
+                parallel = syncFilesParams.parallelIndexing
             )
         }
 

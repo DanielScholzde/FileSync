@@ -25,11 +25,8 @@ interface Folders {
     fun getAll(): List<FolderEntity>
 }
 
-interface FoldersMutable : Folders {
-    fun getOrCreate(name: String, parentFolderId: Long): FolderEntity
-}
 
-class FoldersImpl : FoldersMutable {
+class MutableFolders : Folders {
 
     override val rootFolderId = 0L
 
@@ -71,7 +68,7 @@ class FoldersImpl : FoldersMutable {
     }
 
     @Synchronized
-    override fun getOrCreate(name: String, parentFolderId: Long): FolderEntity {
+    fun getOrCreate(name: String, parentFolderId: Long): FolderEntity {
         if (!folders.containsKey(parentFolderId)) {
             throw IllegalStateException()
         }

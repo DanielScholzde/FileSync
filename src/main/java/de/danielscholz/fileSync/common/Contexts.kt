@@ -1,12 +1,12 @@
 package de.danielscholz.fileSync.common
 
 import de.danielscholz.fileSync.actions.Folders
-import de.danielscholz.fileSync.actions.FoldersMutable
+import de.danielscholz.fileSync.actions.MutableFolders
 
 
 open class FoldersContext(open val foldersCtx: Folders)
 
-class MutableFoldersContext(override val foldersCtx: FoldersMutable) : FoldersContext(foldersCtx)
+class MutableFoldersContext(override val foldersCtx: MutableFolders) : FoldersContext(foldersCtx)
 
 
 class CaseSensitiveContext(val isCaseSensitive: Boolean)
