@@ -153,7 +153,9 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                             { it.priority },
                             { foldersCtx.getFullPath(it.folderId).lowercase() },
                             { foldersCtx.getFullPath(it.folderId) },
-                            { it.filename })
+                            { it.filename.lowercase() },
+                            { it.filename },
+                        )
                     )
 
                 val actionEnv = ActionEnv(syncResultFiles, failures, syncFilesParams.dryRun)

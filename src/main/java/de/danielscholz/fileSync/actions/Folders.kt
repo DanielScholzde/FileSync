@@ -17,6 +17,11 @@ interface Folders {
     fun getFullPath(id: Long): String
 
     /**
+     * Depth of folder. Starts with 0 for the root folder
+     */
+    fun getDepth(id: Long): Int
+
+    /**
      * includes folder name itself as last node.
      * starts and ends with '/'
      */
@@ -65,6 +70,10 @@ class MutableFolders : Folders {
 
     override fun getFullPath(folder: FolderEntity): String {
         return (folder.parentFolderId?.let { getFullPath(it) } ?: "") + folder.name + "/"
+    }
+
+    override fun getDepth(id: Long): Int {
+        return getFullPath(id).count { it == '/' } - 1
     }
 
     @Synchronized

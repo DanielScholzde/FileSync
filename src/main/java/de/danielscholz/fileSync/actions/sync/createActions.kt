@@ -101,7 +101,7 @@ fun createActions(
 
         deleted.forEach {
             if (it.isFolderMarker) {
-                actions += Action(it.folderId, "", 1) {
+                actions += Action(it.folderId, "", 100 - foldersCtx.getDepth(it.folderId)) {
                     val toDelete = File(targetDir, it.path())
                     process("delete dir", "$toDelete") {
                         if (toDelete.delete()) {
