@@ -1,5 +1,7 @@
 package de.danielscholz.fileSync.actions.sync
 
+import de.danielscholz.fileSync.common.CaseSensitiveContext
+import de.danielscholz.fileSync.common.FoldersContext
 import de.danielscholz.fileSync.common.ifNotEmpty
 import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.matching.MatchMode.*
@@ -8,6 +10,7 @@ import de.danielscholz.fileSync.persistence.isFolderMarker
 import java.io.File
 
 
+context(CaseSensitiveContext, FoldersContext)
 fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResult: CurrentFiles): MutableChanges {
 
     val currentFiles = currentFilesResult.files

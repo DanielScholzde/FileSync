@@ -7,6 +7,7 @@ import de.danielscholz.kargparser.ArgParser
 import de.danielscholz.kargparser.ArgParserBuilder
 import de.danielscholz.kargparser.ArgParserConfig
 import de.danielscholz.kargparser.parser.*
+import java.util.*
 
 
 fun main(args: Array<String>) {
@@ -60,7 +61,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::verbose, BooleanParam())
         }) {
 
-        val exclFileNamesSimple = mutableSetOf<String>()
+        val exclFileNamesSimpleLowercase = mutableSetOf<String>()
         val exclFileNamesRegex = mutableListOf<Regex>()
         (paramValues.excludedFiles + paramValues.defaultExcludedFiles).forEach { exclFileName ->
             if (exclFileName.contains("*")) {
@@ -71,16 +72,17 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
                 val pattern = escaped
                     .replace("*", ".*")
                     .replace("?", ".")
-                exclFileNamesRegex += Regex(pattern)
+                exclFileNamesRegex += Regex(pattern, RegexOption.IGNORE_CASE)
             } else {
-                exclFileNamesSimple += exclFileName
+                exclFileNamesSimpleLowercase += exclFileName.lowercase(Locale.getDefault())
             }
         }
 
 
         val exclPaths = mutableListOf<PathMatcher>()
         (paramValues.excludedPaths + paramValues.defaultExcludedPaths).forEach { exclPath ->
-            when {
+            val exclPathLC = exclPath.lowercase()
+            exclPaths += when {
                 "/" in exclPath && "*" in exclPath -> {
                     val escaped = exclPath
                         .replace("(", "\\(")
@@ -93,17 +95,17 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
                         pattern += ".*"
                     if (!pattern.startsWith("//"))
                         pattern = ".*$pattern"
-                    val regex = Regex(pattern)
-                    exclPaths += PathMatcher { path, _ ->
+                    val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+                    PathMatcher { path, _ ->
                         regex.matches("/$path")
                     }
                 }
-                "/" in exclPath -> {
-                    exclPaths += PathMatcher { path, _ ->
-                        if (exclPath.startsWith("//"))
-                            exclPath in "/$path"
+                "/" in exclPathLC -> {
+                    PathMatcher { path, _ ->
+                        if (exclPathLC.startsWith("//"))
+                            exclPathLC in "/$path".lowercase()
                         else
-                            exclPath in path
+                            exclPathLC in path.lowercase()
                     }
                 }
                 "*" in exclPath -> {
@@ -114,14 +116,14 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
                     val pattern = escaped
                         .replace("*", ".*")
                         .replace("?", ".")
-                    val regex = Regex(pattern)
-                    exclPaths += PathMatcher { _, folderName ->
+                    val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+                    PathMatcher { _, folderName ->
                         regex.matches(folderName)
                     }
                 }
                 else -> {
-                    exclPaths += PathMatcher { _, folderName ->
-                        folderName == exclPath
+                    PathMatcher { _, folderName ->
+                        folderName.lowercase() == exclPathLC
                     }
                 }
             }
@@ -133,7 +135,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
         }
 
         val fileFilter = FileFilter { _, fileName ->
-            if (fileName in exclFileNamesSimple ||
+            if (fileName.lowercase(Locale.getDefault()) in exclFileNamesSimpleLowercase ||
                 exclFileNamesRegex.any { exclFile -> exclFile.matches(fileName) }
             ) ExcludedBy.USER else null
         }

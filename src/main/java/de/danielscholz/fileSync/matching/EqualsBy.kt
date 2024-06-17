@@ -41,7 +41,7 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
 
         collection1.forEach {
             if (collection1AsMap.put(EqualsDelegate(it, equalsAndHashcodeSupplier), it) != null) {
-                throw Exception("Error: The match mode creates duplicates within collection 1!")
+                throw Exception("Error: The match mode creates duplicates within collection 1 ($it)")
             }
         }
 
@@ -50,7 +50,7 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
         collection2.forEach { entry2 ->
             val equalsDelegate2 = EqualsDelegate(entry2, equalsAndHashcodeSupplier)
             if (!set2.add(equalsDelegate2)) {
-                throw Exception("Error: The match mode creates duplicates within collection 2!")
+                throw Exception("Error: The match mode creates duplicates within collection 2 ($entry2)")
             }
             val entry1 = collection1AsMap[equalsDelegate2]
             if (entry1 != null) {
@@ -68,7 +68,7 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
 
         collection1.forEach {
             if (!result.add(EqualsDelegate(it, equalsAndHashcodeSupplier))) {
-                throw Exception("Error: The match mode creates duplicates within collection 1!")
+                throw Exception("Error: The match mode creates duplicates within collection 1 ($it)")
             }
         }
 
@@ -87,8 +87,9 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
         val set1 = HashSet<EqualsDelegate<T>>()
 
         this.forEach {
-            if (!set1.add(EqualsDelegate(it, equalsAndHashcodeSupplier))) {
-                throw Exception("Error: The match mode creates duplicates within collection 1!")
+            val element = EqualsDelegate(it, equalsAndHashcodeSupplier)
+            if (!set1.add(element)) {
+                throw Exception("Error: The match mode creates duplicates within collection 1 ($it)")
             }
         }
 
@@ -97,7 +98,7 @@ class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, privat
         other.forEach {
             val equalsDelegate = EqualsDelegate(it, equalsAndHashcodeSupplier)
             if (!set2.add(equalsDelegate)) {
-                throw Exception("Error: The match mode creates duplicates within collection 2!")
+                throw Exception("Error: The match mode creates duplicates within collection 2 ($it)")
             }
             set1.remove(equalsDelegate)
         }

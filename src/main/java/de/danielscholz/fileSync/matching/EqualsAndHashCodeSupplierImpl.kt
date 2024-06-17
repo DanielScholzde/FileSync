@@ -1,31 +1,40 @@
 package de.danielscholz.fileSync.matching
 
+import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.persistence.FileEntity
 import java.util.*
 
 
-class EqualsAndHashCodeSupplierImpl(private val mode: EnumSet<MatchMode>) : EqualsAndHashCodeSupplier<FileEntity> {
+class EqualsAndHashCodeSupplierImpl(private val mode: EnumSet<MatchMode>, private val folders: Folders, private val isCaseSensitive: Boolean) :
+    EqualsAndHashCodeSupplier<FileEntity> {
 
     override fun equals(obj1: FileEntity, obj2: FileEntity): Boolean {
         if (MatchMode.HASH in mode) {
             if (obj1.size != obj2.size || obj1.hash?.hash != obj2.hash?.hash) return false
         }
 
+        var compPath = MatchMode.PATH in mode
+        var compFilename = MatchMode.FILENAME in mode
+
         // Workaround for empty files (which do not have a hash): compare filename and path too!
         if (obj1.hash == null && obj2.hash == null && MatchMode.HASH in mode) {
-            if (MatchMode.FILENAME !in mode) {
-                if (obj1.name != obj2.name) return false
-            }
-            if (MatchMode.PATH !in mode) {
-                if (obj1.folderId != obj2.folderId) return false
-            }
+            compPath = true
+            compFilename = true
         }
 
-        if (MatchMode.PATH in mode) {
-            if (obj1.folderId != obj2.folderId) return false // TODO case sensitive?
+        if (compPath) {
+            if (isCaseSensitive) {
+                if (obj1.folderId != obj2.folderId) return false
+            } else {
+                if (folders.getFullPathLowercase(obj1.folderId) != folders.getFullPathLowercase(obj2.folderId)) return false
+            }
         }
-        if (MatchMode.FILENAME in mode) {
-            if (obj1.name != obj2.name) return false
+        if (compFilename) {
+            if (isCaseSensitive) {
+                if (obj1.name != obj2.name) return false
+            } else {
+                if (obj1.nameLowercase != obj2.nameLowercase) return false
+            }
         }
         if (MatchMode.MODIFIED in mode) {
             if (obj1.modified != obj2.modified) return false
@@ -39,10 +48,10 @@ class EqualsAndHashCodeSupplierImpl(private val mode: EnumSet<MatchMode>) : Equa
             result = 31 * result + (obj.hash?.hash?.hashCode() ?: 0)
         }
         if (MatchMode.PATH in mode) {
-            result = 31 * result + obj.folderId.hashCode() // TODO case sensitive?
+            result = 31 * result + folders.getFullPathLowercase(obj.folderId).hashCode()
         }
         if (MatchMode.FILENAME in mode) {
-            result = 31 * result + obj.name.hashCode()
+            result = 31 * result + obj.nameLowercase.hashCode()
         }
         if (MatchMode.MODIFIED in mode) {
             result = 31 * result + obj.modified.hashCode()

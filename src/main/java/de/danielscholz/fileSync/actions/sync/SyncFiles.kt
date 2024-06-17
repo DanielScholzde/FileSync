@@ -63,16 +63,16 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
 
     fun sync() {
-        guardWithLockFile(File(syncFilesParams.lockfileSourceDir ?: sourceDir, lockfileName)) {
-            guardWithLockFile(File(syncFilesParams.lockfileTargetDir ?: targetDir, lockfileName)) {
+//        guardWithLockFile(File(syncFilesParams.lockfileSourceDir ?: sourceDir, lockfileName)) {
+//            guardWithLockFile(File(syncFilesParams.lockfileTargetDir ?: targetDir, lockfileName)) {
                 syncIntern()
-            }
-        }
+//            }
+//        }
     }
 
     private fun syncIntern() {
-        println("Source dir: $sourceDir")
-        println("Target dir: $targetDir\n")
+        println("Source dir: $sourceDir (case sensitive: $csSource)")
+        println("Target dir: $targetDir (case sensitive: $csTarget)\n")
 
         val caseSensitiveContext = CaseSensitiveContext(csSource && csTarget)
 
@@ -102,22 +102,26 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
             execute(
                 {
-                    val lastIndexedFilesSource = readIndexedFiles(indexedFilesFileSource)?.mapToRead(filter) ?: setOf()
-                    with(MutableStatisticsContext(sourceStatistics)) {
-                        currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesSource)
+                    with(CaseSensitiveContext(csSource)) {
+                        val lastIndexedFilesSource = readIndexedFiles(indexedFilesFileSource)?.mapToRead(filter) ?: setOf()
+                        with(MutableStatisticsContext(sourceStatistics)) {
+                            currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesSource)
+                        }
+                        backup(sourceDir, indexedFilesFileSource)
+                        currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource) // already save indexed files in the event of a subsequent error
+                        sourceChanges = getChanges(sourceDir, lastSyncResultFiles, currentFilesSource)
                     }
-                    backup(sourceDir, indexedFilesFileSource)
-                    currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource) // already save indexed files in the event of a subsequent error
-                    sourceChanges = getChanges(sourceDir, lastSyncResultFiles, currentFilesSource)
                 },
                 {
-                    val lastIndexedFilesTarget = readIndexedFiles(indexedFilesFileTarget)?.mapToRead(filter) ?: setOf()
-                    with(MutableStatisticsContext(targetStatistics)) {
-                        currentFilesTarget = getCurrentFiles(targetDir, filter, lastIndexedFilesTarget)
+                    with(CaseSensitiveContext(csTarget)) {
+                        val lastIndexedFilesTarget = readIndexedFiles(indexedFilesFileTarget)?.mapToRead(filter) ?: setOf()
+                        with(MutableStatisticsContext(targetStatistics)) {
+                            currentFilesTarget = getCurrentFiles(targetDir, filter, lastIndexedFilesTarget)
+                        }
+                        backup(targetDir, indexedFilesFileTarget)
+                        currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget) // already save indexed files in the event of a subsequent error
+                        targetChanges = getChanges(targetDir, lastSyncResultFiles, currentFilesTarget)
                     }
-                    backup(targetDir, indexedFilesFileTarget)
-                    currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget) // already save indexed files in the event of a subsequent error
-                    targetChanges = getChanges(targetDir, lastSyncResultFiles, currentFilesTarget)
                 },
                 parallel = syncFilesParams.parallelIndexing
             )
@@ -132,6 +136,12 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             println("Hash reused (targetDir): ${100 - 100 * targetStatistics.hashCalculated / targetStatistics.files}%")
         }
 
+        currentFilesSource.folderRenamed.forEach {
+            println("Folder renamed (source): ${folders.get(it.key)} -> ${folders.get(it.value)}")
+        }
+        currentFilesTarget.folderRenamed.forEach {
+            println("Folder renamed (target): ${folders.get(it.key)} -> ${folders.get(it.value)}")
+        }
 
         val failures = mutableListOf<String>()
         val hasChanges: Boolean
@@ -142,14 +152,14 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 val duplicateFilesSource = getDuplicateFiles(currentFilesSource)
                 val duplicateFilesTarget = getDuplicateFiles(currentFilesTarget)
 
-                println("Duplicates (source): ${duplicateFilesSource.let { it.sumOfDuplFileSizes.formatAsFileSize() + " (${it.totalDuplFiles} files, redundancy-free storage space needed: ${it.space.formatAsFileSize()})" }}")
+                println("Duplicates (source): ${duplicateFilesSource.let { it.sumOfDuplFileSizes.formatAsFileSize() + " (${it.totalDuplFiles} files, ${(it.sumOfDuplFileSizes - it.nettoSpaceNeeded).formatAsFileSize()} could be released)" }}")
                 duplicateFilesSource.foldersWithDuplFiles.take(10).forEach {
-                    println(sourceDir.toString() + it)
+                    println(sourceDir.toString() + it.first + " " + it.second.formatAsFileSize())
                 }
 
-                println("Duplicates (target): ${duplicateFilesTarget.let { it.sumOfDuplFileSizes.formatAsFileSize() + " (${it.totalDuplFiles} files, redundancy-free storage space needed: ${it.space.formatAsFileSize()})" }}")
+                println("Duplicates (target): ${duplicateFilesTarget.let { it.sumOfDuplFileSizes.formatAsFileSize() + " (${it.totalDuplFiles} files, ${(it.sumOfDuplFileSizes - it.nettoSpaceNeeded).formatAsFileSize()} could be released)" }}")
                 duplicateFilesTarget.foldersWithDuplFiles.take(10).forEach {
-                    println(targetDir.toString() + it)
+                    println(targetDir.toString() + it.first + " " + it.second.formatAsFileSize())
                 }
 
                 if (!checkAndFix(sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFiles)) {
@@ -234,8 +244,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
     class DuplFilesResult(
         val totalDuplFiles: Int,
         val sumOfDuplFileSizes: Long,
-        val space: Long,
-        val foldersWithDuplFiles: List<String>
+        val nettoSpaceNeeded: Long,
+        val foldersWithDuplFiles: List<Pair<String, Long>>
     )
 
     context(FoldersContext)
@@ -254,7 +264,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             .fold(0L) { m, c -> m + c.second }
             .entries
             .sortedByDescending { it.value }
-            .map { it.key }
+            .map { it.key to it.value }
 
         return DuplFilesResult(list.sumOf { it.size }, list.sumOf { it.sumOf { it.size } }, list.sumOf { it.first().size }, foldersWithDuplFiles)
     }

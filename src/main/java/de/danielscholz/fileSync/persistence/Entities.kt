@@ -6,10 +6,12 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import java.io.*
+import java.util.*
 
 
 sealed interface EntityBase
@@ -108,8 +110,8 @@ data class FileEntity(
         if (name.contains("/")) throw Exception()
     }
 
-//    @Transient
-//    val extension: String? = name.getFileExtension()
+    @Transient
+    val nameLowercase: String = name.lowercase(Locale.getDefault())
 
     context(FoldersContext)
     fun path(): String {

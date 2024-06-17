@@ -3,6 +3,7 @@ package de.danielscholz.fileSync.actions
 import de.danielscholz.fileSync.common.mutableListMultimapOf
 import de.danielscholz.fileSync.common.set
 import de.danielscholz.fileSync.persistence.FolderEntity
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 
@@ -16,6 +17,8 @@ interface Folders {
      * starts and ends with '/'
      */
     fun getFullPath(id: Long): String
+
+    fun getFullPathLowercase(id: Long): String
 
     /**
      * Depth of folder. Starts with 0 for the root folder
@@ -37,6 +40,7 @@ class MutableFolders : Folders {
     private val foldersByParent = mutableListMultimapOf<Long, FolderEntity>()
 
     private val foldersFullPathCache = ConcurrentHashMap<Long, String>()
+    private val foldersFullPathLowercaseCache = ConcurrentHashMap<Long, String>()
 
     init {
         folders[rootFolderId] = FolderEntity(rootFolderId, null, "")
@@ -56,6 +60,12 @@ class MutableFolders : Folders {
             }
         }
         return getFullPathIntern(id)
+    }
+
+    override fun getFullPathLowercase(id: Long): String {
+        return foldersFullPathLowercaseCache.getOrPut(id) {
+            getFullPath(id).lowercase(Locale.getDefault())
+        }
     }
 
     override fun getDepth(id: Long): Int {

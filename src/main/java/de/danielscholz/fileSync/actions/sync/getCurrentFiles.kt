@@ -6,6 +6,7 @@ import de.danielscholz.fileSync.persistence.FileHashEntity
 import de.danielscholz.fileSync.persistence.folderMarkerName
 import kotlinx.datetime.toKotlinInstant
 import java.io.File
+import java.util.*
 
 
 interface CurrentFiles {
@@ -21,7 +22,7 @@ class MutableCurrentFiles(
 ) : CurrentFiles
 
 
-context(MutableFoldersContext, MutableStatisticsContext)
+context(MutableFoldersContext, MutableStatisticsContext, CaseSensitiveContext)
 fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>): MutableCurrentFiles {
 
     val files = mutableSetOf<FileEntity>()
@@ -91,9 +92,16 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
         if (filesMovedFromDifferentFolderId.isInitialized()) {
             val fromFolderId = filesMovedFromDifferentFolderId.value
             if (fromFolderId != null) {
-                if (foldersCtx.get(fromFolderId).name != foldersCtx.get(folderId).name) {
-                    println("folder renamed: " + foldersCtx.getFullPath(fromFolderId) + " -> " + foldersCtx.getFullPath(folderId))
-                    folderRenamed[fromFolderId] = folderId
+                if (isCaseSensitive) {
+                    if (foldersCtx.get(fromFolderId).name != foldersCtx.get(folderId).name) {
+                        println("folder renamed: " + foldersCtx.getFullPath(fromFolderId) + " -> " + foldersCtx.getFullPath(folderId))
+                        folderRenamed[fromFolderId] = folderId
+                    }
+                } else {
+                    if (foldersCtx.get(fromFolderId).name.lowercase(Locale.getDefault()) != foldersCtx.get(folderId).name.lowercase(Locale.getDefault())) {
+                        println("folder renamed: " + foldersCtx.getFullPath(fromFolderId) + " -> " + foldersCtx.getFullPath(folderId))
+                        folderRenamed[fromFolderId] = folderId
+                    }
                 }
                 folderPathRenamed[fromFolderId] = folderId
             }
