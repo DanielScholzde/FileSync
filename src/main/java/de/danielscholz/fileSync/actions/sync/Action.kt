@@ -12,13 +12,18 @@ class Action(
     val folderId: Long,
     val filename: String,
     val locationOfChanges: Location,
+    val switchedSourceAndTarget: Boolean,
     val priority: Int = 0,
     val action: ActionEnv.() -> Unit,
 )
 
 class ActionEnv(
+    val sourceDir: File, // sourceDir and targetDir may be switched, if switchedSourceAndTarget==true
+    val targetDir: File,
+    val changedDir: String,
+    val deletedDir: String,
     val syncResultFiles: MutableSet<FileEntity>,
-    val currentFilesTarget: MutableCurrentFiles, // may be currentFilesSource, if locationOfChanges == SOURCE
+    val currentFilesTarget: MutableSet<FileEntity>, // may be currentFilesSource, if switchedSourceAndTarget==true
     private val failures: MutableList<String>,
     private val dryRun: Boolean
 ) {

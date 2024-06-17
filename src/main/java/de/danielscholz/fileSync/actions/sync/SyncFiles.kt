@@ -160,26 +160,42 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                     return
                 }
 
-                val actions = createActions(
+                val actions = createActions(sourceChanges, targetChanges)
+                    .sortedWith(
+                        compareBy(
+                            { it.locationOfChanges },
+                            { it.priority },
+                            { foldersCtx.getFullPath(it.folderId).lowercase() },
+                            { foldersCtx.getFullPath(it.folderId) },
+                            { it.filename.lowercase() },
+                            { it.filename },
+                        )
+                    )
+
+                val actionEnv = ActionEnv(
                     sourceDir = sourceDir,
                     targetDir = targetDir,
-                    sourceChanges = sourceChanges,
-                    targetChanges = targetChanges,
                     changedDir = changedDir,
-                    deletedDir = deletedDir
-                ).sortedWith(
-                    compareBy(
-                        { it.locationOfChanges },
-                        { it.priority },
-                        { foldersCtx.getFullPath(it.folderId).lowercase() },
-                        { foldersCtx.getFullPath(it.folderId) },
-                        { it.filename.lowercase() },
-                        { it.filename },
-                    )
+                    deletedDir = deletedDir,
+                    syncResultFiles = syncResultFiles,
+                    currentFilesTarget = currentFilesTarget.files,
+                    failures = failures,
+                    dryRun = syncFilesParams.dryRun
+                )
+
+                val actionEnvReversed = ActionEnv(
+                    sourceDir = targetDir,
+                    targetDir = sourceDir,
+                    changedDir = changedDir,
+                    deletedDir = deletedDir,
+                    syncResultFiles = syncResultFiles,
+                    currentFilesTarget = currentFilesSource.files,
+                    failures = failures,
+                    dryRun = syncFilesParams.dryRun
                 )
 
                 actions.forEach {
-                    it.action(ActionEnv(syncResultFiles, if (it.locationOfChanges == Location.TARGET) currentFilesTarget else currentFilesSource, failures, syncFilesParams.dryRun))
+                    it.action(if (!it.switchedSourceAndTarget) actionEnv else actionEnvReversed)
                     testIfCancel()
                 }
 
