@@ -6,7 +6,6 @@ import de.danielscholz.fileSync.persistence.FileHashEntity
 import de.danielscholz.fileSync.persistence.folderMarkerName
 import kotlinx.datetime.toKotlinInstant
 import java.io.File
-import java.util.*
 
 
 interface CurrentFiles {
@@ -98,7 +97,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
                         folderRenamed[fromFolderId] = folderId
                     }
                 } else {
-                    if (foldersCtx.get(fromFolderId).name.lowercase(Locale.getDefault()) != foldersCtx.get(folderId).name.lowercase(Locale.getDefault())) {
+                    if (foldersCtx.get(fromFolderId).name.lowercase() != foldersCtx.get(folderId).name.lowercase()) {
                         println("folder renamed: " + foldersCtx.getFullPath(fromFolderId) + " -> " + foldersCtx.getFullPath(folderId))
                         folderRenamed[fromFolderId] = folderId
                     }

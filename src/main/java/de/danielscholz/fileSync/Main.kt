@@ -7,7 +7,6 @@ import de.danielscholz.kargparser.ArgParser
 import de.danielscholz.kargparser.ArgParserBuilder
 import de.danielscholz.kargparser.ArgParserConfig
 import de.danielscholz.kargparser.parser.*
-import java.util.*
 
 
 fun main(args: Array<String>) {
@@ -74,7 +73,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
                     .replace("?", ".")
                 exclFileNamesRegex += Regex(pattern, RegexOption.IGNORE_CASE)
             } else {
-                exclFileNamesSimpleLowercase += exclFileName.lowercase(Locale.getDefault())
+                exclFileNamesSimpleLowercase += exclFileName.lowercase()
             }
         }
 
@@ -135,7 +134,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
         }
 
         val fileFilter = FileFilter { _, fileName ->
-            if (fileName.lowercase(Locale.getDefault()) in exclFileNamesSimpleLowercase ||
+            if (fileName.lowercase() in exclFileNamesSimpleLowercase ||
                 exclFileNamesRegex.any { exclFile -> exclFile.matches(fileName) }
             ) ExcludedBy.USER else null
         }

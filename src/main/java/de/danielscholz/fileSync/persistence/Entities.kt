@@ -11,7 +11,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import java.io.*
-import java.util.*
 
 
 sealed interface EntityBase
@@ -111,7 +110,7 @@ data class FileEntity(
     }
 
     @Transient
-    val nameLowercase: String = name.lowercase(Locale.getDefault())
+    val nameLowercase: String = name.lowercase()
 
     context(FoldersContext)
     fun path(): String {
