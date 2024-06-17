@@ -107,7 +107,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                         currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesSource)
                     }
                     backup(sourceDir, indexedFilesFileSource)
-                    currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource)
+                    currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource) // already save indexed files in the event of a subsequent error
                     sourceChanges = getChanges(sourceDir, lastSyncResultFiles, currentFilesSource)
                 },
                 {
@@ -116,7 +116,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                         currentFilesTarget = getCurrentFiles(targetDir, filter, lastIndexedFilesTarget)
                     }
                     backup(targetDir, indexedFilesFileTarget)
-                    currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget)
+                    currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget) // already save indexed files in the event of a subsequent error
                     targetChanges = getChanges(targetDir, lastSyncResultFiles, currentFilesTarget)
                 },
                 parallel = syncFilesParams.parallelIndexing
@@ -215,7 +215,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 syncResultFiles.saveSyncResultTo(syncResultFile, failures)
 
                 if (hasChanges) {
-                    currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource)
+                    currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource) // save again; it may have changed
                     currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget)
                 }
             }

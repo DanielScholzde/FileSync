@@ -11,10 +11,9 @@ import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 
 
 context(FoldersContext)
-fun createActions(sourceChanges: Changes, targetChanges: Changes): List<Action> {
-    return sourceChanges.createActions(switchedSourceAndTarget = false, locationOfChanges = Location.TARGET) +
+fun createActions(sourceChanges: Changes, targetChanges: Changes): List<Action> =
+    sourceChanges.createActions(switchedSourceAndTarget = false, locationOfChanges = Location.TARGET) +
             targetChanges.createActions(switchedSourceAndTarget = true, locationOfChanges = Location.SOURCE)
-}
 
 
 context(FoldersContext)

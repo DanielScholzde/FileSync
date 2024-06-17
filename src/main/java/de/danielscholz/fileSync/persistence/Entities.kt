@@ -1,13 +1,11 @@
 package de.danielscholz.fileSync.persistence
 
 import de.danielscholz.fileSync.common.FoldersContext
-import de.danielscholz.fileSync.common.getFileExtension
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
@@ -110,8 +108,8 @@ data class FileEntity(
         if (name.contains("/")) throw Exception()
     }
 
-    @Transient
-    val extension: String? = name.getFileExtension()
+//    @Transient
+//    val extension: String? = name.getFileExtension()
 
     context(FoldersContext)
     fun path(): String {

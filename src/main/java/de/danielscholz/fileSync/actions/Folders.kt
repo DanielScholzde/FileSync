@@ -3,6 +3,7 @@ package de.danielscholz.fileSync.actions
 import de.danielscholz.fileSync.common.mutableListMultimapOf
 import de.danielscholz.fileSync.common.set
 import de.danielscholz.fileSync.persistence.FolderEntity
+import java.util.concurrent.ConcurrentHashMap
 
 
 interface Folders {
@@ -21,8 +22,6 @@ interface Folders {
      */
     fun getDepth(id: Long): Int
 
-    fun getAll(): List<FolderEntity>
-
     fun check()
 }
 
@@ -33,30 +32,25 @@ class MutableFolders : Folders {
 
     private var maxAssignedFolderId = 0L
 
-    private val folders = mutableMapOf<Long, FolderEntity>()
+    private val folders = ConcurrentHashMap<Long, FolderEntity>()
 
     private val foldersByParent = mutableListMultimapOf<Long, FolderEntity>()
-    private val foldersFullPath = mutableMapOf<Long, String>()
+
+    private val foldersFullPathCache = ConcurrentHashMap<Long, String>()
 
     init {
         folders[rootFolderId] = FolderEntity(rootFolderId, null, "")
     }
 
-    @Synchronized
+
     override fun get(id: Long): FolderEntity {
         return folders[id]!!
     }
 
-    @Synchronized
-    override fun getAll(): List<FolderEntity> {
-        return folders.values.toList()
-    }
-
-    @Synchronized
     override fun getFullPath(id: Long): String {
 
         fun getFullPathIntern(id: Long): String {
-            return foldersFullPath.getOrPut(id) {
+            return foldersFullPathCache.getOrPut(id) {
                 val folder = folders[id] ?: throw Exception("Folder with id $id not found!")
                 (folder.parentFolderId?.let { getFullPathIntern(it) } ?: "") + folder.name + "/"
             }
