@@ -12,18 +12,18 @@ import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 
 context(FoldersContext)
 fun createActions(sourceChanges: Changes, targetChanges: Changes): List<Action> =
-    sourceChanges.createActions(switchedSourceAndTarget = false, locationOfChanges = Location.TARGET) +
-            targetChanges.createActions(switchedSourceAndTarget = true, locationOfChanges = Location.SOURCE)
+    sourceChanges.createActions(switchedSourceAndTarget = false, locationOfChangesToBeMade = Location.TARGET) +
+            targetChanges.createActions(switchedSourceAndTarget = true, locationOfChangesToBeMade = Location.SOURCE)
 
 
 context(FoldersContext)
-private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfChanges: Location): List<Action> {
+private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfChangesToBeMade: Location): List<Action> {
 
     val actions = mutableListOf<Action>()
 
     added.forEach {
         actions += if (it.isFolderMarker) {
-            Action(it.folderId, "", locationOfChanges, switchedSourceAndTarget, -1) {
+            Action(it.folderId, "", locationOfChangesToBeMade, switchedSourceAndTarget, -1) {
                 val targetFile = File(targetDir, it.path())
                 process("create dir", "$targetFile") {
                     targetFile.mkdirs()
@@ -32,7 +32,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 }
             }
         } else {
-            Action(it.folderId, it.name, locationOfChanges, switchedSourceAndTarget) {
+            Action(it.folderId, it.name, locationOfChangesToBeMade, switchedSourceAndTarget) {
                 val sourceFile = File(sourceDir, it.pathAndName())
                 val targetFile = File(targetDir, it.pathAndName())
                 process("add", "$sourceFile -> $targetFile") {
@@ -47,7 +47,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
 
     contentChanged.forEach { (from, to) ->
         // pathAndName() must be equals in 'from' and 'to'
-        actions += Action(to.folderId, to.name, locationOfChanges, switchedSourceAndTarget) {
+        actions += Action(to.folderId, to.name, locationOfChangesToBeMade, switchedSourceAndTarget) {
             val sourceFile = File(sourceDir, to.pathAndName())
             val targetFile = File(targetDir, to.pathAndName())
             process("copy", "$sourceFile -> $targetFile") {
@@ -65,7 +65,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
 
     movedOrRenamed.forEach {
         val (from, to) = it
-        actions += Action(to.folderId, to.name, locationOfChanges, switchedSourceAndTarget) {
+        actions += Action(to.folderId, to.name, locationOfChangesToBeMade, switchedSourceAndTarget) {
             val sourceFile = File(targetDir, from.pathAndName())
             val targetFile = File(targetDir, to.pathAndName())
             val action = if (it.moved && it.renamed) "move+rename" else if (it.moved) "move" else "rename"
@@ -83,7 +83,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
 
     movedAndContentChanged.forEach {
         val (from, to) = it
-        actions += Action(to.folderId, to.name, locationOfChanges, switchedSourceAndTarget) {
+        actions += Action(to.folderId, to.name, locationOfChangesToBeMade, switchedSourceAndTarget) {
             val sourceFile = File(sourceDir, to.pathAndName())
             val targetFromFile = File(targetDir, from.pathAndName())
             val targetToFile = File(targetDir, to.pathAndName())
@@ -103,7 +103,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
 
     deleted.forEach {
         actions += if (it.isFolderMarker) {
-            Action(it.folderId, "", locationOfChanges, switchedSourceAndTarget, 100 - foldersCtx.getDepth(it.folderId)) {
+            Action(it.folderId, "", locationOfChangesToBeMade, switchedSourceAndTarget, 100 - foldersCtx.getDepth(it.folderId)) {
                 val toDelete = File(targetDir, it.path())
                 process("delete dir", "$toDelete") {
                     if (toDelete.delete()) {
@@ -113,7 +113,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 }
             }
         } else {
-            Action(it.folderId, it.name, locationOfChanges, switchedSourceAndTarget) {
+            Action(it.folderId, it.name, locationOfChangesToBeMade, switchedSourceAndTarget) {
                 val toDelete = File(targetDir, it.pathAndName())
                 val backupFile = File(File(targetDir, deletedDir), it.pathAndName())
                 process("delete", "$toDelete") {
@@ -128,7 +128,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
     }
 
     modifiedChanged.forEach { (from, to) ->
-        actions += Action(to.folderId, to.name, locationOfChanges, switchedSourceAndTarget) {
+        actions += Action(to.folderId, to.name, locationOfChangesToBeMade, switchedSourceAndTarget) {
             val sourceFile = File(sourceDir, to.pathAndName())
             val targetFile = File(targetDir, to.pathAndName())
             process("modified attr", "$sourceFile -> $targetFile") {

@@ -11,7 +11,7 @@ enum class Location { SOURCE, TARGET }
 class Action(
     val folderId: Long,
     val filename: String,
-    val locationOfChanges: Location,
+    val locationOfChangesToBeMade: Location,
     val switchedSourceAndTarget: Boolean,
     val priority: Int = 0,
     val action: ActionEnv.() -> Unit,
@@ -50,7 +50,7 @@ class ProcessEnv {
     fun checkIsUnchanged(file: File, attributes: FileEntity) {
         getBasicFileAttributes(file).let {
             if (it.lastModifiedTime().toKotlinInstantIgnoreMillis() != attributes.modified || it.size() != attributes.size) {
-                throw Exception("File has changed since indexing!")
+                throw Exception("File ${file.name} has changed since indexing!")
             }
         }
     }
