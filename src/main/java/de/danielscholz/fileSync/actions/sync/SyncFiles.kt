@@ -76,8 +76,6 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
         val caseSensitiveContext = CaseSensitiveContext(csSource && csTarget)
 
-        val lastSyncResult = readSyncResult(syncResultFile)
-
         val deletedFiles = mutableSetOf<DeletedFileEntity>()
         deletedFiles += readDeletedFiles(deletedFilesFileSource)?.files ?: setOf()
         deletedFiles += readDeletedFiles(deletedFilesFileTarget)?.files ?: setOf()
@@ -97,7 +95,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
         with(MutableFoldersContext(folders)) {
 
-            val lastSyncResultFiles = lastSyncResult?.mapToRead(filter) ?: setOf()
+            val lastSyncResultFiles = readSyncResult(syncResultFile)?.mapToRead(filter) ?: setOf()
             syncResultFiles = lastSyncResultFiles.toMutableSet()
 
             execute(
