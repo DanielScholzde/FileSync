@@ -63,11 +63,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
 
     fun sync() {
-//        guardWithLockFile(File(syncFilesParams.lockfileSourceDir ?: sourceDir, lockfileName)) {
-//            guardWithLockFile(File(syncFilesParams.lockfileTargetDir ?: targetDir, lockfileName)) {
+        guardWithLockFile(File(syncFilesParams.lockfileSourceDir ?: sourceDir, lockfileName)) {
+            guardWithLockFile(File(syncFilesParams.lockfileTargetDir ?: targetDir, lockfileName)) {
                 syncIntern()
-//            }
-//        }
+            }
+        }
     }
 
     private fun syncIntern() {

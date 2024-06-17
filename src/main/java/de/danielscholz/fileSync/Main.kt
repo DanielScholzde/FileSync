@@ -60,30 +60,33 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::verbose, BooleanParam())
         }) {
 
-        val exclFileNamesSimpleLowercase = mutableSetOf<String>()
-        val exclFileNamesRegex = mutableListOf<Regex>()
-        (paramValues.excludedFiles + paramValues.defaultExcludedFiles).forEach { exclFileName ->
-            if (exclFileName.contains("*")) {
-                val escaped = exclFileName
+        val excludedFilenameMatchers = mutableListOf<FilenameMatcher>()
+        (paramValues.excludedFiles + paramValues.defaultExcludedFiles).forEach { excludedFilename ->
+            if (excludedFilename.contains("*")) {
+                val escaped = excludedFilename
                     .replace("(", "\\(")
                     .replace("[", "\\[")
                     .replace(".", "\\.")
                 val pattern = escaped
                     .replace("*", ".*")
                     .replace("?", ".")
-                exclFileNamesRegex += Regex(pattern, RegexOption.IGNORE_CASE)
+                val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+                excludedFilenameMatchers += FilenameMatcher { _, filename ->
+                    regex.matches(filename)
+                }
             } else {
-                exclFileNamesSimpleLowercase += exclFileName.lowercase()
+                excludedFilenameMatchers += FilenameMatcher { _, filename ->
+                    filename.equals(excludedFilename, ignoreCase = true)
+                }
             }
         }
 
-
-        val exclPaths = mutableListOf<PathMatcher>()
-        (paramValues.excludedPaths + paramValues.defaultExcludedPaths).forEach { exclPath ->
-            val exclPathLC = exclPath.lowercase()
-            exclPaths += when {
-                "/" in exclPath && "*" in exclPath -> {
-                    val escaped = exclPath
+        val excludedPathMatchers = mutableListOf<PathMatcher>()
+        (paramValues.excludedPaths + paramValues.defaultExcludedPaths).forEach { excludedPath ->
+            val excludedPathLC = excludedPath.lowercase()
+            excludedPathMatchers += when {
+                "/" in excludedPath && "*" in excludedPath -> {
+                    val escaped = excludedPath
                         .replace("(", "\\(")
                         .replace("[", "\\[")
                         .replace(".", "\\.")
@@ -95,20 +98,20 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
                     if (!pattern.startsWith("//"))
                         pattern = ".*$pattern"
                     val regex = Regex(pattern, RegexOption.IGNORE_CASE)
-                    PathMatcher { path, _ ->
-                        regex.matches("/$path")
+                    PathMatcher { fullPath, _ ->
+                        regex.matches("/$fullPath")
                     }
                 }
-                "/" in exclPathLC -> {
-                    PathMatcher { path, _ ->
-                        if (exclPathLC.startsWith("//"))
-                            exclPathLC in "/$path".lowercase()
+                "/" in excludedPath -> {
+                    PathMatcher { fullPath, _ ->
+                        if (excludedPathLC.startsWith("//"))
+                            excludedPathLC in "/$fullPath".lowercase()
                         else
-                            exclPathLC in path.lowercase()
+                            excludedPathLC in fullPath.lowercase()
                     }
                 }
-                "*" in exclPath -> {
-                    val escaped = exclPath
+                "*" in excludedPath -> {
+                    val escaped = excludedPath
                         .replace("(", "\\(")
                         .replace("[", "\\[")
                         .replace(".", "\\.")
@@ -122,7 +125,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
                 }
                 else -> {
                     PathMatcher { _, folderName ->
-                        folderName.lowercase() == exclPathLC
+                        folderName.equals(excludedPath, ignoreCase = true)
                     }
                 }
             }
@@ -130,13 +133,11 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
         }
 
         val folderFilter = FolderFilter { fullPath, folderName ->
-            if (exclPaths.any { exclPath -> exclPath.matches(fullPath, folderName) }) ExcludedBy.USER else null
+            if (excludedPathMatchers.any { it.matches(fullPath, folderName) }) ExcludedBy.USER else null
         }
 
-        val fileFilter = FileFilter { _, fileName ->
-            if (fileName.lowercase() in exclFileNamesSimpleLowercase ||
-                exclFileNamesRegex.any { exclFile -> exclFile.matches(fileName) }
-            ) ExcludedBy.USER else null
+        val fileFilter = FileFilter { path, fileName ->
+            if (excludedFilenameMatchers.any { it.matches(path, fileName) }) ExcludedBy.USER else null
         }
 
         val filter = Filter(folderFilter, fileFilter)
@@ -186,8 +187,12 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
 }
 
 
+private fun interface FilenameMatcher {
+    fun matches(path: String, filename: String): Boolean
+}
+
 private fun interface PathMatcher {
-    fun matches(path: String, folderName: String): Boolean
+    fun matches(fullPath: String, folderName: String): Boolean
 }
 
 private fun demandedHelp(args: Array<String>, parser: ArgParser<GlobalParams>): Boolean {
