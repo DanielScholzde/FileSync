@@ -8,17 +8,23 @@ import kotlinx.datetime.toKotlinInstant
 import java.io.File
 
 
-class CurrentFilesResult(
-    val files: List<FileEntity>,
-    val folderRenamed: Map</* from folderId */ Long, /* to folderId */ Long>,
-    val folderPathRenamed: Map</* from folderId */ Long, /* to folderId */ Long>,
-)
+interface CurrentFiles {
+    val files: Set<FileEntity>
+    val folderRenamed: Map</* from folderId */ Long, /* to folderId */ Long>
+    val folderPathRenamed: Map</* from folderId */ Long, /* to folderId */ Long>
+}
+
+class MutableCurrentFiles(
+    override val files: MutableSet<FileEntity>,
+    override val folderRenamed: Map</* from folderId */ Long, /* to folderId */ Long>,
+    override val folderPathRenamed: Map</* from folderId */ Long, /* to folderId */ Long>,
+) : CurrentFiles
 
 
 context(MutableFoldersContext, MutableStatisticsContext)
-fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity>): CurrentFilesResult {
+fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>): MutableCurrentFiles {
 
-    val files = mutableListOf<FileEntity>()
+    val files = mutableSetOf<FileEntity>()
     val folderRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
     val folderPathRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
 
@@ -108,5 +114,5 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: List<FileEntity
 
     process(readDir(dir), foldersCtx.rootFolderId)
 
-    return CurrentFilesResult(files, folderRenamed, folderPathRenamed)
+    return MutableCurrentFiles(files, folderRenamed, folderPathRenamed)
 }

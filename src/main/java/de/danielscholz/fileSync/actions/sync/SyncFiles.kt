@@ -79,11 +79,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         val lastSyncResult = readSyncResult(syncResultFile)
 
         val deletedFiles = mutableSetOf<DeletedFileEntity>()
-        deletedFiles += readDeletedFiles(deletedFilesFileSource)?.files ?: listOf()
-        deletedFiles += readDeletedFiles(deletedFilesFileTarget)?.files ?: listOf()
+        deletedFiles += readDeletedFiles(deletedFilesFileSource)?.files ?: setOf()
+        deletedFiles += readDeletedFiles(deletedFilesFileTarget)?.files ?: setOf()
 
-        val currentFilesSource: CurrentFilesResult
-        val currentFilesTarget: CurrentFilesResult
+        val currentFilesSource: MutableCurrentFiles
+        val currentFilesTarget: MutableCurrentFiles
 
         val sourceChanges: MutableChanges
         val targetChanges: MutableChanges
@@ -97,13 +97,12 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
         with(MutableFoldersContext(folders)) {
 
-            val lastSyncResultFiles = lastSyncResult?.mapToRead(filter) ?: listOf()
+            val lastSyncResultFiles = lastSyncResult?.mapToRead(filter) ?: setOf()
             syncResultFiles = lastSyncResultFiles.toMutableSet()
-            if (lastSyncResultFiles.size != syncResultFiles.size) throw Exception()
 
             execute(
                 {
-                    val lastIndexedFilesSource = readIndexedFiles(indexedFilesFileSource)?.mapToRead(filter) ?: listOf()
+                    val lastIndexedFilesSource = readIndexedFiles(indexedFilesFileSource)?.mapToRead(filter) ?: setOf()
                     with(MutableStatisticsContext(sourceStatistics)) {
                         currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesSource)
                     }
@@ -112,7 +111,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                     sourceChanges = getChanges(sourceDir, lastSyncResultFiles, currentFilesSource)
                 },
                 {
-                    val lastIndexedFilesTarget = readIndexedFiles(indexedFilesFileTarget)?.mapToRead(filter) ?: listOf()
+                    val lastIndexedFilesTarget = readIndexedFiles(indexedFilesFileTarget)?.mapToRead(filter) ?: setOf()
                     with(MutableStatisticsContext(targetStatistics)) {
                         currentFilesTarget = getCurrentFiles(targetDir, filter, lastIndexedFilesTarget)
                     }
@@ -161,21 +160,26 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                     return
                 }
 
-                val actions = createActions(sourceDir, targetDir, sourceChanges, targetChanges, changedDir, deletedDir)
-                    .sortedWith(
-                        compareBy(
-                            { it.priority },
-                            { foldersCtx.getFullPath(it.folderId).lowercase() },
-                            { foldersCtx.getFullPath(it.folderId) },
-                            { it.filename.lowercase() },
-                            { it.filename },
-                        )
+                val actions = createActions(
+                    sourceDir = sourceDir,
+                    targetDir = targetDir,
+                    sourceChanges = sourceChanges,
+                    targetChanges = targetChanges,
+                    changedDir = changedDir,
+                    deletedDir = deletedDir
+                ).sortedWith(
+                    compareBy(
+                        { it.locationOfChanges },
+                        { it.priority },
+                        { foldersCtx.getFullPath(it.folderId).lowercase() },
+                        { foldersCtx.getFullPath(it.folderId) },
+                        { it.filename.lowercase() },
+                        { it.filename },
                     )
-
-                val actionEnv = ActionEnv(syncResultFiles, failures, syncFilesParams.dryRun)
+                )
 
                 actions.forEach {
-                    it.action(actionEnv)
+                    it.action(ActionEnv(syncResultFiles, if (it.locationOfChanges == Location.TARGET) currentFilesTarget else currentFilesSource, failures, syncFilesParams.dryRun))
                     testIfCancel()
                 }
 
@@ -191,14 +195,21 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             backup(sourceDir, syncResultFile)
 
             with(FoldersContext(folders)) {
+
                 syncResultFiles.saveSyncResultTo(syncResultFile, failures)
+
+                if (hasChanges) {
+                    currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource)
+                    currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget)
+                }
             }
+
 
             if (deletedFiles.isNotEmpty()) {
                 backup(sourceDir, deletedFilesFileSource)
                 backup(targetDir, deletedFilesFileTarget)
 
-                saveDeletedFiles(deletedFilesFileSource, DeletedFilesEntity(deletedFiles.toList()))
+                saveDeletedFiles(deletedFilesFileSource, DeletedFilesEntity(deletedFiles))
                 Files.copy(deletedFilesFileSource.toPath(), deletedFilesFileTarget.toPath(), COPY_ATTRIBUTES)
             }
         }
@@ -212,7 +223,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
     )
 
     context(FoldersContext)
-    private fun getDuplicateFiles(currentFilesSource: CurrentFilesResult): DuplFilesResult {
+    private fun getDuplicateFiles(currentFilesSource: MutableCurrentFiles): DuplFilesResult {
         val map = mutableListMultimapOf<String, FileEntity>()
         currentFilesSource.files.forEach { file ->
             file.hash?.hash?.let {
@@ -243,19 +254,19 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
     }
 
     context(FoldersContext)
-    private fun Collection<FileEntity>.saveIndexedFilesTo(file: File) {
+    private fun Set<FileEntity>.saveIndexedFilesTo(file: File) {
         saveIndexedFiles(
             file,
             IndexedFilesEntity(
                 runDate = now.toKotlinLocalDateTime(),
-                files = this.toList(),
+                files = this,
                 rootFolder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
             )
         )
     }
 
     context(FoldersContext)
-    private fun Collection<FileEntity>.saveSyncResultTo(file: File, failures: List<String>) {
+    private fun Set<FileEntity>.saveSyncResultTo(file: File, failures: List<String>) {
         saveSyncResult(
             file,
             SyncResultEntity(
@@ -263,14 +274,14 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 targetPath = targetDir.canonicalPath,
                 runDate = now.toKotlinLocalDateTime(),
                 failuresOccurred = failures,
-                files = this.toList(),
+                files = this,
                 rootFolder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
             )
         )
     }
 
     context(MutableFoldersContext)
-    private fun FilesAndFolder.mapToRead(filter: Filter): List<FileEntity> {
+    private fun FilesAndFolder.mapToRead(filter: Filter): Set<FileEntity> {
         val mapping = mutableMapOf<Long, Long>()
         mapping[foldersCtx.rootFolderId] = foldersCtx.rootFolderId
 
@@ -298,7 +309,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             mapping[file.folderId]?.let { folderId ->
                 if (file.folderId != folderId) file.copy(folderId = folderId) else file
             }
-        }
+        }.toSet()
     }
 
 }

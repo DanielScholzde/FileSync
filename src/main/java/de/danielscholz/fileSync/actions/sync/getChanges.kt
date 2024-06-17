@@ -8,16 +8,14 @@ import de.danielscholz.fileSync.persistence.isFolderMarker
 import java.io.File
 
 
-fun getChanges(dir: File, lastSyncResultFiles: List<FileEntity>, currentFilesResult: CurrentFilesResult): MutableChanges {
+fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResult: CurrentFiles): MutableChanges {
 
     val currentFiles = currentFilesResult.files
 
-    @Suppress("ConvertArgumentToSet")
     val added = equalsBy(pathAndName) {
         (currentFiles - lastSyncResultFiles).toMutableSet()
     }
 
-    @Suppress("ConvertArgumentToSet")
     val deleted = equalsBy(pathAndName) {
         (lastSyncResultFiles - currentFiles).toMutableSet()
     }

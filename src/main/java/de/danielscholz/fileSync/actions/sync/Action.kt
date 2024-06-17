@@ -6,15 +6,19 @@ import de.danielscholz.fileSync.persistence.FileEntity
 import java.io.File
 
 
+enum class Location { SOURCE, TARGET }
+
 class Action(
     val folderId: Long,
     val filename: String,
+    val locationOfChanges: Location,
     val priority: Int = 0,
     val action: ActionEnv.() -> Unit,
 )
 
 class ActionEnv(
     val syncResultFiles: MutableSet<FileEntity>,
+    val currentFilesTarget: MutableCurrentFiles, // may be currentFilesSource, if locationOfChanges == SOURCE
     private val failures: MutableList<String>,
     private val dryRun: Boolean
 ) {
@@ -35,7 +39,9 @@ class ActionEnv(
     }
 }
 
+
 class ProcessEnv {
+
     fun checkIsUnchanged(file: File, attributes: FileEntity) {
         getBasicFileAttributes(file).let {
             if (it.lastModifiedTime().toKotlinInstantIgnoreMillis() != attributes.modified || it.size() != attributes.size) {
@@ -43,4 +49,5 @@ class ProcessEnv {
             }
         }
     }
+
 }

@@ -9,8 +9,8 @@ context(FoldersContext, CaseSensitiveContext)
 fun checkAndFix(
     sourceChanges: MutableChanges,
     targetChanges: MutableChanges,
-    currentFilesSource: CurrentFilesResult,
-    currentFilesTarget: CurrentFilesResult,
+    currentFilesSource: MutableCurrentFiles,
+    currentFilesTarget: MutableCurrentFiles,
     syncResultFiles: MutableSet<FileEntity>
 ): Boolean {
 
@@ -77,8 +77,7 @@ fun checkAndFix(
     }
 
 
-    @Suppress("ConvertArgumentToSet")
-    fun directionalChecks(changed1: MutableChanges, changed2: MutableChanges, currentFiles2: List<FileEntity>) {
+    fun directionalChecks(changed1: MutableChanges, changed2: MutableChanges, currentFiles2: Set<FileEntity>) {
         equalsBy(pathAndName) {
             (changed1.added intersect currentFiles2)
                 .filter(HASH_NEQ or MODIFIED_NEQ)

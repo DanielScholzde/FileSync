@@ -15,8 +15,8 @@ fun furtherChecks(
     targetDir: File,
     sourceChanges: Changes,
     targetChanges: Changes,
-    currentFilesSource: CurrentFilesResult,
-    currentFilesTarget: CurrentFilesResult,
+    currentFilesSource: MutableCurrentFiles,
+    currentFilesTarget: MutableCurrentFiles,
     syncFilesParams: SyncFilesParams
 ): Boolean {
     println()
@@ -34,7 +34,7 @@ fun furtherChecks(
 class FurtherChecks(
     private val dir: File,
     private val changes: Changes,
-    private val currentFiles: List<FileEntity>,
+    private val currentFiles: Set<FileEntity>,
     private val syncFilesParams: SyncFilesParams
 ) {
 
