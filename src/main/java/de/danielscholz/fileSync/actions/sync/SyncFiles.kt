@@ -163,12 +163,12 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 val actions = createActions(sourceChanges, targetChanges)
                     .sortedWith(
                         compareBy(
-                            { it.locationOfChanges },
+                            { it.locationOfChanges }, // first: all changes within sourceDir
                             { it.priority },
                             { foldersCtx.getFullPath(it.folderId).lowercase() },
-                            { foldersCtx.getFullPath(it.folderId) },
+                            { foldersCtx.getFullPath(it.folderId) }, // needed to get a stable sort
                             { it.filename.lowercase() },
-                            { it.filename },
+                            { it.filename }, // needed to get a stable sort
                         )
                     )
 
