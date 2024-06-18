@@ -15,11 +15,11 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
 
     val currentFiles = currentFilesResult.files
 
-    val added = equalsBy(pathAndName) {
+    val added = equalsForFileBy(pathAndName) {
         (currentFiles - lastSyncResultFiles).toMutableSet()
     }
 
-    val deleted = equalsBy(pathAndName) {
+    val deleted = equalsForFileBy(pathAndName) {
         (lastSyncResultFiles - currentFiles).toMutableSet()
     }
 
@@ -93,7 +93,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
 
 
     // file renamed
-    equalsBy(PATH + HASH + MODIFIED, true) {
+    equalsForFileBy(PATH + HASH + MODIFIED, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .map { MovedOrRenamed(it.left, it.right) }
@@ -105,7 +105,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
     }
 
     // file moved to other folder
-    equalsBy(FILENAME + HASH + MODIFIED, true) {
+    equalsForFileBy(FILENAME + HASH + MODIFIED, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .map { MovedOrRenamed(it.left, it.right) }
@@ -117,7 +117,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
     }
 
     // file renamed and moved to other folder
-    equalsBy(HASH + MODIFIED, true) {
+    equalsForFileBy(HASH + MODIFIED, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .map { MovedOrRenamed(it.left, it.right) }
@@ -129,7 +129,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
     }
 
     // special case: file moved to other folder and file content changed (but filename still the same)
-    equalsBy(FILENAME, true) {
+    equalsForFileBy(FILENAME, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .filter(HASH_NEQ)
@@ -141,7 +141,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
             }
     }
 
-    val contentChanged = equalsBy(pathAndName) {
+    val contentChanged = equalsForFileBy(pathAndName) {
         (lastSyncResultFiles intersect currentFiles)
             .filter(HASH_NEQ)
             .map { ContentChanged(it.left, it.right) }
@@ -149,7 +149,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
     }
 
     // attribute 'modification date' changed, but content is still the same
-    val modifiedChanged = equalsBy(pathAndName) {
+    val modifiedChanged = equalsForFileBy(pathAndName) {
         (lastSyncResultFiles intersect currentFiles)
             .filter(HASH_EQ and MODIFIED_NEQ)
             .map { ModifiedChanged(it.left, it.right) }

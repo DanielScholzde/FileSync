@@ -29,7 +29,7 @@ fun checkAndFix(
     }
 
     // fix scenario: same added/changed files in both locations
-    equalsBy(pathAndName) {
+    equalsForFileBy(pathAndName) {
         sourceChanges.added + sourceChanges.contentChanged.to() intersect targetChanges.added + targetChanges.contentChanged.to()
     }
         .filter(HASH_EQ)
@@ -54,7 +54,7 @@ fun checkAndFix(
         }
 
     // fix scenario: same deleted files in both locations
-    equalsBy(pathAndName) {
+    equalsForFileBy(pathAndName) {
         sourceChanges.deleted intersect targetChanges.deleted
     }
         .forEach { (source, target) ->
@@ -64,24 +64,29 @@ fun checkAndFix(
         }
 
     // fix scenario: same moved files in both locations
-    equalsByTo(pathAndName) {
+    equalsForFileChangeToBy(pathAndName) { // only considers 'to' values
         sourceChanges.movedOrRenamed intersect targetChanges.movedOrRenamed
     }
         .forEach { (sourceChange, targetChange) ->
-            equalsBy(MatchMode.PATH + MatchMode.FILENAME + MatchMode.HASH + MatchMode.MODIFIED) {
+            equalsForFileBy(MatchMode.PATH + MatchMode.FILENAME + MatchMode.HASH + MatchMode.MODIFIED) {
                 if (sourceChange.from eq targetChange.from &&
                     sourceChange.to eq targetChange.to
                 ) {
-                    // here: sourceChange must be identical to targetChange! (except for folderId, which can be different because of upper/lower case changes)
-                    syncResultFiles.remove(sourceChange.from) || syncResultFiles.remove(targetChange.from) || throw IllegalStateException()
-                    syncResultFiles.addWithCheck(sourceChange.to)
+                    // here: sourceChange must be identical to targetChange! (except for folderId, which can be different in upper/lower case)
+                    if (syncResultFiles.remove(sourceChange.from)) {
+                        syncResultFiles.addWithCheck(sourceChange.to)
+                    } else if (syncResultFiles.remove(targetChange.from)) {
+                        syncResultFiles.addWithCheck(targetChange.to)
+                    } else {
+                        throw IllegalStateException()
+                    }
                     sourceChanges.movedOrRenamed.removeWithCheck(sourceChange)
                     targetChanges.movedOrRenamed.removeWithCheck(targetChange)
                 }
             }
         }
 
-    equalsBy(pathAndName) {
+    equalsForFileBy(pathAndName) {
         sourceChanges.contentChanged.to() intersect targetChanges.contentChanged.to()
     }
         .filter(HASH_NEQ)
@@ -89,7 +94,7 @@ fun checkAndFix(
             "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
         }
 
-    equalsBy(pathAndName) {
+    equalsForFileBy(pathAndName) {
         sourceChanges.modifiedChanged.to() intersect targetChanges.modifiedChanged.to()
     }
         .filter(MODIFIED_NEQ)
@@ -99,7 +104,7 @@ fun checkAndFix(
 
 
     fun directionalChecks(sourceChanges: MutableChanges, targetChanges: MutableChanges, currentFilesTarget: Set<FileEntity>) {
-        equalsBy(pathAndName) {
+        equalsForFileBy(pathAndName) {
             (sourceChanges.added intersect currentFilesTarget)
                 .filter(HASH_NEQ or MODIFIED_NEQ)
                 .ifNotEmptyCreateConflicts("already exists within target dir (and has different content or modification date)") {

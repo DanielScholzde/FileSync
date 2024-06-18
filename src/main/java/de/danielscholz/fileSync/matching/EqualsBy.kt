@@ -3,6 +3,13 @@ package de.danielscholz.fileSync.matching
 import de.danielscholz.fileSync.common.mutableListMultimapOf
 
 
+fun <T : Any, R> equalsBy(equalsAndHashcodeSupplier: EqualsAndHashCodeSupplier<T>, ignoreDuplicatesOnIntersect: Boolean = false, block: EqualsBy<T>.() -> R): R {
+
+    val equalsBy = EqualsBy(ignoreDuplicatesOnIntersect, equalsAndHashcodeSupplier)
+
+    return equalsBy.block()
+}
+
 class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, private val equalsAndHashcodeSupplier: EqualsAndHashCodeSupplier<T>) {
 
     infix fun T.eq(other: T): Boolean {
