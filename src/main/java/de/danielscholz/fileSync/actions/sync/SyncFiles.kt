@@ -150,14 +150,17 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 val duplicateFilesSource = getDuplicateFiles(currentFilesSource)
                 val duplicateFilesTarget = getDuplicateFiles(currentFilesTarget)
 
-                println("Duplicates (source): ${duplicateFilesSource.let { it.sumOfDuplFileSizes.formatAsFileSize() + " (${it.totalDuplFiles} files, ${(it.sumOfDuplFileSizes - it.nettoSpaceNeeded).formatAsFileSize()} could be released)" }}")
-                duplicateFilesSource.foldersWithDuplFiles.take(10).forEach {
-                    println(sourceDir.toString() + it.first + " " + it.second.formatAsFileSize())
+                if (duplicateFilesSource.sumOfDuplFileSizes > 0) {
+                    println("Duplicates (source): ${duplicateFilesSource.let { it.sumOfDuplFileSizes.formatAsFileSize() + " (${it.totalDuplFiles} files, ${(it.sumOfDuplFileSizes - it.nettoSpaceNeeded).formatAsFileSize()} could be released)" }}")
+                    duplicateFilesSource.foldersWithDuplFiles.take(10).forEach {
+                        println(sourceDir.toString() + it.first + " " + it.second.formatAsFileSize())
+                    }
                 }
-
-                println("Duplicates (target): ${duplicateFilesTarget.let { it.sumOfDuplFileSizes.formatAsFileSize() + " (${it.totalDuplFiles} files, ${(it.sumOfDuplFileSizes - it.nettoSpaceNeeded).formatAsFileSize()} could be released)" }}")
-                duplicateFilesTarget.foldersWithDuplFiles.take(10).forEach {
-                    println(targetDir.toString() + it.first + " " + it.second.formatAsFileSize())
+                if (duplicateFilesTarget.sumOfDuplFileSizes > 0) {
+                    println("Duplicates (target): ${duplicateFilesTarget.let { it.sumOfDuplFileSizes.formatAsFileSize() + " (${it.totalDuplFiles} files, ${(it.sumOfDuplFileSizes - it.nettoSpaceNeeded).formatAsFileSize()} could be released)" }}")
+                    duplicateFilesTarget.foldersWithDuplFiles.take(10).forEach {
+                        println(targetDir.toString() + it.first + " " + it.second.formatAsFileSize())
+                    }
                 }
 
                 if (!checkAndFix(sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFiles)) {
