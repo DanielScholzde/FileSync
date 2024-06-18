@@ -4,8 +4,8 @@ import de.danielscholz.fileSync.SyncFilesParams
 
 
 fun getFilter(paramValues: SyncFilesParams): Filter {
-    val excludedFilenameMatchers = mutableListOf<FilenameMatcher>()
-    (paramValues.excludedFiles + paramValues.defaultExcludedFiles).forEach { excludedFilename ->
+
+    val excludedFilenameMatchers = (paramValues.excludedFiles + paramValues.defaultExcludedFiles).map { excludedFilename ->
         if (excludedFilename.contains("*")) {
             val escaped = excludedFilename
                 .replace("(", "\\(")
@@ -15,20 +15,19 @@ fun getFilter(paramValues: SyncFilesParams): Filter {
                 .replace("*", ".*")
                 .replace("?", ".")
             val regex = Regex(pattern, RegexOption.IGNORE_CASE)
-            excludedFilenameMatchers += FilenameMatcher { _, filename ->
+            FilenameMatcher { _, filename ->
                 regex.matches(filename)
             }
         } else {
-            excludedFilenameMatchers += FilenameMatcher { _, filename ->
+            FilenameMatcher { _, filename ->
                 filename.equals(excludedFilename, ignoreCase = true)
             }
         }
     }
 
-    val excludedPathMatchers = mutableListOf<PathMatcher>()
-    (paramValues.excludedPaths + paramValues.defaultExcludedPaths).forEach { excludedPath ->
+    val excludedPathMatchers = (paramValues.excludedPaths + paramValues.defaultExcludedPaths).map { excludedPath ->
         val excludedPathLC = excludedPath.lowercase()
-        excludedPathMatchers += when {
+        when {
             "/" in excludedPath && "*" in excludedPath -> {
                 val escaped = excludedPath
                     .replace("(", "\\(")
