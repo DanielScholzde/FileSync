@@ -36,7 +36,10 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
 
         val filesMovedFromDifferentFolderId = myLazy {
             filteredFiles
-                .mapNotNull { file -> lastIndexedFilesAsMultiMap2[Triple(file.name, file.size, file.modified)].let { if (it.size == 1) it.first().folderId else null } }
+                .mapNotNull { file ->
+                    val found = lastIndexedFilesAsMultiMap2[Triple(file.name, file.size, file.modified)]
+                    if (found.size == 1) found.first().folderId else null
+                }
                 .groupingBy { it } // group by folderId
                 .eachCount()
                 .maxByOrNull { it.value }
