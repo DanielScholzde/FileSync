@@ -5,6 +5,7 @@ import kotlinx.datetime.Instant
 
 
 interface Changes {
+    //val folderRenamed: List<Pair<Long, Long>>
     val added: Set<FileEntity>
     val deleted: Set<FileEntity>
     val contentChanged: Set<ContentChanged>
@@ -15,6 +16,7 @@ interface Changes {
 }
 
 class MutableChanges(
+    //override val folderRenamed: MutableList<Pair<Long, Long>>,
     override val added: MutableSet<FileEntity>,
     override val deleted: MutableSet<FileEntity>,
     override val contentChanged: MutableSet<ContentChanged>,
@@ -23,7 +25,7 @@ class MutableChanges(
     override val modifiedChanged: Set<ModifiedChanged>,
 ) : Changes {
     init {
-        // all sets/collections must be disjoint
+        // all sets/collections must be disjoint (except folderRenamed):
         val allAsSet: Set<FileEntity> = added +
                 deleted +
                 contentChanged.to() +
@@ -49,6 +51,7 @@ class MutableChanges(
             movedAndContentChanged.isNotEmpty() ||
             movedOrRenamed.isNotEmpty() ||
             modifiedChanged.isNotEmpty()
+    //folderRenamed.isNotEmpty()
 }
 
 

@@ -134,12 +134,12 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             println("Hash reused (targetDir): ${100 - 100 * targetStatistics.hashCalculated / targetStatistics.files}%")
         }
 
-        currentFilesSource.folderRenamed.forEach {
-            println("Folder renamed (source): ${folders.get(it.key)} -> ${folders.get(it.value)}")
-        }
-        currentFilesTarget.folderRenamed.forEach {
-            println("Folder renamed (target): ${folders.get(it.key)} -> ${folders.get(it.value)}")
-        }
+//        currentFilesSource.folderRenamed.forEach {
+//            println("Folder renamed (source): ${folders.get(it.key)} -> ${folders.get(it.value)}")
+//        }
+//        currentFilesTarget.folderRenamed.forEach {
+//            println("Folder renamed (target): ${folders.get(it.key)} -> ${folders.get(it.value)}")
+//        }
 
         val failures = mutableListOf<String>()
         val hasChanges: Boolean

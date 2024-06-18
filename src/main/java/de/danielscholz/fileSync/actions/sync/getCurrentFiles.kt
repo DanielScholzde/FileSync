@@ -10,14 +10,10 @@ import java.io.File
 
 interface CurrentFiles {
     val files: Set<FileEntity>
-    val folderRenamed: Map</* from folderId */ Long, /* to folderId */ Long>
-    val folderPathRenamed: Map</* from folderId */ Long, /* to folderId */ Long>
 }
 
 class MutableCurrentFiles(
     override val files: MutableSet<FileEntity>,
-    override val folderRenamed: Map</* from folderId */ Long, /* to folderId */ Long>,
-    override val folderPathRenamed: Map</* from folderId */ Long, /* to folderId */ Long>,
 ) : CurrentFiles
 
 
@@ -29,7 +25,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
     val folderPathRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
 
     val lastIndexedFilesAsMap1 = lastIndexedFiles.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
-    val lastIndexedFilesAsMap2 by myLazy { lastIndexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
+    val lastIndexedFilesAsMultiMap2 by myLazy { lastIndexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
 
     fun process(folderResult: FolderResult, folderId: Long) {
 
@@ -40,13 +36,11 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
 
         val filesMovedFromDifferentFolderId = myLazy {
             filteredFiles
-                .mapNotNull { file -> lastIndexedFilesAsMap2[Triple(file.name, file.size, file.modified)].let { if (it.size == 1) it.first().folderId else null } }
-                .groupingBy { it }
+                .mapNotNull { file -> lastIndexedFilesAsMultiMap2[Triple(file.name, file.size, file.modified)].let { if (it.size == 1) it.first().folderId else null } }
+                .groupingBy { it } // group by folderId
                 .eachCount()
-                .entries
                 .maxByOrNull { it.value }
-                ?.let {
-                    val (differentFolderId, numberOfFiles) = it
+                ?.let { (differentFolderId, numberOfFiles) ->
                     // if >= 66 percent of filteredFiles has the same new folderId
                     if (100 * numberOfFiles / filteredFiles.size >= 66) differentFolderId else null
                 }
@@ -54,14 +48,18 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
 
         filteredFiles.forEach { file ->
 
-            val hash = lastIndexedFilesAsMap1[Quad(folderId, file.name, file.size, file.modified)]?.hash
-                ?: lastIndexedFilesAsMap2[Triple(file.name, file.size, file.modified)]
-                    .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
-                    ?.hash
-                ?: file.hash.value?.let {
-                    statisticsCtx.hashCalculated++
-                    FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
-                }
+            val hash =
+                // simple case, file in same location and with same size and modification date:
+                lastIndexedFilesAsMap1[Quad(folderId, file.name, file.size, file.modified)]?.hash
+                // same, but folder renamed:
+                    ?: lastIndexedFilesAsMultiMap2[Triple(file.name, file.size, file.modified)]
+                        .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
+                        ?.hash
+                    // in all other cases: calculate hash
+                    ?: file.hash.value?.let {
+                        statisticsCtx.hashCalculated++
+                        FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
+                    }
 
             files += FileEntity(
                 hash = hash,
@@ -121,5 +119,5 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
 
     process(readDir(dir), foldersCtx.rootFolderId)
 
-    return MutableCurrentFiles(files, folderRenamed, folderPathRenamed)
+    return MutableCurrentFiles(files)
 }

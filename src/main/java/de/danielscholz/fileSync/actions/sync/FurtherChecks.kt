@@ -65,6 +65,9 @@ class FurtherChecks(
                 list += Triple("  $str: ", str2.toString(), str3?.toString()?.let { " $it" })
             }
 
+//            if (changes.folderRenamed.isNotEmpty()) {
+//                p("Folder to rename", changes.folderRenamed.size)
+//            }
             if (addedFiles.isNotEmpty()) {
                 p("Files to add", addedFiles.size, "(${addedFiles.fileSize().formatAsFileSize()})")
             }
@@ -81,7 +84,10 @@ class FurtherChecks(
                 p("Files to move", changes.movedOrRenamed.filter { !it.renamed && it.moved }.size)
             }
             if (changes.movedOrRenamed.any { it.renamed && it.moved }) {
-                p("Files to rename+move", changes.movedOrRenamed.filter { it.renamed && it.moved }.size)
+                p("Files to rename + move", changes.movedOrRenamed.filter { it.renamed && it.moved }.size)
+            }
+            if (changes.movedAndContentChanged.isNotEmpty()) {
+                p("Files to move + update content", changes.movedAndContentChanged.size)
             }
             if (deletedFiles.isNotEmpty()) {
                 p("Files to delete", deletedFiles.size)
@@ -104,7 +110,7 @@ class FurtherChecks(
             println()
         } else {
             println(dir.toString())
-            println("  no changes to apply")
+            println("  --  (no changes to apply)")
             println()
         }
     }

@@ -21,6 +21,21 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
 
     val actions = mutableListOf<Action>()
 
+//    folderRenamed.forEach {(oldFolderId, currentFolderId) ->
+//        actions += Action(currentFolderId, "", locationOfChangesToBeMade, switchedSourceAndTarget, -2) {
+//            val from = File(targetDir, foldersCtx.getFullPath(oldFolderId))
+//            val to = File(targetDir, foldersCtx.getFullPath(currentFolderId))
+//            process("rename dir", "$from -> $to") {
+//                Files.move(from.toPath(),to.toPath())
+////                if () {
+////                    throw Exception("folder rename failed $from -> $to")
+////                }
+////                syncResultFiles.addWithCheck(it)
+////                currentFilesTarget.addWithCheck(it)
+//            }
+//        }
+//    }
+
     added.forEach {
         actions += if (it.isFolderMarker) {
             Action(it.folderId, "", locationOfChangesToBeMade, switchedSourceAndTarget, -1) {
@@ -71,8 +86,16 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
             val action = if (it.moved && it.renamed) "move+rename" else if (it.moved) "move" else "rename"
             process(action, "$sourceFile -> $targetFile") {
                 checkIsUnchanged(sourceFile, to)
-                targetFile.parentFile.mkdirs()
-                Files.move(sourceFile.toPath(), targetFile.toPath())
+                // special case: change in lower/upper case only
+                if (it.renamed && !it.moved && from.name != to.name && from.nameLowercase == to.nameLowercase) {
+                    val tmpFile = targetFile.resolveSibling(targetFile.name + "__tmp")
+                    if (!tmpFile.exists()) {
+                        Files.move(sourceFile.toPath(), tmpFile.toPath())
+                        Files.move(tmpFile.toPath(), targetFile.toPath())
+                    } else throw Exception("tmp file already exists!")
+                } else {
+                    Files.move(sourceFile.toPath(), targetFile.toPath())
+                }
                 syncResultFiles.removeWithCheck(from)
                 syncResultFiles.addWithCheck(to)
                 currentFilesTarget.removeWithCheck(from)
@@ -87,7 +110,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
             val sourceFile = File(sourceDir, to.pathAndName())
             val targetFromFile = File(targetDir, from.pathAndName())
             val targetToFile = File(targetDir, to.pathAndName())
-            process("move+copy", "$sourceFile -> $targetToFile") {
+            process("copy", "$sourceFile -> $targetToFile") {
                 checkIsUnchanged(sourceFile, to)
                 val backupFile = File(File(targetDir, changedDir), from.pathAndName())
                 backupFile.parentFile.mkdirs()

@@ -25,9 +25,77 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
 
     val movedOrRenamed = mutableSetOf<MovedOrRenamed>()
     val movedAndContentChanged = mutableSetOf<MovedAndContentChanged>()
+    //val folderRenamed = mutableListOf<Pair<Long, Long>>()
 
+//    equalsBy(FILENAME + HASH + MODIFIED, true) {
+//
+//        data class FolderRenamed(val oldFolderId: Long, val currentFolderId: Long, val fileCount: Int)
+//
+//        val intersectResults = deleted intersect added
+//
+//        val folderRenamedCandidates = intersectResults
+//            .map { it.left.folderId to it.right.folderId }
+//            .groupBy { it.second } // group by current/new folderId
+//            .map { it.key to it.value.map { it.first } }
+//            .map { (currentFolderId, oldFolderIds) ->
+//                val (oldFolderId, count) = oldFolderIds
+//                    .groupingBy { it }
+//                    .eachCount()
+//                    .maxBy { it.value }
+//
+//                FolderRenamed(oldFolderId, currentFolderId, count)
+//            }
+//
+//        if (folderRenamedCandidates.isNotEmpty()) {
+//            val lastSyncFolderIds = lastSyncResultFiles.filter { it.isFolderMarker }.map { it.folderId }.toSet()
+//            val currentFolderIds = currentFiles.filter { it.isFolderMarker }.map { it.folderId }.toSet()
+//
+//            folderRenamedCandidates
+//                // old folder must not exist any longer AND 'new folder' must not exist within folders of last sync
+//                .filter { it.oldFolderId !in currentFolderIds && it.currentFolderId !in lastSyncFolderIds }
+//                .filter { (_, newFolderId, countMoved) ->
+//                    // count current files within current/new folder (-1 because of virtual folder marker file)
+//                    val totalFilesWithinCurrentFolder = currentFiles.count { it.folderId == newFolderId } - 1
+//                    countMoved * 100 / totalFilesWithinCurrentFolder >= 66
+//                }
+//                .filter {
+//                    // only consider the 'root' change
+//                    foldersCtx.get(it.oldFolderId).parentFolderId == foldersCtx.get(it.currentFolderId).parentFolderId
+//                }
+//                .forEach { (oldFolderId, currentFolderId) ->
+//                    println("Folder renamed : ${foldersCtx.getFullPath(oldFolderId)} --> ${foldersCtx.getFullPath(currentFolderId)}")
+//                    folderRenamed.add(oldFolderId to currentFolderId)
+//
+//                    fun make(oldFolderId: Long, currentFolderId: Long) {
+//                        intersectResults.forEach { (deletedFile, addedFile) ->
+//                            if (deletedFile.folderId == oldFolderId && addedFile.folderId == currentFolderId) {
+//                                deleted.removeWithCheck(deletedFile)
+//                                added.removeWithCheck(addedFile)
+//                            }
+//                        }
+//                        // fix folderMarker, because they are not always included within intersectResults:
+//                        deleted.removeIf { it.isFolderMarker && it.folderId == oldFolderId }
+//                        added.removeIf { it.isFolderMarker && it.folderId == currentFolderId }
+//
+//                        val map1 = foldersCtx.get(oldFolderId).children.associateBy { it.name }
+//                        val map2 = foldersCtx.get(currentFolderId).children.associateBy { it.name }
+//                        (map1.keys intersect map2.keys).forEach { folderName ->
+//                            val from = map1[folderName]!!.id
+//                            val to = map2[folderName]!!.id
+//                            make(from, to)
+//                        }
+//                    }
+//
+//                    make(oldFolderId, currentFolderId)
+//                }
+//        }
+//    }
+
+
+    // file renamed
     equalsBy(PATH + HASH + MODIFIED, true) {
         (deleted intersect added)
+            .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .map { MovedOrRenamed(it.left, it.right) }
             .ifNotEmpty {
                 deleted -= it.from().toSet()
@@ -36,8 +104,10 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
             }
     }
 
+    // file moved to other folder
     equalsBy(FILENAME + HASH + MODIFIED, true) {
         (deleted intersect added)
+            .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .map { MovedOrRenamed(it.left, it.right) }
             .ifNotEmpty {
                 deleted -= it.from().toSet()
@@ -46,8 +116,10 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
             }
     }
 
+    // file renamed and moved to other folder
     equalsBy(HASH + MODIFIED, true) {
         (deleted intersect added)
+            .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .map { MovedOrRenamed(it.left, it.right) }
             .ifNotEmpty {
                 deleted -= it.from().toSet()
@@ -56,16 +128,10 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
             }
     }
 
-    // special case: folder renamed and content changed
-    equalsBy(object : EqualsAndHashCodeSupplier<FileEntity> {
-        override fun equals(obj1: FileEntity, obj2: FileEntity) =
-            obj1.name == obj2.name &&
-                    (currentFilesResult.folderPathRenamed[obj1.folderId] ?: obj1.folderId) == (currentFilesResult.folderPathRenamed[obj2.folderId] ?: obj2.folderId)
-
-        override fun hashCode(obj: FileEntity) = obj.name.hashCode()
-
-    }) {
+    // special case: file moved to other folder and file content changed (but filename still the same)
+    equalsBy(FILENAME, true) {
         (deleted.filter { !it.isFolderMarker } intersect added.filter { !it.isFolderMarker })
+            .filter(HASH_NEQ)
             .map { MovedAndContentChanged(it.left, it.right) }
             .ifNotEmpty {
                 deleted -= it.from().toSet()
@@ -81,6 +147,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
             .toMutableSet()
     }
 
+    // attribute 'modification date' changed, but content is still the same
     val modifiedChanged = equalsBy(pathAndName) {
         (lastSyncResultFiles intersect currentFiles)
             .filter(HASH_EQ and MODIFIED_NEQ)
@@ -91,6 +158,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
     println("$dir successfully read")
 
     return MutableChanges(
+        //folderRenamed = folderRenamed,
         added = added,
         deleted = deleted,
         contentChanged = contentChanged,

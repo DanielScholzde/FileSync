@@ -21,3 +21,4 @@ out/
 target/
 /.gradle/
 /build/
+/Test/
