@@ -130,7 +130,8 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
 
     // special case: file moved to other folder and file content changed (but filename still the same)
     equalsBy(FILENAME, true) {
-        (deleted.filter { !it.isFolderMarker } intersect added.filter { !it.isFolderMarker })
+        (deleted intersect added)
+            .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .filter(HASH_NEQ)
             .map { MovedAndContentChanged(it.left, it.right) }
             .ifNotEmpty {

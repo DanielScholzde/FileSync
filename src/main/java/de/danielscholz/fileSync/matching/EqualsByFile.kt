@@ -1,5 +1,6 @@
 package de.danielscholz.fileSync.matching
 
+import de.danielscholz.fileSync.actions.sync.IChange
 import de.danielscholz.fileSync.common.CaseSensitiveContext
 import de.danielscholz.fileSync.common.FoldersContext
 import de.danielscholz.fileSync.persistence.FileEntity
@@ -13,11 +14,23 @@ fun <R> equalsBy(mode: MatchMode, ignoreDuplicatesOnIntersect: Boolean = false, 
 
 context(CaseSensitiveContext, FoldersContext)
 fun <R> equalsBy(mode: EnumSet<MatchMode>, ignoreDuplicatesOnIntersect: Boolean = false, block: EqualsBy<FileEntity>.() -> R): R =
-    equalsBy(EqualsAndHashCodeSupplierImpl(mode, foldersCtx, isCaseSensitive), ignoreDuplicatesOnIntersect, block)
+    equalsBy(EqualsAndHashCodeSupplierForFileEntity(mode, foldersCtx, isCaseSensitive), ignoreDuplicatesOnIntersect, block)
 
 
+context(CaseSensitiveContext, FoldersContext)
+fun <T : IChange<FileEntity, FileEntity>, R> equalsByTo(mode: EnumSet<MatchMode>, ignoreDuplicatesOnIntersect: Boolean = false, block: EqualsBy<T>.() -> R): R =
+    equalsBy(object : EqualsAndHashCodeSupplier<T> {
 
-fun <R> equalsBy(equalsAndHashcodeSupplier: EqualsAndHashCodeSupplier<FileEntity>, ignoreDuplicatesOnIntersect: Boolean = false, block: EqualsBy<FileEntity>.() -> R): R {
+        val delegate = EqualsAndHashCodeSupplierForFileEntity(mode, foldersCtx, isCaseSensitive)
+
+        override fun equals(obj1: T, obj2: T) = delegate.equals(obj1.to, obj2.to)
+
+        override fun hashCode(obj: T): Int = delegate.hashCode(obj.to)
+
+    }, ignoreDuplicatesOnIntersect, block)
+
+
+fun <T : Any, R> equalsBy(equalsAndHashcodeSupplier: EqualsAndHashCodeSupplier<T>, ignoreDuplicatesOnIntersect: Boolean = false, block: EqualsBy<T>.() -> R): R {
 
     val equalsBy = EqualsBy(ignoreDuplicatesOnIntersect, equalsAndHashcodeSupplier)
 

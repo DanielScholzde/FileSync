@@ -5,6 +5,10 @@ import de.danielscholz.fileSync.common.mutableListMultimapOf
 
 class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, private val equalsAndHashcodeSupplier: EqualsAndHashCodeSupplier<T>) {
 
+    infix fun T.eq(other: T): Boolean {
+        return equalsAndHashcodeSupplier.equals(this, other)
+    }
+
     infix fun Collection<T>.intersect(collection2: Collection<T>): Collection<IntersectResult<T>> {
         val collection1 = this
 
