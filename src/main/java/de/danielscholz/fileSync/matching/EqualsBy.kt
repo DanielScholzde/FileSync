@@ -10,6 +10,7 @@ fun <T : Any, R> equalsBy(equalsAndHashcodeSupplier: EqualsAndHashCodeSupplier<T
     return equalsBy.block()
 }
 
+
 class EqualsBy<T : Any>(private val ignoreDuplicatesOnIntersect: Boolean, private val equalsAndHashcodeSupplier: EqualsAndHashCodeSupplier<T>) {
 
     infix fun T.eq(other: T): Boolean {

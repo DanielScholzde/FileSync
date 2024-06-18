@@ -1,6 +1,7 @@
 package de.danielscholz.fileSync
 
-import de.danielscholz.fileSync.actions.sync.*
+import de.danielscholz.fileSync.actions.sync.SyncFiles
+import de.danielscholz.fileSync.actions.sync.getFilter
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.kargparser.ArgParseException
 import de.danielscholz.kargparser.ArgParser
@@ -60,93 +61,11 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::verbose, BooleanParam())
         }) {
 
-        val excludedFilenameMatchers = mutableListOf<FilenameMatcher>()
-        (paramValues.excludedFiles + paramValues.defaultExcludedFiles).forEach { excludedFilename ->
-            if (excludedFilename.contains("*")) {
-                val escaped = excludedFilename
-                    .replace("(", "\\(")
-                    .replace("[", "\\[")
-                    .replace(".", "\\.")
-                val pattern = escaped
-                    .replace("*", ".*")
-                    .replace("?", ".")
-                val regex = Regex(pattern, RegexOption.IGNORE_CASE)
-                excludedFilenameMatchers += FilenameMatcher { _, filename ->
-                    regex.matches(filename)
-                }
-            } else {
-                excludedFilenameMatchers += FilenameMatcher { _, filename ->
-                    filename.equals(excludedFilename, ignoreCase = true)
-                }
-            }
-        }
-
-        val excludedPathMatchers = mutableListOf<PathMatcher>()
-        (paramValues.excludedPaths + paramValues.defaultExcludedPaths).forEach { excludedPath ->
-            val excludedPathLC = excludedPath.lowercase()
-            excludedPathMatchers += when {
-                "/" in excludedPath && "*" in excludedPath -> {
-                    val escaped = excludedPath
-                        .replace("(", "\\(")
-                        .replace("[", "\\[")
-                        .replace(".", "\\.")
-                    var pattern = escaped
-                        .replace("*", ".*")
-                        .replace("?", ".")
-                    if (!pattern.endsWith(".*"))
-                        pattern += ".*"
-                    if (!pattern.startsWith("//"))
-                        pattern = ".*$pattern"
-                    val regex = Regex(pattern, RegexOption.IGNORE_CASE)
-                    PathMatcher { fullPath, _ ->
-                        regex.matches("/$fullPath")
-                    }
-                }
-                "/" in excludedPath -> {
-                    PathMatcher { fullPath, _ ->
-                        if (excludedPathLC.startsWith("//"))
-                            excludedPathLC in "/$fullPath".lowercase()
-                        else
-                            excludedPathLC in fullPath.lowercase()
-                    }
-                }
-                "*" in excludedPath -> {
-                    val escaped = excludedPath
-                        .replace("(", "\\(")
-                        .replace("[", "\\[")
-                        .replace(".", "\\.")
-                    val pattern = escaped
-                        .replace("*", ".*")
-                        .replace("?", ".")
-                    val regex = Regex(pattern, RegexOption.IGNORE_CASE)
-                    PathMatcher { _, folderName ->
-                        regex.matches(folderName)
-                    }
-                }
-                else -> {
-                    PathMatcher { _, folderName ->
-                        folderName.equals(excludedPath, ignoreCase = true)
-                    }
-                }
-            }
-
-        }
-
-        val folderFilter = FolderFilter { fullPath, folderName ->
-            if (excludedPathMatchers.any { it.matches(fullPath, folderName) }) ExcludedBy.USER else null
-        }
-
-        val fileFilter = FileFilter { path, fileName ->
-            if (excludedFilenameMatchers.any { it.matches(path, fileName) }) ExcludedBy.USER else null
-        }
-
-        val filter = Filter(folderFilter, fileFilter)
-
         SyncFiles(
             paramValues,
             paramValues.sourceDir!!.canonicalFile,
             paramValues.targetDir!!.canonicalFile,
-            filter
+            getFilter(paramValues)
         ).sync()
     }
 
@@ -186,14 +105,6 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
 //      }
 }
 
-
-private fun interface FilenameMatcher {
-    fun matches(path: String, filename: String): Boolean
-}
-
-private fun interface PathMatcher {
-    fun matches(fullPath: String, folderName: String): Boolean
-}
 
 private fun demandedHelp(args: Array<String>, parser: ArgParser<GlobalParams>): Boolean {
     // offer some more options for showing help and to get help for a specific command
