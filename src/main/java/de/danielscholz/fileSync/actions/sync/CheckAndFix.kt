@@ -91,7 +91,7 @@ fun checkAndFix(
     }
         .filter(HASH_NEQ)
         .ifNotEmptyCreateConflicts("modified (with different content) within source and target") {
-            "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
+            "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it._hash?.hash?.substring(0, 10)}.."
         }
 
     equalsForFileBy(pathAndName) {
@@ -108,12 +108,12 @@ fun checkAndFix(
             (sourceChanges.added intersect currentFilesTarget)
                 .filter(HASH_NEQ or MODIFIED_NEQ)
                 .ifNotEmptyCreateConflicts("already exists within target dir (and has different content or modification date)") {
-                    "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
+                    "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it._hash?.hash?.substring(0, 10)}.."
                 }
 
             (sourceChanges.deleted intersect targetChanges.contentChanged.to())
                 .ifNotEmptyCreateConflicts("deleted source file but changed content within target dir") {
-                    "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
+                    "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it._hash?.hash?.substring(0, 10)}.."
                 }
 
             (sourceChanges.contentChanged.from() - currentFilesTarget)
@@ -127,12 +127,12 @@ fun checkAndFix(
 
             (sourceChanges.movedOrRenamed.to() intersect currentFilesTarget)
                 .ifNotEmptyCreateConflicts("target of moved file already exists within target dir") {
-                    "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
+                    "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it._hash?.hash?.substring(0, 10)}.."
                 }
 
             (sourceChanges.movedAndContentChanged.to() intersect currentFilesTarget)
                 .ifNotEmptyCreateConflicts("target of moved file already exists within target dir") {
-                    "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.hash?.substring(0, 10)}.."
+                    "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it._hash?.hash?.substring(0, 10)}.."
                 }
         }
     }

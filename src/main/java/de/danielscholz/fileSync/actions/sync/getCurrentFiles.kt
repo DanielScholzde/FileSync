@@ -18,7 +18,7 @@ class MutableCurrentFiles(
 
 
 context(MutableFoldersContext, MutableStatisticsContext, CaseSensitiveContext)
-fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>): MutableCurrentFiles {
+fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>, calcHashOnlyIfNeeded: Boolean): MutableCurrentFiles {
 
     val files = mutableSetOf<FileEntity>()
     val folderRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
@@ -53,26 +53,38 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
 
             val hash =
                 // simple case, file in same location and with same size and modification date:
-                lastIndexedFilesAsMap1[Quad(folderId, file.name, file.size, file.modified)]?.hash
+                lastIndexedFilesAsMap1[Quad(folderId, file.name, file.size, file.modified)]?._hash
                 // same, but folder renamed:
                     ?: lastIndexedFilesAsMultiMap2[Triple(file.name, file.size, file.modified)]
                         .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
-                        ?.hash
-                    // in all other cases: calculate hash
-                    ?: file.hash.value?.let {
-                        statisticsCtx.hashCalculated++
-                        FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
-                    }
+                        ?._hash
+                    // calculate hash if !calcHashOnlyIfNeeded:
+                    ?: if (!calcHashOnlyIfNeeded) {
+                        file.hash.value?.let {
+                            statisticsCtx.hashCalculated++
+                            FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
+                        }
+                    } else null
+            // in all other cases: calculate hash lazily
 
             files += FileEntity(
-                hash = hash,
+                _hash = hash,
                 folderId = folderId,
                 name = file.name,
                 created = file.created,
                 modified = file.modified,
                 hidden = file.hidden,
                 size = file.size
-            )
+            ).apply {
+                if (hash == null && file.size > 0) {
+                    hashSupplier = lazy {
+                        file.hash.value?.let {
+                            statisticsCtx.hashCalculated++
+                            FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
+                        } ?: throw Exception("There should be a calculated hash value!")
+                    }
+                }
+            }
             statisticsCtx.files++
 
             testIfCancel()
@@ -80,7 +92,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
 
         // add marker for an existing folder
         files += FileEntity(
-            hash = null,
+            _hash = null,
             folderId = folderId,
             name = folderMarkerName,
             created = folderMarkerInstant,

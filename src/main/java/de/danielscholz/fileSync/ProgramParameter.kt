@@ -53,6 +53,9 @@ class SyncFilesParams {
     @Description("Should a test run be done without any file changes (except the database)?")
     var dryRun = false
 
+    @Description("Calculate file hash only if needed (when two files have the same size)")
+    var calcHashOnlyIfNeeded = true
+
 //    @Description("Save indexed files metadata despite dry run")
 //    var saveIndexResultDespiteDryRun = false
 

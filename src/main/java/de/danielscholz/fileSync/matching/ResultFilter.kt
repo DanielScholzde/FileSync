@@ -9,7 +9,7 @@ typealias ResultFilter = (IntersectResult<FileEntity>) -> Boolean
 
 
 val HASH_EQ: ResultFilter = { (file1, file2) ->
-    file1.size == file2.size && (file1.hash?.hash == file2.hash?.hash)
+    file1.size == file2.size && file1.hash == file2.hash
 }
 
 val HASH_NEQ: ResultFilter = { intersectResult ->
