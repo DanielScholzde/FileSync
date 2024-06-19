@@ -100,9 +100,7 @@ data class FileEntity(
     val hidden: Boolean,
     @SerialName("s")
     val size: Long, // file size in byte
-    @SerialName("hash")
-    @Volatile
-    var _hash: FileHashEntity?, // only set if the file is not empty
+    val hash: FileHashEntity?, // only set if the file is not empty
 ) : EntityBase {
     init {
         if (size < 0) throw Exception()
@@ -113,15 +111,6 @@ data class FileEntity(
 
     @Transient
     val nameLowercase: String = name.lowercase()
-
-    var hashSupplier: Lazy<FileHashEntity>? = null
-    val hash: String?
-        get() = _hash?.hash ?: let {
-            if (size > 0) {
-                _hash = hashSupplier?.value ?: throw Exception("hashSupplier does not exist!")
-                _hash?.hash
-            } else null
-        }
 
     context(FoldersContext)
     fun path(): String {

@@ -10,13 +10,13 @@ class EqualsAndHashCodeSupplierForFile(private val mode: EnumSet<MatchMode>, pri
 
     override fun equals(obj1: FileEntity, obj2: FileEntity): Boolean {
         if (MatchMode.HASH in mode) {
-            if (obj1.size != obj2.size || obj1.hash != obj2.hash) return false
+            if (obj1.size != obj2.size || obj1.hash?.hash != obj2.hash?.hash) return false
         }
 
         var compFilename = MatchMode.FILENAME in mode
 
         // Workaround for empty files (which do not have a hash): compare filename and path too!
-        if (obj1.size == 0L && obj2.size == 0L && MatchMode.HASH in mode) {
+        if (obj1.hash == null && obj2.hash == null && MatchMode.HASH in mode) {
             compFilename = true
         }
 
@@ -39,7 +39,7 @@ class EqualsAndHashCodeSupplierForFile(private val mode: EnumSet<MatchMode>, pri
     override fun hashCode(obj: FileEntity): Int {
         var result = 1
         if (MatchMode.HASH in mode) {
-            result = 31 * result + obj.size.hashCode() // use size instead of hash because it always exists
+            result = 31 * result + (obj.hash?.hash?.hashCode() ?: 0)
         }
         if (MatchMode.PATH in mode) {
             result = 31 * result + folders.getFullPathLowercase(obj.folderId).hashCode()
