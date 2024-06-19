@@ -215,7 +215,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         }
 
         (sourceChanges.deleted + targetChanges.deleted).filter { !it.isFolderMarker }.let { list ->
-            deletedFiles += list.map { DeletedFileEntity(it.hash?.hash, it.name) }
+            deletedFiles += list.map { DeletedFileEntity(it.hash, it.name) }
         }
 
         if ((hasChanges || !syncResultFile.exists()) && !syncFilesParams.dryRun) {
@@ -253,7 +253,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
     private fun getDuplicateFiles(currentFilesSource: MutableCurrentFiles): DuplFilesResult {
         val map = mutableListMultimapOf<String, FileEntity>()
         currentFilesSource.files.forEach { file ->
-            file.hash?.hash?.let {
+            file.hash?.let {
                 map.put(it, file)
             }
         }

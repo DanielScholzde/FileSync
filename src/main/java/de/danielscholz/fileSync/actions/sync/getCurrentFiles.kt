@@ -51,13 +51,13 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
 
         filteredFiles.forEach { file ->
 
-            val hash =
+            val fileHash =
                 // simple case, file in same location and with same size and modification date:
-                lastIndexedFilesAsMap1[Quad(folderId, file.name, file.size, file.modified)]?.hash
+                lastIndexedFilesAsMap1[Quad(folderId, file.name, file.size, file.modified)]?.fileHash
                 // same, but folder renamed:
                     ?: lastIndexedFilesAsMultiMap2[Triple(file.name, file.size, file.modified)]
                         .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
-                        ?.hash
+                        ?.fileHash
                     // in all other cases: calculate hash
                     ?: file.hash.value?.let {
                         statisticsCtx.hashCalculated++
@@ -65,7 +65,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
                     }
 
             files += FileEntity(
-                hash = hash,
+                fileHash = fileHash,
                 folderId = folderId,
                 name = file.name,
                 created = file.created,
@@ -80,7 +80,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
 
         // add marker for an existing folder
         files += FileEntity(
-            hash = null,
+            fileHash = null,
             folderId = folderId,
             name = folderMarkerName,
             created = folderMarkerInstant,
