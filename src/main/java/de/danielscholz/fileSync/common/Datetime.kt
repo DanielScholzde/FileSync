@@ -1,5 +1,7 @@
 package de.danielscholz.fileSync.common
 
+import kotlinx.datetime.*
+import kotlinx.datetime.format.char
 import java.time.Instant as JavaInstant
 import java.time.LocalDateTime as JavaLocalDateTime
 import java.time.temporal.ChronoField as JavaChronoField
@@ -18,6 +20,29 @@ fun JavaInstant.ignoreMillis(): JavaInstant {
 }
 
 fun JavaLocalDateTime.ignoreMillis(): JavaLocalDateTime = this.withNano(0)
+
+
+val customFormat = LocalDateTime.Format {
+    dayOfMonth()
+    char('.')
+    monthNumber()
+    char('.')
+    year()
+    char(' ')
+    hour()
+    char(':')
+    minute()
+    char(':')
+    second()
+}
+
+val customFormat2 = LocalDateTime.Format {
+    year()
+    monthNumber()
+    dayOfMonth()
+}
+
+fun Instant.toStr() = this.toLocalDateTime(TimeZone.currentSystemDefault()).format(customFormat)
 
 
 // Formatter are thread-safe

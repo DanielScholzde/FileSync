@@ -1,5 +1,6 @@
 package de.danielscholz.fileSync.actions.sync
 
+import com.google.common.collect.ListMultimap
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.commonFileSuffix
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.indexedFilesFilePrefix
 import de.danielscholz.fileSync.common.*
@@ -7,6 +8,7 @@ import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.FileHashEntity
 import de.danielscholz.fileSync.persistence.folderMarkerName
 import de.danielscholz.fileSync.persistence.readIndexedFiles
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toKotlinInstant
 import java.io.File
@@ -47,10 +49,10 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
         val filteredFiles = folderResult.files
             .filter { filter.fileFilter.excluded(it.path, it.name) == null }
 
-        val filesMovedFromDifferentFolderId = myLazy {
-            filteredFiles
+        fun getFilesMovedFromDifferentFolderId(fromMap: ListMultimap<Triple<String, Long, Instant>, FileEntity>): Long? {
+            return filteredFiles
                 .mapNotNull { file ->
-                    val found = lastIndexedFilesAsMultimap[Triple(file.name, file.size, file.modified)]
+                    val found = fromMap[Triple(file.name, file.size, file.modified)]
                     if (found.size == 1) found.first().folderId else null
                 }
                 .groupingBy { it } // group by folderId
@@ -62,6 +64,9 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
                 }
         }
 
+        val filesMovedFromDifferentFolderId by myLazy { getFilesMovedFromDifferentFolderId(lastIndexedFilesAsMultimap) }
+        val filesMovedFromDifferentFolderId2 by myLazy { getFilesMovedFromDifferentFolderId(cancelledIndexedFilesAsMultimap) }
+
         filteredFiles.forEach { file ->
 
             val fileHash = supply {
@@ -69,13 +74,13 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
                 val key2 = Triple(file.name, file.size, file.modified)
                 cancelledIndexedFilesAsMap[key1]?.fileHash
                     ?: cancelledIndexedFilesAsMultimap[key2]
-                        .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
+                        .firstOrNull { it.folderId == filesMovedFromDifferentFolderId2 }
                         ?.fileHash
                     // simple case, file in same location and with same size and modification date:
                     ?: lastIndexedFilesAsMap[key1]?.fileHash
                     // same, but folder renamed:
                     ?: lastIndexedFilesAsMultimap[key2]
-                        .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
+                        .firstOrNull { it.folderId == filesMovedFromDifferentFolderId }
                         ?.fileHash
                     // in all other cases: calculate hash
                     ?: file.hash.value?.let {

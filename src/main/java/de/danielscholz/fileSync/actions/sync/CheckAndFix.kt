@@ -47,6 +47,39 @@ fun checkAndFix(
                         targetChanges.contentChanged.remove(ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, targetTo)) ||
                         throw IllegalStateException()
             } else {
+                // fix modification date:
+//                val f1 = sourceTo.modified.toLocalDateTime(TimeZone.currentSystemDefault()).format(customFormat2)
+//                val f2 = targetTo.modified.toLocalDateTime(TimeZone.currentSystemDefault()).format(customFormat2)
+//                if (f1 != f2) {
+//                    val targetF = File(targetDir, targetTo.pathAndName())
+//                    val sourceF = File(sourceDir, sourceTo.pathAndName())
+//                    if (f1 in sourceTo.name) {
+//                        targetF.setLastModified(sourceF.lastModified())
+//
+//                        syncResultFiles -= sourceTo // remove old instance (optional)
+//                        syncResultFiles.addWithCheck(sourceTo) // add new with changed hash
+//                        sourceChanges.added.remove(sourceTo) ||
+//                                // equals of ContentChanged considers only second property
+//                                sourceChanges.contentChanged.remove(ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, sourceTo)) ||
+//                                throw IllegalStateException()
+//                        targetChanges.added.remove(targetTo) ||
+//                                targetChanges.contentChanged.remove(ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, targetTo)) ||
+//                                throw IllegalStateException()
+//                    } else if (f1 in targetTo.name) {
+//                        sourceF.setLastModified(targetF.lastModified())
+//
+//                        syncResultFiles -= targetTo // remove old instance (optional)
+//                        syncResultFiles.addWithCheck(targetTo) // add new with changed hash
+//                        sourceChanges.added.remove(sourceTo) ||
+//                                // equals of ContentChanged considers only second property
+//                                sourceChanges.contentChanged.remove(ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, sourceTo)) ||
+//                                throw IllegalStateException()
+//                        targetChanges.added.remove(targetTo) ||
+//                                targetChanges.contentChanged.remove(ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, targetTo)) ||
+//                                throw IllegalStateException()
+//                    }
+//                }
+
                 listOf(pair).ifNotEmptyCreateConflicts("changed modification date (not equal) within source and target") {
                     it.modified.toStr()
                 }

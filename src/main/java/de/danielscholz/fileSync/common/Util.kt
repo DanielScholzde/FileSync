@@ -1,7 +1,5 @@
 package de.danielscholz.fileSync.common
 
-import kotlinx.datetime.*
-import kotlinx.datetime.format.char
 import java.io.File
 import java.io.IOException
 import java.nio.file.FileAlreadyExistsException
@@ -48,22 +46,6 @@ fun guardWithLockFile(lockfile: File, block: () -> Unit) {
 }
 
 
-val customFormat = LocalDateTime.Format {
-    dayOfMonth()
-    char('.')
-    monthNumber()
-    char('.')
-    year()
-    char(' ')
-    hour()
-    char(':')
-    minute()
-    char(':')
-    second()
-}
-
-
-fun Instant.toStr() = this.toLocalDateTime(TimeZone.currentSystemDefault()).format(customFormat)
 
 
 fun <T> myLazy(initializer: () -> T): Lazy<T> = lazy(LazyThreadSafetyMode.NONE, initializer)
