@@ -9,20 +9,22 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.time.LocalDateTime
-import kotlin.collections.set
+import java.time.LocalDateTime as JavaLocalDateTime
 
 
+@Suppress("ConstPropertyName")
 class SyncFiles(private val syncFilesParams: SyncFilesParams, private val sourceDir: File, private val targetDir: File, filter: Filter) {
 
-    private val backupDir = ".syncFilesHistory"
-    private val lockfileName = ".syncFiles_lockfile"
-    private val indexedFilesFilePrefix = ".syncFilesIndex_"
-    private val syncResultFilePrefix = ".syncFilesResult_"
-    private val deletedFilesFilePrefix = ".deletedFiles"
-    private val commonFileSuffix = ".jsn"
+    companion object {
+        private const val backupDir = ".syncFilesHistory"
+        private const val lockfileName = ".syncFiles_lockfile"
+        internal const val indexedFilesFilePrefix = ".syncFilesIndex_"
+        private const val syncResultFilePrefix = ".syncFilesResult_"
+        private const val deletedFilesFilePrefix = ".deletedFiles"
+        internal const val commonFileSuffix = ".jsn"
+    }
 
-    private val now = LocalDateTime.now().ignoreMillis()
+    private val now = JavaLocalDateTime.now().ignoreMillis().toKotlinLocalDateTime()
     private val dateTimeStr = now.toString().replace(":", "").replace("T", " ")
     private val changedDir = "$backupDir/modified/$dateTimeStr"
     private val deletedDir = "$backupDir/deleted/$dateTimeStr"
@@ -101,23 +103,25 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             execute(
                 {
                     with(CaseSensitiveContext(csSource)) {
-                        val lastIndexedFilesSource = readIndexedFiles(indexedFilesFileSource)?.mapToRead(filter) ?: setOf()
+                        val lastIndexedFiles = readIndexedFiles(indexedFilesFileSource)
+                        val lastIndexedFilesMapped = lastIndexedFiles?.mapToRead(filter) ?: setOf()
                         with(MutableStatisticsContext(sourceStatistics)) {
-                            currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesSource)
+                            currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesMapped, lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME, syncName, now)
                         }
                         backup(sourceDir, indexedFilesFileSource)
-                        currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource) // already save indexed files in the event of a subsequent error
+                        currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource, now) // already save indexed files in the event of a subsequent error
                         sourceChanges = getChanges(sourceDir, lastSyncResultFiles, currentFilesSource)
                     }
                 },
                 {
                     with(CaseSensitiveContext(csTarget)) {
-                        val lastIndexedFilesTarget = readIndexedFiles(indexedFilesFileTarget)?.mapToRead(filter) ?: setOf()
+                        val lastIndexedFiles = readIndexedFiles(indexedFilesFileTarget)
+                        val lastIndexedFilesMapped = lastIndexedFiles?.mapToRead(filter) ?: setOf()
                         with(MutableStatisticsContext(targetStatistics)) {
-                            currentFilesTarget = getCurrentFiles(targetDir, filter, lastIndexedFilesTarget)
+                            currentFilesTarget = getCurrentFiles(targetDir, filter, lastIndexedFilesMapped, lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME, syncName, now)
                         }
                         backup(targetDir, indexedFilesFileTarget)
-                        currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget) // already save indexed files in the event of a subsequent error
+                        currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget, now) // already save indexed files in the event of a subsequent error
                         targetChanges = getChanges(targetDir, lastSyncResultFiles, currentFilesTarget)
                     }
                 },
@@ -226,8 +230,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 syncResultFiles.saveSyncResultTo(syncResultFile, failures)
 
                 if (hasChanges) {
-                    currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource) // save again; it may have changed
-                    currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget)
+                    currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource, now) // save again; it may have changed
+                    currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget, now)
                 }
             }
 
@@ -281,62 +285,18 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
     }
 
     context(FoldersContext)
-    private fun Set<FileEntity>.saveIndexedFilesTo(file: File) {
-        saveIndexedFiles(
-            file,
-            IndexedFilesEntity(
-                runDate = now.toKotlinLocalDateTime(),
-                files = this,
-                rootFolder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
-            )
-        )
-    }
-
-    context(FoldersContext)
     private fun Set<FileEntity>.saveSyncResultTo(file: File, failures: List<String>) {
         saveSyncResult(
             file,
             SyncResultEntity(
                 sourcePath = sourceDir.canonicalPath,
                 targetPath = targetDir.canonicalPath,
-                runDate = now.toKotlinLocalDateTime(),
+                runDate = now,
                 failuresOccurred = failures,
                 files = this,
                 rootFolder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
             )
         )
-    }
-
-    context(MutableFoldersContext)
-    private fun FilesAndFolder.mapToRead(filter: Filter): Set<FileEntity> {
-        val mapping = mutableMapOf<Long, Long>()
-        mapping[foldersCtx.rootFolderId] = foldersCtx.rootFolderId
-
-        fun sync(folder: FolderEntity, parentFolderId: Long) {
-            if (filter.folderFilter.excluded(foldersCtx.getFullPath(parentFolderId) + folder.name + "/", folder.name) != null) {
-                return
-            }
-
-            val folderMapped = foldersCtx.getOrCreate(folder.name, parentFolderId)
-            mapping[folder.id] = folderMapped.id
-            folder.children.forEach { childFolder ->
-                sync(childFolder, folderMapped.id)
-            }
-        }
-
-        foldersCtx.check()
-
-        this.rootFolder.children.forEach { childFolder ->
-            sync(childFolder, foldersCtx.rootFolderId)
-        }
-
-        foldersCtx.check()
-
-        return this.files.mapNotNull { file ->
-            mapping[file.folderId]?.let { folderId ->
-                if (file.folderId != folderId) file.copy(folderId = folderId) else file
-            }
-        }.toSet()
     }
 
 }

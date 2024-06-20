@@ -186,7 +186,7 @@ data class DeletedFilesEntity(
 
 @OptIn(ExperimentalSerializationApi::class)
 fun readIndexedFiles(file: File): IndexedFilesEntity? {
-    if (file.exists()) {
+    if (file.isFile()) {
         BufferedInputStream(FileInputStream(file)).use {
             return Json.decodeFromStream<IndexedFilesEntity>(it)
         }
@@ -204,7 +204,7 @@ fun saveIndexedFiles(file: File, syncResult: IndexedFilesEntity) {
 
 @OptIn(ExperimentalSerializationApi::class)
 fun readSyncResult(file: File): SyncResultEntity? {
-    if (file.exists()) {
+    if (file.isFile()) {
         BufferedInputStream(FileInputStream(file)).use {
             return Json.decodeFromStream<SyncResultEntity>(it)
         }
@@ -222,7 +222,7 @@ fun saveSyncResult(file: File, syncResult: SyncResultEntity) {
 
 @OptIn(ExperimentalSerializationApi::class)
 fun readDeletedFiles(file: File): DeletedFilesEntity? {
-    if (file.exists()) {
+    if (file.isFile()) {
         BufferedInputStream(FileInputStream(file)).use {
             return Json.decodeFromStream<DeletedFilesEntity>(it)
         }

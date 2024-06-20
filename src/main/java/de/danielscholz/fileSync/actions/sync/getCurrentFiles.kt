@@ -1,9 +1,13 @@
 package de.danielscholz.fileSync.actions.sync
 
+import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.commonFileSuffix
+import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.indexedFilesFilePrefix
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.FileHashEntity
 import de.danielscholz.fileSync.persistence.folderMarkerName
+import de.danielscholz.fileSync.persistence.readIndexedFiles
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toKotlinInstant
 import java.io.File
 
@@ -18,14 +22,23 @@ class MutableCurrentFiles(
 
 
 context(MutableFoldersContext, MutableStatisticsContext, CaseSensitiveContext)
-fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>): MutableCurrentFiles {
+fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>, lastIndexedFilesDate: LocalDateTime, syncName: String, now: LocalDateTime): MutableCurrentFiles {
 
     val files = mutableSetOf<FileEntity>()
-    val folderRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
-    val folderPathRenamed = mutableMapOf</* from folderId */ Long, /* to folderId */ Long>()
 
-    val lastIndexedFilesAsMap1 = lastIndexedFiles.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
-    val lastIndexedFilesAsMultiMap2 by myLazy { lastIndexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
+    val lastIndexedFilesAsMap = lastIndexedFiles.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
+    val lastIndexedFilesAsMultimap by myLazy { lastIndexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
+
+    val cancelledIndexingResultFile = File(dir, "$indexedFilesFilePrefix${syncName}_TEMP$commonFileSuffix")
+
+    val cancelledIndexedFiles = if (cancelledIndexingResultFile.isFile) {
+        val cancelledIndexedFilesEntity = readIndexedFiles(cancelledIndexingResultFile)!!
+        if (cancelledIndexedFilesEntity.runDate > lastIndexedFilesDate) cancelledIndexedFilesEntity.mapToRead(filter) else setOf()
+    } else setOf()
+
+    val cancelledIndexedFilesAsMap = cancelledIndexedFiles.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
+    val cancelledIndexedFilesAsMultimap by myLazy { cancelledIndexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
+
 
     fun process(folderResult: FolderResult, folderId: Long) {
 
@@ -37,7 +50,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
         val filesMovedFromDifferentFolderId = myLazy {
             filteredFiles
                 .mapNotNull { file ->
-                    val found = lastIndexedFilesAsMultiMap2[Triple(file.name, file.size, file.modified)]
+                    val found = lastIndexedFilesAsMultimap[Triple(file.name, file.size, file.modified)]
                     if (found.size == 1) found.first().folderId else null
                 }
                 .groupingBy { it } // group by folderId
@@ -51,11 +64,17 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
 
         filteredFiles.forEach { file ->
 
-            val fileHash =
-                // simple case, file in same location and with same size and modification date:
-                lastIndexedFilesAsMap1[Quad(folderId, file.name, file.size, file.modified)]?.fileHash
-                // same, but folder renamed:
-                    ?: lastIndexedFilesAsMultiMap2[Triple(file.name, file.size, file.modified)]
+            val fileHash = supply {
+                val key1 = Quad(folderId, file.name, file.size, file.modified)
+                val key2 = Triple(file.name, file.size, file.modified)
+                cancelledIndexedFilesAsMap[key1]?.fileHash
+                    ?: cancelledIndexedFilesAsMultimap[key2]
+                        .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
+                        ?.fileHash
+                    // simple case, file in same location and with same size and modification date:
+                    ?: lastIndexedFilesAsMap[key1]?.fileHash
+                    // same, but folder renamed:
+                    ?: lastIndexedFilesAsMultimap[key2]
                         .firstOrNull { it.folderId == filesMovedFromDifferentFolderId.value }
                         ?.fileHash
                     // in all other cases: calculate hash
@@ -63,6 +82,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
                         statisticsCtx.hashCalculated++
                         FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
                     }
+            }
 
             files += FileEntity(
                 fileHash = fileHash,
@@ -89,24 +109,6 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
             size = 0
         )
 
-        if (filesMovedFromDifferentFolderId.isInitialized()) {
-            val fromFolderId = filesMovedFromDifferentFolderId.value
-            if (fromFolderId != null) {
-                if (isCaseSensitive) {
-                    if (foldersCtx.get(fromFolderId).name != foldersCtx.get(folderId).name) {
-                        println("folder renamed: " + foldersCtx.getFullPath(fromFolderId) + " -> " + foldersCtx.getFullPath(folderId))
-                        folderRenamed[fromFolderId] = folderId
-                    }
-                } else {
-                    if (foldersCtx.get(fromFolderId).name.lowercase() != foldersCtx.get(folderId).name.lowercase()) {
-                        println("folder renamed: " + foldersCtx.getFullPath(fromFolderId) + " -> " + foldersCtx.getFullPath(folderId))
-                        folderRenamed[fromFolderId] = folderId
-                    }
-                }
-                folderPathRenamed[fromFolderId] = folderId
-            }
-        }
-
         folderResult.folders
             .filter {
                 val excludedBy = filter.folderFilter.excluded(it.fullPath, it.name)
@@ -120,7 +122,14 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
             }
     }
 
-    process(readDir(dir), foldersCtx.rootFolderId)
+    try {
+
+        process(readDir(dir), foldersCtx.rootFolderId)
+
+    } catch (e: Exception) {
+        files.saveIndexedFilesTo(cancelledIndexingResultFile, now)
+        throw e
+    }
 
     return MutableCurrentFiles(files)
 }
