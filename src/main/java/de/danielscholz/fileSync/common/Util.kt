@@ -4,6 +4,9 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 import kotlin.math.absoluteValue
 
 
@@ -46,9 +49,23 @@ fun guardWithLockFile(lockfile: File, block: () -> Unit) {
 }
 
 
-
-
 fun <T> myLazy(initializer: () -> T): Lazy<T> = lazy(LazyThreadSafetyMode.NONE, initializer)
+
+@OptIn(ExperimentalContracts::class)
+inline fun <R> supply(block: () -> R): R {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+    return block()
+}
+
+@OptIn(ExperimentalContracts::class)
+inline fun exec(block: () -> Unit) {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+    block()
+}
 
 
 fun Long.formatAsFileSize(): String {

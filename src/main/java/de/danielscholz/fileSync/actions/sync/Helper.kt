@@ -99,11 +99,3 @@ fun execute(block1: () -> Unit, block2: () -> Unit, parallel: Boolean = true) {
         blocks.forEach { it() }
     }
 }
-
-@OptIn(ExperimentalContracts::class)
-inline fun <R> supply(block: () -> R): R {
-    contract {
-        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
-    }
-    return block()
-}

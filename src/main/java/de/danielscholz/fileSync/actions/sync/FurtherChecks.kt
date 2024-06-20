@@ -143,7 +143,7 @@ class FurtherChecks(
         if (changedPercent >= syncFilesParams.maxChangedFilesWarningPercent && changedNumberOfFiles > syncFilesParams.minAllowedChanges) {
 
             val msg = "More files were changed or deleted than allowed\n" +
-                    "(changed: ${changedNumberOfFiles - deletedFiles.size}, deleted: ${deletedFiles.size}. This corresponds to: $changedPercent%). " +
+                    "(added: ${addedFiles.size}, changed: ${changedNumberOfFiles - deletedFiles.size - addedFiles.size}, deleted: ${deletedFiles.size}. This corresponds to: $changedPercent%). " +
                     "Do you want to continue the sync process?"
 
             if (!syncFilesParams.confirmations) {

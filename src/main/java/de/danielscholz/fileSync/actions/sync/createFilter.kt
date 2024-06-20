@@ -25,7 +25,8 @@ fun getFilter(paramValues: SyncFilesParams): Filter {
         }
     }
 
-    val excludedPathMatchers = (paramValues.excludedPaths + paramValues.defaultExcludedPaths).map { excludedPath ->
+    val excludedPathMatchers = (paramValues.excludedPaths + paramValues.defaultExcludedPaths).map {
+        val excludedPath = it.replace('\\', '/')
         val excludedPathLC = excludedPath.lowercase()
         when {
             "/" in excludedPath && "*" in excludedPath -> {

@@ -36,11 +36,11 @@ val customFormat = LocalDateTime.Format {
     second()
 }
 
-val customFormat2 = LocalDateTime.Format {
-    year()
-    monthNumber()
-    dayOfMonth()
-}
+//val customFormat2 = LocalDateTime.Format {
+//    year()
+//    monthNumber()
+//    dayOfMonth()
+//}
 
 fun Instant.toStr() = this.toLocalDateTime(TimeZone.currentSystemDefault()).format(customFormat)
 
