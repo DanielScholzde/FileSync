@@ -143,8 +143,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 printoutDuplFiles(currentFilesSource.files, "source")
                 printoutDuplFiles(currentFilesTarget.files, "target")
 
-                if (!checkAndFix(sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFiles)) {
-                    return
+                if (!checkAndFix(sourceDir, targetDir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFiles)) {
+                    if (!syncFilesParams.ignoreConflicts) return
                 }
 
                 if (!furtherChecks(sourceDir, targetDir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncFilesParams)) {

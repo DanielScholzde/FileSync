@@ -57,6 +57,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::parallelIndexing, BooleanParam())
             add(paramValues::confirmations, BooleanParam())
             add(paramValues::dryRun, BooleanParam())
+            add(paramValues::ignoreConflicts, BooleanParam())
             //add(paramValues::saveIndexResultDespiteDryRun, BooleanParam())
             add(paramValues::verbose, BooleanParam())
         }) {

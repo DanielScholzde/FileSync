@@ -59,6 +59,9 @@ class SyncFilesParams {
     @Description("Should a confirmation popup window file changes (e.g. more files than allowed were changed) be shown?")
     var confirmations = true
 
+    @Description("Should possible conflicts/problems are ignored?")
+    var ignoreConflicts = false
+
     @Description("Should more information be printed to console?")
     var verbose = false
 
