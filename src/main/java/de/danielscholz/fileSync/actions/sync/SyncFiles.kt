@@ -239,8 +239,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         val duplicateFiles = getDuplicateFiles(files)
         if (duplicateFiles.totalSpace > 0) {
             println("Duplicates ($name): ${duplicateFiles.let { (it.totalSpace - it.nettoSpaceNeeded).formatAsFileSize() + " (${it.totalDuplFiles - it.nettoFiles} files)" }}")
-            duplicateFiles.foldersWithDuplFiles.take(10).forEach {
-                println(sourceDir.toString() + it.first + " " + it.second.formatAsFileSize())
+            duplicateFiles.foldersWithDuplFiles.take(10).forEach { (dir, duplFileSize) ->
+                println("$sourceDir$dir ${duplFileSize.formatAsFileSize()}")
             }
         }
     }
