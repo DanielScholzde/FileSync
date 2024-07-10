@@ -4,9 +4,7 @@ import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.persistence.*
-import de.danielscholz.fileSync.ui.failuresStore
-import de.danielscholz.fileSync.ui.finishedStore
-import de.danielscholz.fileSync.ui.startUI
+import de.danielscholz.fileSync.ui.*
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.io.File
 import java.nio.file.Files
@@ -73,13 +71,13 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             guardWithLockFile(File(syncFilesParams.lockfileTargetDir ?: targetDir, lockfileName)) {
 
                 thread {
-                    startUI()
+                    startUiBlocking()
                 }
 
                 try {
                     syncIntern()
                 } finally {
-                    finishedStore.send(true)
+                    uiFinished = true
                 }
             }
         }
@@ -115,8 +113,17 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                         val lastIndexedFiles = readIndexedFiles(indexedFilesFileSource)
                         val lastIndexedFilesMapped = lastIndexedFiles?.mapToRead(filter) ?: setOf()
                         with(MutableStatisticsContext(sourceStatistics)) {
-                            currentFilesSource = getCurrentFiles(sourceDir, filter, lastIndexedFilesMapped, lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME, syncName, now)
+                            currentFilesSource = getCurrentFiles(
+                                sourceDir,
+                                filter,
+                                lastIndexedFilesMapped,
+                                lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
+                                syncName,
+                                { uiReadDir1 = it },
+                                now
+                            )
                         }
+                        uiReadDir1 = null
                         backup(sourceDir, indexedFilesFileSource)
                         currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource, now) // already save indexed files in the event of a subsequent error
                         sourceChanges = getChanges(sourceDir, lastSyncResultFiles, currentFilesSource)
@@ -127,8 +134,17 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                         val lastIndexedFiles = readIndexedFiles(indexedFilesFileTarget)
                         val lastIndexedFilesMapped = lastIndexedFiles?.mapToRead(filter) ?: setOf()
                         with(MutableStatisticsContext(targetStatistics)) {
-                            currentFilesTarget = getCurrentFiles(targetDir, filter, lastIndexedFilesMapped, lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME, syncName, now)
+                            currentFilesTarget = getCurrentFiles(
+                                targetDir,
+                                filter,
+                                lastIndexedFilesMapped,
+                                lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
+                                syncName,
+                                { uiReadDir2 = it },
+                                now
+                            )
                         }
+                        uiReadDir2 = null
                         backup(targetDir, indexedFilesFileTarget)
                         currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget, now) // already save indexed files in the event of a subsequent error
                         targetChanges = getChanges(targetDir, lastSyncResultFiles, currentFilesTarget)
@@ -151,7 +167,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
         fun addFailure(failure: String) {
             failures += failure
-            failuresStore.send(failures.toList())
+            uiFailures = failures.toList()
         }
 
         val hasChanges: Boolean

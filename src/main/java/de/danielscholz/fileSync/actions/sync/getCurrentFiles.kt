@@ -24,7 +24,15 @@ class MutableCurrentFiles(
 
 
 context(MutableFoldersContext, MutableStatisticsContext, CaseSensitiveContext)
-fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>, lastIndexedFilesDate: LocalDateTime, syncName: String, now: LocalDateTime): MutableCurrentFiles {
+fun getCurrentFiles(
+    dir: File,
+    filter: Filter,
+    lastIndexedFiles: Set<FileEntity>,
+    lastIndexedFilesDate: LocalDateTime,
+    syncName: String,
+    processDirCallback: (String) -> Unit,
+    now: LocalDateTime,
+): MutableCurrentFiles {
 
     val files = mutableSetOf<FileEntity>()
 
@@ -45,6 +53,7 @@ fun getCurrentFiles(dir: File, filter: Filter, lastIndexedFiles: Set<FileEntity>
     fun process(folderResult: FolderResult, folderId: Long) {
 
         println("$dir${foldersCtx.getFullPath(folderId)}")
+        processDirCallback("$dir${foldersCtx.getFullPath(folderId)}")
 
         val filteredFiles = folderResult.files
             .filter { filter.fileFilter.excluded(it.path, it.name) == null }
