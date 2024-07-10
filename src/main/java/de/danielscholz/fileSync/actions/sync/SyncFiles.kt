@@ -4,11 +4,15 @@ import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.persistence.*
+import de.danielscholz.fileSync.ui.failuresStore
+import de.danielscholz.fileSync.ui.finishedStore
+import de.danielscholz.fileSync.ui.startUI
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import kotlin.concurrent.thread
 import java.time.LocalDateTime as JavaLocalDateTime
 
 
@@ -67,7 +71,16 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
     fun sync() {
         guardWithLockFile(File(syncFilesParams.lockfileSourceDir ?: sourceDir, lockfileName)) {
             guardWithLockFile(File(syncFilesParams.lockfileTargetDir ?: targetDir, lockfileName)) {
-                syncIntern()
+
+                thread {
+                    startUI()
+                }
+
+                try {
+                    syncIntern()
+                } finally {
+                    finishedStore.send(true)
+                }
             }
         }
     }
@@ -135,6 +148,12 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         }
 
         val failures = mutableListOf<String>()
+
+        fun addFailure(failure: String) {
+            failures += failure
+            failuresStore.send(failures.toList())
+        }
+
         val hasChanges: Boolean
 
         with(FoldersContext(folders)) {
@@ -170,7 +189,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                     deletedDir = deletedDir,
                     syncResultFiles = syncResultFiles,
                     currentFilesTarget = currentFilesTarget.files,
-                    failures = failures,
+                    addFailure = ::addFailure,
                     dryRun = syncFilesParams.dryRun
                 )
 
@@ -181,7 +200,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                     deletedDir = deletedDir,
                     syncResultFiles = syncResultFiles,
                     currentFilesTarget = currentFilesSource.files,
-                    failures = failures,
+                    addFailure = ::addFailure,
                     dryRun = syncFilesParams.dryRun
                 )
 

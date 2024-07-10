@@ -1,0 +1,14 @@
+product: jvm/app
+
+dependencies:
+  - de.danielscholz:KArgParser:0.1-SNAPSHOT
+  - org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0-RC
+  - org.jetbrains.kotlinx:kotlinx-datetime:0.6.0
+  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC
+  - com.google.guava:guava:33.2.0-jre
+
+#repositories:
+#  - https://repo.spring.io/ui/native/release
+#  - url: https://dl.google.com/dl/android/maven2/
+#  - id: jitpack
+#    url: https://jitpack.io

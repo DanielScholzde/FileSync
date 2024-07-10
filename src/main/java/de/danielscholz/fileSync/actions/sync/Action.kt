@@ -24,7 +24,7 @@ class ActionEnv(
     val deletedDir: String,
     val syncResultFiles: MutableSet<FileEntity>,
     val currentFilesTarget: MutableSet<FileEntity>, // may be currentFilesSource, if switchedSourceAndTarget==true
-    private val failures: MutableList<String>,
+    private val addFailure: (String) -> Unit,
     private val dryRun: Boolean
 ) {
     private val processEnv = ProcessEnv()
@@ -39,7 +39,7 @@ class ActionEnv(
         } catch (e: Exception) {
             val failure = ": " + e.message + " (" + e::class.simpleName + ")"
             println(failure)
-            failures += action + failure
+            addFailure(action + failure)
         }
     }
 }

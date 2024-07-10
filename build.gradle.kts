@@ -2,12 +2,13 @@ group = "de.danielscholz"
 version = "0.1-SNAPSHOT"
 description = "File sync"
 
-val kotlinVersion = "2.0.0"
 
 plugins {
     application
-    kotlin("jvm") version "2.0.0"
-    kotlin("plugin.serialization") version "2.0.0"
+    kotlin("jvm")
+    kotlin("plugin.serialization")
+    kotlin("plugin.compose")
+    id("org.jetbrains.compose")
 }
 
 application {
@@ -17,9 +18,13 @@ application {
 repositories {
     mavenLocal()
     mavenCentral()
+    google()
 }
 
 dependencies {
+    implementation(compose.runtime)
+    implementation(compose.foundation)
+    implementation(compose.desktop.currentOs)
     implementation("de.danielscholz:KArgParser:0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0-RC")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
