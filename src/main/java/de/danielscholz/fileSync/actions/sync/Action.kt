@@ -3,6 +3,7 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.common.getBasicFileAttributes
 import de.danielscholz.fileSync.common.toKotlinInstantIgnoreMillis
 import de.danielscholz.fileSync.persistence.FileEntity
+import de.danielscholz.fileSync.ui.addCurrentOp
 import java.io.File
 
 
@@ -32,6 +33,7 @@ class ActionEnv(
     fun process(action: String, files: String, block: ProcessEnv.() -> Unit) {
         try {
             print("$action:".padEnd(14) + files)
+            addCurrentOp("$action $files")
             if (!dryRun) {
                 processEnv.block()
             }

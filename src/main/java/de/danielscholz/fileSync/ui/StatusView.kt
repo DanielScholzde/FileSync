@@ -11,8 +11,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
@@ -21,15 +23,20 @@ import de.danielscholz.fileSync.common.Global
 
 var uiReadDir1 by mutableStateOf<String?>(null)
 var uiReadDir2 by mutableStateOf<String?>(null)
+var uiCurrentOps by mutableStateOf<List<String>>(listOf())
 var uiFinished by mutableStateOf(false)
 var uiFailures by mutableStateOf(listOf<String>())
+
+fun addCurrentOp(action: String) {
+    uiCurrentOps = (uiCurrentOps + action).takeLast(10)
+}
 
 
 fun startUiBlocking() = application(false) {
     Window(
         onCloseRequest = { if (uiFinished) exitApplication() },
         title = "Status",
-        state = WindowState(size = DpSize(800.dp, 800.dp)),
+        state = WindowState(size = DpSize(2500.dp, 1000.dp)),
     ) {
         frame(::exitApplication)
     }
@@ -38,29 +45,49 @@ fun startUiBlocking() = application(false) {
 @Composable
 @Preview
 fun frame(exitApplication: () -> Unit) {
+    val fontSize = 25.sp
     scrollableContent {
         Column {
-            uiReadDir1?.let { Text(it, Modifier.padding(all = 5.dp)) }
-            uiReadDir2?.let { Text(it, Modifier.padding(all = 5.dp)) }
+
+            @Composable
+            fun buttons() {
+                if (uiFinished) {
+                    Button(onClick = exitApplication) {
+                        Text("OK", fontSize = fontSize)
+                    }
+                } else {
+                    Button(onClick = { Global.cancel = true; exitApplication() }) {
+                        Text("Abbrechen", fontSize = fontSize)
+                    }
+                }
+            }
+
+            buttons()
+            Spacer(Modifier.height(15.dp))
+
+            if (uiReadDir1 != null || uiReadDir2 != null) {
+                Text("Reading:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
+                uiReadDir1?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
+                uiReadDir2?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
+            }
+
+            if (uiCurrentOps.isNotEmpty()) {
+                Text("Sync:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
+                uiCurrentOps.forEach { Text(it, Modifier.padding(all = 3.dp), fontSize = fontSize) }
+            }
 
             if (uiFailures.isNotEmpty()) {
-                Text("Fehler:")
+                Spacer(Modifier.height(15.dp))
+
+                Text("Fehler:", fontSize = fontSize, fontWeight = Bold)
                 uiFailures.forEach {
-                    Text(it, modifier = Modifier.padding(all = 5.dp))
+                    Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize)
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(Modifier.height(15.dp))
 
-            if (uiFinished) {
-                Button(onClick = exitApplication) {
-                    Text("OK")
-                }
-            } else {
-                Button(onClick = { Global.cancel = true; exitApplication() }) {
-                    Text("Abbrechen")
-                }
-            }
+            buttons()
         }
     }
 }
