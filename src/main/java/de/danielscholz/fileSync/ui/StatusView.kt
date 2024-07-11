@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -63,6 +64,7 @@ fun frame(exitApplication: () -> Unit) {
             }
 
             buttons()
+
             Spacer(Modifier.height(15.dp))
 
             if (uiReadDir1 != null || uiReadDir2 != null) {
@@ -81,7 +83,7 @@ fun frame(exitApplication: () -> Unit) {
 
                 Text("Fehler:", fontSize = fontSize, fontWeight = Bold)
                 uiFailures.forEach {
-                    Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize)
+                    Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color.Red)
                 }
             }
 

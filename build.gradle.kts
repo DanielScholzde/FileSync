@@ -16,9 +16,9 @@ application {
 }
 
 repositories {
-    mavenLocal()
     mavenCentral()
     google()
+    mavenLocal()
 }
 
 dependencies {
