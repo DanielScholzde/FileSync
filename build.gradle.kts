@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 group = "de.danielscholz"
 version = "0.1-SNAPSHOT"
 description = "File sync"
@@ -46,7 +48,9 @@ dependencies {
 
 kotlin {
     jvmToolchain(21)
+
     compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21) // needed?
         freeCompilerArgs.add("-Xcontext-receivers")
     }
 }

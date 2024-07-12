@@ -20,22 +20,32 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import de.danielscholz.fileSync.common.Global
+import de.danielscholz.fileSync.common.formatAsFileSize
 
 
-var uiReadDir1 by mutableStateOf<String?>(null)
-var uiReadDir2 by mutableStateOf<String?>(null)
-var uiCurrentOps by mutableStateOf<List<String>>(listOf())
-var uiFinished by mutableStateOf(false)
-var uiFailures by mutableStateOf(listOf<String>())
+object UI {
+    class Dir {
+        var currentReadDir by mutableStateOf<String?>(null)
+        var freeSpaceDir by mutableStateOf<Long?>(null)
+        var spaceNeededDir by mutableStateOf<Long?>(null)
+    }
 
-fun addCurrentOp(action: String) {
-    uiCurrentOps = (uiCurrentOps + action).takeLast(10)
+    val sourceDir = Dir()
+    val targetDir = Dir()
+
+    var currentOperations by mutableStateOf<List<String>>(listOf())
+    var syncFinished by mutableStateOf(false)
+    var failures by mutableStateOf(listOf<String>())
+
+    fun addCurrentOperation(operation: String) {
+        currentOperations = (currentOperations + operation).takeLast(10)
+    }
 }
 
 
 fun startUiBlocking() = application(false) {
     Window(
-        onCloseRequest = { if (uiFinished) exitApplication() },
+        onCloseRequest = { if (UI.syncFinished) exitApplication() },
         title = "Status",
         state = WindowState(size = DpSize(2500.dp, 1000.dp)),
     ) {
@@ -52,7 +62,7 @@ fun frame(exitApplication: () -> Unit) {
 
             @Composable
             fun buttons() {
-                if (uiFinished) {
+                if (UI.syncFinished) {
                     Button(onClick = exitApplication) {
                         Text("OK", fontSize = fontSize)
                     }
@@ -67,22 +77,29 @@ fun frame(exitApplication: () -> Unit) {
 
             Spacer(Modifier.height(15.dp))
 
-            if (uiReadDir1 != null || uiReadDir2 != null) {
+            if (UI.sourceDir.currentReadDir != null || UI.targetDir.currentReadDir != null) {
                 Text("Reading:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
-                uiReadDir1?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
-                uiReadDir2?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
+                UI.sourceDir.currentReadDir?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
+                UI.targetDir.currentReadDir?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
             }
 
-            if (uiCurrentOps.isNotEmpty()) {
+            UI.sourceDir.freeSpaceDir?.let {
+                Text("Free Space (source): " + it.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+            }
+            UI.targetDir.freeSpaceDir?.let {
+                Text("Free Space (target): " + it.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+            }
+
+            if (UI.currentOperations.isNotEmpty()) {
                 Text("Sync:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
-                uiCurrentOps.forEach { Text(it, Modifier.padding(all = 3.dp), fontSize = fontSize) }
+                UI.currentOperations.forEach { Text(it, Modifier.padding(all = 3.dp), fontSize = fontSize) }
             }
 
-            if (uiFailures.isNotEmpty()) {
+            if (UI.failures.isNotEmpty()) {
                 Spacer(Modifier.height(15.dp))
 
                 Text("Fehler:", fontSize = fontSize, fontWeight = Bold)
-                uiFailures.forEach {
+                UI.failures.forEach {
                     Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color.Red)
                 }
             }

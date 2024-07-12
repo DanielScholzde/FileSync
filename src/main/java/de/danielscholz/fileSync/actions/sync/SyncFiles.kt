@@ -4,7 +4,8 @@ import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.persistence.*
-import de.danielscholz.fileSync.ui.*
+import de.danielscholz.fileSync.ui.UI
+import de.danielscholz.fileSync.ui.startUiBlocking
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.io.File
 import java.nio.file.Files
@@ -77,7 +78,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 try {
                     syncIntern()
                 } finally {
-                    uiFinished = true
+                    UI.syncFinished = true
                 }
             }
         }
@@ -119,11 +120,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                                 lastIndexedFilesMapped,
                                 lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
                                 syncName,
-                                { uiReadDir1 = it },
+                                { UI.sourceDir.currentReadDir = it },
                                 now
                             )
                         }
-                        uiReadDir1 = null
+                        UI.sourceDir.currentReadDir = null
                         backup(sourceDir, indexedFilesFileSource)
                         currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource, now) // already save indexed files in the event of a subsequent error
                         sourceChanges = getChanges(sourceDir, lastSyncResultFiles, currentFilesSource)
@@ -140,11 +141,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                                 lastIndexedFilesMapped,
                                 lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
                                 syncName,
-                                { uiReadDir2 = it },
+                                { UI.targetDir.currentReadDir = it },
                                 now
                             )
                         }
-                        uiReadDir2 = null
+                        UI.targetDir.currentReadDir = null
                         backup(targetDir, indexedFilesFileTarget)
                         currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget, now) // already save indexed files in the event of a subsequent error
                         targetChanges = getChanges(targetDir, lastSyncResultFiles, currentFilesTarget)
@@ -167,7 +168,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
         fun addFailure(failure: String) {
             failures += failure
-            uiFailures = failures.toList()
+            UI.failures = failures.toList()
         }
 
         val hasChanges: Boolean

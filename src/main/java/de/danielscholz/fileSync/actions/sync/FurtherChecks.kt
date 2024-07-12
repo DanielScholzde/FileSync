@@ -5,6 +5,7 @@ import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.common.formatAsFileSize
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.isFolderMarker
+import de.danielscholz.fileSync.ui.UI
 import java.io.File
 import java.nio.file.Files
 import javax.swing.JOptionPane
@@ -21,8 +22,8 @@ fun furtherChecks(
 ): Boolean {
     println()
 
-    val sourceChecks = FurtherChecks(sourceDir, targetChanges, currentFilesTarget.files, syncFilesParams)
-    val targetChecks = FurtherChecks(targetDir, sourceChanges, currentFilesSource.files, syncFilesParams)
+    val sourceChecks = FurtherChecks(sourceDir, UI.sourceDir, targetChanges, currentFilesTarget.files, syncFilesParams)
+    val targetChecks = FurtherChecks(targetDir, UI.targetDir, sourceChanges, currentFilesSource.files, syncFilesParams)
 
     sourceChecks.printout()
     targetChecks.printout()
@@ -33,6 +34,7 @@ fun furtherChecks(
 
 class FurtherChecks(
     private val dir: File,
+    private val uiDir: UI.Dir,
     private val changes: Changes,
     private val currentFiles: Set<FileEntity>,
     private val syncFilesParams: SyncFilesParams
@@ -54,8 +56,17 @@ class FurtherChecks(
     private val usableSpace = fileStore.usableSpace
     private val totalSpace = fileStore.totalSpace
 
+    private val minDiskFreeSpaceByPercent = totalSpace / 100 * syncFilesParams.minDiskFreeSpacePercent
+    private val minDiskFreeSpaceByAbsolute = syncFilesParams.minDiskFreeSpaceMB * 1024L * 1024
+    private val freeSpaceAfterSync = usableSpace - diskspaceNeeded
+
+    private val changedPercent = if (totalNumberOfFiles > 0) changedNumberOfFiles * 100 / totalNumberOfFiles else 0
+
 
     fun printout() {
+        uiDir.freeSpaceDir = usableSpace
+        uiDir.spaceNeededDir = diskspaceNeeded
+
         if (changes.hasChanges()) {
             println(dir.toString())
 
@@ -77,14 +88,14 @@ class FurtherChecks(
             if (changes.modifiedChanged.isNotEmpty()) {
                 p("Files to update modified", changes.modifiedChanged.size)
             }
-            if (changes.movedOrRenamed.any { it.renamed && !it.moved }) {
-                p("Files to rename", changes.movedOrRenamed.filter { it.renamed && !it.moved }.size)
+            if (changes.renamed().isNotEmpty()) {
+                p("Files to rename", changes.renamed().size)
             }
-            if (changes.movedOrRenamed.any { !it.renamed && it.moved }) {
-                p("Files to move", changes.movedOrRenamed.filter { !it.renamed && it.moved }.size)
+            if (changes.moved().isNotEmpty()) {
+                p("Files to move", changes.moved().size)
             }
-            if (changes.movedOrRenamed.any { it.renamed && it.moved }) {
-                p("Files to rename + move", changes.movedOrRenamed.filter { it.renamed && it.moved }.size)
+            if (changes.movedAndRenamed().isNotEmpty()) {
+                p("Files to rename + move", changes.movedAndRenamed().size)
             }
             if (changes.movedAndContentChanged.isNotEmpty()) {
                 p("Files to move + update content", changes.movedAndContentChanged.size)
@@ -118,10 +129,6 @@ class FurtherChecks(
 
     fun check(): Boolean {
 
-        val minDiskFreeSpaceByPercent = totalSpace / 100 * syncFilesParams.minDiskFreeSpacePercent
-        val minDiskFreeSpaceByAbsolute = syncFilesParams.minDiskFreeSpaceMB * 1024L * 1024
-        val freeSpaceAfterSync = usableSpace - diskspaceNeeded
-
         if (freeSpaceAfterSync < minDiskFreeSpaceByPercent || freeSpaceAfterSync < minDiskFreeSpaceByAbsolute) {
 
             val msg = "Not enough free space on the target medium available.\n" +
@@ -136,9 +143,6 @@ class FurtherChecks(
             JOptionPane.showConfirmDialog(null, msg, "Information", JOptionPane.OK_CANCEL_OPTION)
             return false
         }
-
-
-        val changedPercent = if (totalNumberOfFiles > 0) changedNumberOfFiles * 100 / totalNumberOfFiles else 0
 
         if (changedPercent >= syncFilesParams.maxChangedFilesWarningPercent && changedNumberOfFiles > syncFilesParams.minAllowedChanges) {
 
