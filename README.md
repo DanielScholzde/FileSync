@@ -3,6 +3,7 @@
 Features:
 
 - Full bidirectional synchronization of two folders: A <--> B
+  - optional 'backup mode' which only syncs in one way: A --> B
 - support for complex filters (to exclude files or folders)
 - support of multi bidirectional sync
   - A <--> B <--> C

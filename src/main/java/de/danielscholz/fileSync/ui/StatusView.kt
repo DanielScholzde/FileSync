@@ -19,21 +19,23 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
+import de.danielscholz.fileSync.actions.sync.ChangesWithDetails
 import de.danielscholz.fileSync.common.Global
+import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.common.formatAsFileSize
 
 
 object UI {
     class Dir {
         var currentReadDir by mutableStateOf<String?>(null)
-        var freeSpaceDir by mutableStateOf<Long?>(null)
-        var spaceNeededDir by mutableStateOf<Long?>(null)
+        var changes by mutableStateOf<ChangesWithDetails?>(null)
     }
 
     val sourceDir = Dir()
     val targetDir = Dir()
 
     var currentOperations by mutableStateOf<List<String>>(listOf())
+        private set
     var syncFinished by mutableStateOf(false)
     var failures by mutableStateOf(listOf<String>())
 
@@ -57,56 +59,89 @@ fun startUiBlocking() = application(false) {
 @Preview
 fun frame(exitApplication: () -> Unit) {
     val fontSize = 25.sp
-    scrollableContent {
-        Column {
+    Column {
+        Box(modifier = Modifier.padding(15.dp)) {
+            if (UI.syncFinished) {
+                Button(onClick = exitApplication) {
+                    Text("OK", fontSize = fontSize)
+                }
+            } else {
+                Button(onClick = { Global.cancel = true; exitApplication() }) {
+                    Text("Abbrechen", fontSize = fontSize)
+                }
+            }
+        }
+        scrollableContent {
+            Column {
+                if (UI.sourceDir.currentReadDir != null || UI.targetDir.currentReadDir != null) {
+                    Text("Reading:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
+                    UI.sourceDir.currentReadDir?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
+                    UI.targetDir.currentReadDir?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
+                }
 
-            @Composable
-            fun buttons() {
-                if (UI.syncFinished) {
-                    Button(onClick = exitApplication) {
-                        Text("OK", fontSize = fontSize)
+                @Composable
+                fun pp(dir: UI.Dir, dirStr: String) {
+                    dir.changes?.apply {
+                        Text("$dirStr:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
+                        if (filesToAdd.isNotEmpty()) {
+                            Text("Files to add: " + filesToAdd.size + " (${filesToAdd.fileSize().formatAsFileSize()})", Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                        }
+                        if (contentChanged.isNotEmpty()) {
+                            Text(
+                                "Files to update content: " + contentChanged.size + " (${contentChanged.fileSize().formatAsFileSize()})",
+                                Modifier.padding(vertical = 5.dp),
+                                fontSize = fontSize
+                            )
+                        }
+                        if (modifiedChanged.isNotEmpty()) {
+                            Text("Files to update modified: " + modifiedChanged.size, Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                        }
+                        if (renamed().isNotEmpty()) {
+                            Text("Files to rename: " + renamed().size, Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                        }
+                        if (moved().isNotEmpty()) {
+                            Text("Files to move: " + moved().size, Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                        }
+                        if (movedAndRenamed().isNotEmpty()) {
+                            Text("Files to rename + move: " + movedAndRenamed().size, Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                        }
+                        if (movedAndContentChanged.isNotEmpty()) {
+                            Text("Files to move + update content: " + movedAndContentChanged.size, Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                        }
+                        if (filesToDelete.isNotEmpty()) {
+                            Text("Files to delete: " + filesToDelete.size, Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                        }
+                        if (foldersToAdd.isNotEmpty()) {
+                            Text("Folders to create: " + foldersToAdd.size, Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                        }
+                        if (foldersToDelete.isNotEmpty()) {
+                            Text("Folders to delete: " + foldersToDelete.size, Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                        }
+
+                        if (diskspaceNeeded > 0) {
+                            Text("Diskspace needed: " + diskspaceNeeded.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                            Text("Diskspace available: " + usableSpace.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                        }
                     }
-                } else {
-                    Button(onClick = { Global.cancel = true; exitApplication() }) {
-                        Text("Abbrechen", fontSize = fontSize)
+                }
+
+                pp(UI.sourceDir, "SourceDir")
+                pp(UI.targetDir, "TargetDir")
+
+                if (UI.currentOperations.isNotEmpty()) {
+                    Text("Sync:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
+                    UI.currentOperations.forEach { Text(it, Modifier.padding(all = 3.dp), fontSize = fontSize) }
+                }
+
+                if (UI.failures.isNotEmpty()) {
+                    Spacer(Modifier.height(15.dp))
+
+                    Text("Fehler:", fontSize = fontSize, fontWeight = Bold)
+                    UI.failures.forEach {
+                        Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color.Red)
                     }
                 }
             }
-
-            buttons()
-
-            Spacer(Modifier.height(15.dp))
-
-            if (UI.sourceDir.currentReadDir != null || UI.targetDir.currentReadDir != null) {
-                Text("Reading:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
-                UI.sourceDir.currentReadDir?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
-                UI.targetDir.currentReadDir?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
-            }
-
-            UI.sourceDir.freeSpaceDir?.let {
-                Text("Free Space (source): " + it.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
-            }
-            UI.targetDir.freeSpaceDir?.let {
-                Text("Free Space (target): " + it.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
-            }
-
-            if (UI.currentOperations.isNotEmpty()) {
-                Text("Sync:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
-                UI.currentOperations.forEach { Text(it, Modifier.padding(all = 3.dp), fontSize = fontSize) }
-            }
-
-            if (UI.failures.isNotEmpty()) {
-                Spacer(Modifier.height(15.dp))
-
-                Text("Fehler:", fontSize = fontSize, fontWeight = Bold)
-                UI.failures.forEach {
-                    Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color.Red)
-                }
-            }
-
-            Spacer(Modifier.height(15.dp))
-
-            buttons()
         }
     }
 }
@@ -114,7 +149,7 @@ fun frame(exitApplication: () -> Unit) {
 @Composable
 fun scrollableContent(content: @Composable () -> Unit) {
     Box(
-        modifier = Modifier.fillMaxSize().padding(10.dp)
+        modifier = Modifier.fillMaxSize().padding(15.dp)
     ) {
         val stateVertical = rememberScrollState(0)
         val stateHorizontal = rememberScrollState(0)

@@ -1,5 +1,6 @@
 package de.danielscholz.fileSync.actions.sync
 
+import androidx.compose.runtime.Immutable
 import de.danielscholz.fileSync.persistence.FileEntity
 import kotlinx.datetime.Instant
 
@@ -62,6 +63,7 @@ interface IChange<FROM : FileEntity?, TO : FileEntity?> {
 }
 
 /** equals/hashCode: only 'to' is considered! */
+@Immutable
 data class ContentChanged(override val from: FileEntity, override val to: FileEntity) : IChange<FileEntity, FileEntity> {
     companion object {
         val DOES_NOT_MATTER_FILE = FileEntity(0, "-", Instant.DISTANT_PAST, Instant.DISTANT_PAST, true, 0, null)
@@ -77,6 +79,7 @@ data class ContentChanged(override val from: FileEntity, override val to: FileEn
 }
 
 /** equals/hashCode: only 'to' is considered! */
+@Immutable
 data class ModifiedChanged(override val from: FileEntity, override val to: FileEntity) : IChange<FileEntity, FileEntity> {
 
     override fun equals(other: Any?): Boolean {
@@ -89,6 +92,7 @@ data class ModifiedChanged(override val from: FileEntity, override val to: FileE
 }
 
 /** equals/hashCode: only 'to' is considered! */
+@Immutable
 data class MovedOrRenamed(override val from: FileEntity, override val to: FileEntity) : IChange<FileEntity, FileEntity> {
 
     val renamed get() = from.name != to.name
@@ -104,6 +108,7 @@ data class MovedOrRenamed(override val from: FileEntity, override val to: FileEn
 }
 
 /** equals/hashCode: only 'to' is considered! */
+@Immutable
 data class MovedAndContentChanged(override val from: FileEntity, override val to: FileEntity) : IChange<FileEntity, FileEntity> {
 
     override fun equals(other: Any?): Boolean {
@@ -116,6 +121,7 @@ data class MovedAndContentChanged(override val from: FileEntity, override val to
 }
 
 /** equals/hashCode: only 'from' is considered! */
+@Immutable
 data class Deletion(override val from: FileEntity) : IChange<FileEntity, Nothing?> {
     override val to = null
 
@@ -131,6 +137,7 @@ data class Deletion(override val from: FileEntity) : IChange<FileEntity, Nothing
 }
 
 /** equals/hashCode: only 'to' is considered! */
+@Immutable
 data class Addition(override val to: FileEntity) : IChange<Nothing?, FileEntity> {
     override val from = null
 

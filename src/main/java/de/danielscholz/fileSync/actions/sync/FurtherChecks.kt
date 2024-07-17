@@ -22,8 +22,14 @@ fun furtherChecks(
 ): Boolean {
     println()
 
-    val sourceChecks = FurtherChecks(sourceDir, UI.sourceDir, targetChanges, currentFilesTarget.files, syncFilesParams)
-    val targetChecks = FurtherChecks(targetDir, UI.targetDir, sourceChanges, currentFilesSource.files, syncFilesParams)
+    val sourceChangesWithDetails = ChangesWithDetails(sourceDir, UI.sourceDir, targetChanges, currentFilesTarget.files, syncFilesParams)
+    val targetChangesWithDetails = ChangesWithDetails(targetDir, UI.targetDir, sourceChanges, currentFilesSource.files, syncFilesParams)
+
+    UI.sourceDir.changes = sourceChangesWithDetails
+    UI.targetDir.changes = targetChangesWithDetails
+
+    val sourceChecks = FurtherChecks(sourceDir, sourceChangesWithDetails, syncFilesParams)
+    val targetChecks = FurtherChecks(targetDir, targetChangesWithDetails, syncFilesParams)
 
     sourceChecks.printout()
     targetChecks.printout()
@@ -31,43 +37,45 @@ fun furtherChecks(
     return sourceChecks.check() && targetChecks.check()
 }
 
-
-class FurtherChecks(
+class ChangesWithDetails(
     private val dir: File,
     private val uiDir: UI.Dir,
     private val changes: Changes,
     private val currentFiles: Set<FileEntity>,
     private val syncFilesParams: SyncFilesParams
-) {
+) : Changes by changes {
 
-    private val addedFiles = changes.added.filter { !it.isFolderMarker }
-    private val deletedFiles = changes.deleted.filter { !it.isFolderMarker }
+    val filesToAdd = changes.added.filter { !it.isFolderMarker }
+    val filesToDelete = changes.deleted.filter { !it.isFolderMarker }
 
-    private val addedFolders = changes.added.filter { it.isFolderMarker }
-    private val deletedFolders = changes.deleted.filter { it.isFolderMarker }
+    val foldersToAdd = changes.added.filter { it.isFolderMarker }
+    val foldersToDelete = changes.deleted.filter { it.isFolderMarker }
 
-    private val totalNumberOfFiles = currentFiles.size + addedFiles.size + deletedFiles.size
-    private val changedNumberOfFiles = addedFiles.size + changes.contentChanged.size + changes.modifiedChanged.size + changes.movedOrRenamed.size + deletedFiles.size
+    private val totalNumberOfFiles = currentFiles.size + filesToAdd.size + filesToDelete.size
+    val changedNumberOfFiles = filesToAdd.size + changes.contentChanged.size + changes.modifiedChanged.size + changes.movedOrRenamed.size + filesToDelete.size
+    val changedPercent = if (totalNumberOfFiles > 0) changedNumberOfFiles * 100 / totalNumberOfFiles else 0
 
     // does not regard deleted files since they are not deleted but moved to history folder
-    private val diskspaceNeeded = addedFiles.fileSize() + changes.contentChanged.fileSize()
+    val diskspaceNeeded = filesToAdd.fileSize() + changes.contentChanged.fileSize()
 
     private val fileStore = Files.getFileStore(dir.toPath())
-    private val usableSpace = fileStore.usableSpace
     private val totalSpace = fileStore.totalSpace
+    val usableSpace = fileStore.usableSpace
 
-    private val minDiskFreeSpaceByPercent = totalSpace / 100 * syncFilesParams.minDiskFreeSpacePercent
-    private val minDiskFreeSpaceByAbsolute = syncFilesParams.minDiskFreeSpaceMB * 1024L * 1024
-    private val freeSpaceAfterSync = usableSpace - diskspaceNeeded
+    val minDiskFreeSpaceByPercent = totalSpace / 100 * syncFilesParams.minDiskFreeSpacePercent
+    val minDiskFreeSpaceByAbsolute = syncFilesParams.minDiskFreeSpaceMB * 1024L * 1024
+    val freeSpaceAfterSync = usableSpace - diskspaceNeeded
 
-    private val changedPercent = if (totalNumberOfFiles > 0) changedNumberOfFiles * 100 / totalNumberOfFiles else 0
+}
 
+class FurtherChecks(
+    private val dir: File,
+    private val changes: ChangesWithDetails,
+    private val syncFilesParams: SyncFilesParams
+) {
 
-    fun printout() {
-        uiDir.freeSpaceDir = usableSpace
-        uiDir.spaceNeededDir = diskspaceNeeded
-
-        if (changes.hasChanges()) {
+    fun printout() = with(changes) {
+        if (hasChanges()) {
             println(dir.toString())
 
             val list = mutableListOf<Triple<String, String, String?>>()
@@ -76,38 +84,38 @@ class FurtherChecks(
                 list += Triple("  $str: ", str2.toString(), str3?.toString()?.let { " $it" })
             }
 
-//            if (changes.folderRenamed.isNotEmpty()) {
-//                p("Folder to rename", changes.folderRenamed.size)
+//            if (folderRenamed.isNotEmpty()) {
+//                p("Folder to rename", folderRenamed.size)
 //            }
-            if (addedFiles.isNotEmpty()) {
-                p("Files to add", addedFiles.size, "(${addedFiles.fileSize().formatAsFileSize()})")
+            if (filesToAdd.isNotEmpty()) {
+                p("Files to add", filesToAdd.size, "(${filesToAdd.fileSize().formatAsFileSize()})")
             }
-            if (changes.contentChanged.isNotEmpty()) {
-                p("Files to update content", changes.contentChanged.size, "(${changes.contentChanged.fileSize().formatAsFileSize()})")
+            if (contentChanged.isNotEmpty()) {
+                p("Files to update content", contentChanged.size, "(${contentChanged.fileSize().formatAsFileSize()})")
             }
-            if (changes.modifiedChanged.isNotEmpty()) {
-                p("Files to update modified", changes.modifiedChanged.size)
+            if (modifiedChanged.isNotEmpty()) {
+                p("Files to update modified", modifiedChanged.size)
             }
-            if (changes.renamed().isNotEmpty()) {
-                p("Files to rename", changes.renamed().size)
+            if (renamed().isNotEmpty()) {
+                p("Files to rename", renamed().size)
             }
-            if (changes.moved().isNotEmpty()) {
-                p("Files to move", changes.moved().size)
+            if (moved().isNotEmpty()) {
+                p("Files to move", moved().size)
             }
-            if (changes.movedAndRenamed().isNotEmpty()) {
-                p("Files to rename + move", changes.movedAndRenamed().size)
+            if (movedAndRenamed().isNotEmpty()) {
+                p("Files to rename + move", movedAndRenamed().size)
             }
-            if (changes.movedAndContentChanged.isNotEmpty()) {
-                p("Files to move + update content", changes.movedAndContentChanged.size)
+            if (movedAndContentChanged.isNotEmpty()) {
+                p("Files to move + update content", movedAndContentChanged.size)
             }
-            if (deletedFiles.isNotEmpty()) {
-                p("Files to delete", deletedFiles.size)
+            if (filesToDelete.isNotEmpty()) {
+                p("Files to delete", filesToDelete.size)
             }
-            if (addedFolders.isNotEmpty()) {
-                p("Folders to create", addedFolders.size)
+            if (foldersToAdd.isNotEmpty()) {
+                p("Folders to create", foldersToAdd.size)
             }
-            if (deletedFolders.isNotEmpty()) {
-                p("Folders to delete", deletedFolders.size)
+            if (foldersToDelete.isNotEmpty()) {
+                p("Folders to delete", foldersToDelete.size)
             }
             val max1 = list.maxOf { it.first.length }
             val max2 = list.maxOf { it.second.length }
@@ -127,7 +135,7 @@ class FurtherChecks(
     }
 
 
-    fun check(): Boolean {
+    fun check(): Boolean = with(changes) {
 
         if (freeSpaceAfterSync < minDiskFreeSpaceByPercent || freeSpaceAfterSync < minDiskFreeSpaceByAbsolute) {
 
@@ -147,7 +155,7 @@ class FurtherChecks(
         if (changedPercent >= syncFilesParams.maxChangedFilesWarningPercent && changedNumberOfFiles > syncFilesParams.minAllowedChanges) {
 
             val msg = "More files were changed or deleted than allowed\n" +
-                    "(added: ${addedFiles.size}, changed: ${changedNumberOfFiles - deletedFiles.size - addedFiles.size}, deleted: ${deletedFiles.size}. This corresponds to: $changedPercent%). " +
+                    "(added: ${filesToAdd.size}, changed: ${changedNumberOfFiles - filesToDelete.size - filesToAdd.size}, deleted: ${filesToDelete.size}. This corresponds to: ${changedPercent}%). " +
                     "Do you want to continue the sync process?"
 
             if (!syncFilesParams.confirmations) {

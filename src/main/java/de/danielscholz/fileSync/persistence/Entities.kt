@@ -1,5 +1,6 @@
 package de.danielscholz.fileSync.persistence
 
+import androidx.compose.runtime.Immutable
 import de.danielscholz.fileSync.common.FoldersContext
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
@@ -87,6 +88,7 @@ fun FolderEntity.stripUnusedFolder(usedFolderIds: Set<Long>): FolderEntity {
  * equals: only Folder + Filename
  */
 @Serializable
+@Immutable
 data class FileEntity(
     @SerialName("fId")
     val folderId: Long,
