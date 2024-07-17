@@ -20,6 +20,9 @@ class SyncFilesParams {
     @Description("Should sourceDir and targetDir be indexed in parallel?")
     var parallelIndexing: Boolean = true
 
+    @Description("BackupMode")
+    var backupMode: Boolean = false
+
     @Description("Maximum of allowed file changes in percent. If more files changed, a confirmation popup window will appear (can be disabled with parameter '--confirmations no').")
     var maxChangedFilesWarningPercent = 5
 

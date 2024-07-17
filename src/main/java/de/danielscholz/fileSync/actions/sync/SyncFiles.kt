@@ -155,6 +155,10 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             )
         }
 
+        if (syncFilesParams.backupMode && targetChanges.hasChanges()) {
+            throw Exception("Target directory has changes, which is not allowed in backupMode!")
+        }
+
         println("Files / Folders (sourceDir): ${sourceStatistics.files} / ${sourceStatistics.folders}")
         println("Files / Folders (targetDir): ${targetStatistics.files} / ${targetStatistics.folders}")
         if (sourceStatistics.files > 0) {
@@ -185,6 +189,11 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
                 if (!furtherChecks(sourceDir, targetDir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncFilesParams)) {
                     return
+                }
+
+                // to be sure, repeat check:
+                if (syncFilesParams.backupMode && targetChanges.hasChanges()) {
+                    throw Exception("Target directory has changes, which is not allowed in backupMode!")
                 }
 
                 val actions = createActions(sourceChanges, targetChanges)
