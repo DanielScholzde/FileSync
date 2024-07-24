@@ -23,12 +23,31 @@ import de.danielscholz.fileSync.actions.sync.ChangesWithDetails
 import de.danielscholz.fileSync.common.Global
 import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.common.formatAsFileSize
+import de.danielscholz.fileSync.common.supply
+
+
+val isWindows = supply {
+    val OS = System.getProperty("os.name", "generic").lowercase()
+    if ((OS.indexOf("mac") >= 0) || (OS.indexOf("darwin") >= 0)) {
+        false
+    } else if (OS.indexOf("win") >= 0) {
+        true
+    } else if (OS.indexOf("nux") >= 0) {
+        false
+    } else {
+        false
+    }
+}
+
+val fontSize = if (isWindows) 15.sp else 25.sp
 
 
 object UI {
     class Dir {
         var currentReadDir by mutableStateOf<String?>(null)
         var changes by mutableStateOf<ChangesWithDetails?>(null)
+        var filesHashCalculatedCount by mutableStateOf(0)
+        var filesHashCalculatedSize by mutableStateOf(0L)
     }
 
     val sourceDir = Dir()
@@ -38,6 +57,7 @@ object UI {
         private set
     var syncFinished by mutableStateOf(false)
     var failures by mutableStateOf(listOf<String>())
+    var conflicts by mutableStateOf(listOf<String>())
 
     fun addCurrentOperation(operation: String) {
         currentOperations = (currentOperations + operation).takeLast(10)
@@ -58,7 +78,6 @@ fun startUiBlocking() = application(false) {
 @Composable
 @Preview
 fun frame(exitApplication: () -> Unit) {
-    val fontSize = 25.sp
     Column {
         Box(modifier = Modifier.padding(15.dp)) {
             if (UI.syncFinished) {
@@ -77,6 +96,13 @@ fun frame(exitApplication: () -> Unit) {
                     Text("Reading:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
                     UI.sourceDir.currentReadDir?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
                     UI.targetDir.currentReadDir?.let { Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize) }
+                }
+
+                if (UI.sourceDir.filesHashCalculatedSize > 0L) {
+                    Text("Indexed (source): " + UI.sourceDir.filesHashCalculatedSize.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                }
+                if (UI.targetDir.filesHashCalculatedSize > 0L) {
+                    Text("Indexed (target): " + UI.targetDir.filesHashCalculatedSize.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
                 }
 
                 @Composable
@@ -127,6 +153,15 @@ fun frame(exitApplication: () -> Unit) {
 
                 pp(UI.sourceDir, "SourceDir")
                 pp(UI.targetDir, "TargetDir")
+
+                if (UI.conflicts.isNotEmpty()) {
+                    Spacer(Modifier.height(15.dp))
+
+                    Text("Conflicts:", fontSize = fontSize, fontWeight = Bold)
+                    UI.conflicts.forEach {
+                        Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color.Red)
+                    }
+                }
 
                 if (UI.currentOperations.isNotEmpty()) {
                     Text("Sync:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)

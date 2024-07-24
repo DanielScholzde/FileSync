@@ -3,6 +3,7 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.persistence.FileEntity
+import de.danielscholz.fileSync.ui.UI
 import java.io.File
 
 
@@ -184,6 +185,7 @@ fun checkAndFix(
 
     if (failures.isNotEmpty()) {
         println("Conflicts:\n${failures.joinToString("\n")}")
+        UI.conflicts = failures
         return false
     }
     return true

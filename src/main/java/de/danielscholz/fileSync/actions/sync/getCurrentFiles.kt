@@ -120,7 +120,8 @@ fun getCurrentFiles(
                 }
                 // if not found within any layer: calculate hash
                 file.hash.value?.let {
-                    statisticsCtx.hashCalculated++
+                    statisticsCtx.filesHashCalculatedCount++
+                    statisticsCtx.filesHashCalculatedSize += file.size
                     FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
                 }
             }
@@ -134,7 +135,7 @@ fun getCurrentFiles(
                 hidden = file.hidden,
                 size = file.size
             )
-            statisticsCtx.files++
+            statisticsCtx.filesCount++
 
             testIfCancel()
         }
@@ -158,7 +159,7 @@ fun getCurrentFiles(
             }
             .forEach {
                 val folder = foldersCtx.getOrCreate(it.name, folderId)
-                statisticsCtx.folders++
+                statisticsCtx.foldersCount++
                 process(it.content(), folder.id)
             }
     }

@@ -98,8 +98,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
         val syncResultFiles: MutableSet<FileEntity>
 
-        val sourceStatistics = MutableStatistics()
-        val targetStatistics = MutableStatistics()
+        val sourceStatistics = MutableStatistics(UI.sourceDir)
+        val targetStatistics = MutableStatistics(UI.targetDir)
 
         val folders = MutableFolders()
 
@@ -161,13 +161,13 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             throw Exception("Target directory has changes, which is not allowed in backupMode!")
         }
 
-        println("Files / Folders (sourceDir): ${sourceStatistics.files} / ${sourceStatistics.folders}")
-        println("Files / Folders (targetDir): ${targetStatistics.files} / ${targetStatistics.folders}")
-        if (sourceStatistics.files > 0) {
-            println("Hash reused (sourceDir): ${100 - 100 * sourceStatistics.hashCalculated / sourceStatistics.files}%")
+        println("Files / Folders (sourceDir): ${sourceStatistics.filesCount} / ${sourceStatistics.foldersCount}")
+        println("Files / Folders (targetDir): ${targetStatistics.filesCount} / ${targetStatistics.foldersCount}")
+        if (sourceStatistics.filesCount > 0) {
+            println("Hash reused (sourceDir): ${100 - 100 * sourceStatistics.filesHashCalculatedCount / sourceStatistics.filesCount}%")
         }
-        if (targetStatistics.files > 0) {
-            println("Hash reused (targetDir): ${100 - 100 * targetStatistics.hashCalculated / targetStatistics.files}%")
+        if (targetStatistics.filesCount > 0) {
+            println("Hash reused (targetDir): ${100 - 100 * targetStatistics.filesHashCalculatedCount / targetStatistics.filesCount}%")
         }
 
         val failures = mutableListOf<String>()
