@@ -23,6 +23,21 @@ class MutableCurrentFiles(
 ) : CurrentFiles
 
 
+interface ILayer {
+    val indexedFilesAsMap: Map<Quad<Long, String, Long, Instant>, FileEntity>
+    val indexedFilesAsMultimap: ListMultimap<Triple<String, Long, Instant>, FileEntity>
+}
+
+class Layer(private val indexedFiles: Set<FileEntity>, val indexDate: LocalDateTime) : ILayer {
+    override val indexedFilesAsMap = indexedFiles.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
+    override val indexedFilesAsMultimap by myLazy { indexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
+}
+
+class LayerExtended(private val layer: Layer, filesMovedFromDifferentFolderId: Lazy<Long?>) : ILayer by layer {
+    val filesMovedFromDifferentFolderId: Long? by filesMovedFromDifferentFolderId
+}
+
+
 context(MutableFoldersContext, MutableStatisticsContext, CaseSensitiveContext)
 fun getCurrentFiles(
     dir: File,
@@ -30,24 +45,35 @@ fun getCurrentFiles(
     lastIndexedFiles: Set<FileEntity>,
     lastIndexedFilesDate: LocalDateTime,
     syncName: String,
+    considerOtherIndexedFilesWithSyncName: String?,
     processDirCallback: (String) -> Unit,
     now: LocalDateTime,
 ): MutableCurrentFiles {
 
     val files = mutableSetOf<FileEntity>()
 
-    val lastIndexedFilesAsMap = lastIndexedFiles.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
-    val lastIndexedFilesAsMultimap by myLazy { lastIndexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
+
+    val indexedFilesFromOtherSync = considerOtherIndexedFilesWithSyncName?.let {
+        val indexResultFile = File(dir, "$indexedFilesFilePrefix${considerOtherIndexedFilesWithSyncName}$commonFileSuffix")
+        if (indexResultFile.isFile) {
+            val indexedFilesEntity = readIndexedFiles(indexResultFile)!!
+            indexedFilesEntity.mapToRead(filter) to indexedFilesEntity.runDate
+        } else null
+    }
 
     val cancelledIndexingResultFile = File(dir, "$indexedFilesFilePrefix${syncName}_TEMP$commonFileSuffix")
 
     val cancelledIndexedFiles = if (cancelledIndexingResultFile.isFile) {
         val cancelledIndexedFilesEntity = readIndexedFiles(cancelledIndexingResultFile)!!
-        if (cancelledIndexedFilesEntity.runDate > lastIndexedFilesDate) cancelledIndexedFilesEntity.mapToRead(filter) else setOf()
-    } else setOf()
+        if (cancelledIndexedFilesEntity.runDate > lastIndexedFilesDate) cancelledIndexedFilesEntity.mapToRead(filter) to cancelledIndexedFilesEntity.runDate else null
+    } else null
 
-    val cancelledIndexedFilesAsMap = cancelledIndexedFiles.associateBy { Quad(it.folderId, it.name, it.size, it.modified) }
-    val cancelledIndexedFilesAsMultimap by myLazy { cancelledIndexedFiles.multiAssociateBy { Triple(it.name, it.size, it.modified) } }
+
+    val layers = listOfNotNull(
+        cancelledIndexedFiles?.let { Layer(it.first, it.second) },
+        indexedFilesFromOtherSync?.let { Layer(it.first, it.second) },
+        Layer(lastIndexedFiles, lastIndexedFilesDate),
+    ).sortedByDescending { it.indexDate }
 
 
     fun process(folderResult: FolderResult, folderId: Long) {
@@ -73,29 +99,30 @@ fun getCurrentFiles(
                 }
         }
 
-        val filesMovedFromDifferentFolderId by myLazy { getFilesMovedFromDifferentFolderId(lastIndexedFilesAsMultimap) }
-        val filesMovedFromDifferentFolderId2 by myLazy { getFilesMovedFromDifferentFolderId(cancelledIndexedFilesAsMultimap) }
+        val layersExtended = layers.map { LayerExtended(it, myLazy { getFilesMovedFromDifferentFolderId(it.indexedFilesAsMultimap) }) }
 
         filteredFiles.forEach { file ->
 
             val fileHash = supply {
                 val key1 = Quad(folderId, file.name, file.size, file.modified)
                 val key2 = Triple(file.name, file.size, file.modified)
-                cancelledIndexedFilesAsMap[key1]?.fileHash
-                    ?: cancelledIndexedFilesAsMultimap[key2]
-                        .firstOrNull { it.folderId == filesMovedFromDifferentFolderId2 }
-                        ?.fileHash
-                    // simple case, file in same location and with same size and modification date:
-                    ?: lastIndexedFilesAsMap[key1]?.fileHash
-                    // same, but folder renamed:
-                    ?: lastIndexedFilesAsMultimap[key2]
-                        .firstOrNull { it.folderId == filesMovedFromDifferentFolderId }
-                        ?.fileHash
-                    // in all other cases: calculate hash
-                    ?: file.hash.value?.let {
-                        statisticsCtx.hashCalculated++
-                        FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
-                    }
+
+                for (layer in layersExtended) {
+                    val result =
+                        // simple case, file in same location and with same size and modification date:
+                        layer.indexedFilesAsMap[key1]?.fileHash
+                        // same, but folder renamed:
+                            ?: layer.indexedFilesAsMultimap[key2]
+                                .firstOrNull { it.folderId == layer.filesMovedFromDifferentFolderId }
+                                ?.fileHash
+                            ?: continue // if not found, continue with next layer
+                    return@supply result
+                }
+                // if not found within any layer: calculate hash
+                file.hash.value?.let {
+                    statisticsCtx.hashCalculated++
+                    FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
+                }
             }
 
             files += FileEntity(

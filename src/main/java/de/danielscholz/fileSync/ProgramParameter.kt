@@ -11,6 +11,9 @@ class SyncFilesParams {
     @Description("Name for sync of this pair of directories")
     var syncName: String? = null
 
+    @Description("")
+    var considerOtherIndexedFilesWithSyncName: String? = null
+
     @Description("Source directory")
     var sourceDir: File? = null
 

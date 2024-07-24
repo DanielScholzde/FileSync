@@ -43,7 +43,8 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
     addActionParser(
         Commands.SYNC_FILES.command,
         ArgParserBuilder(SyncFilesParams()).buildWith {
-            add(paramValues::syncName, StringParam())
+            add(paramValues::syncName, StringParam(), required = true)
+            add(paramValues::considerOtherIndexedFilesWithSyncName, StringParam())
             add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
             add(paramValues::targetDir, FileParam(checkIsDir = true), required = true)
             add(paramValues::excludedPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))

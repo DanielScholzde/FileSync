@@ -120,6 +120,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                                 lastIndexedFilesMapped,
                                 lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
                                 syncName,
+                                syncFilesParams.considerOtherIndexedFilesWithSyncName,
                                 { UI.sourceDir.currentReadDir = it },
                                 now
                             )
@@ -141,6 +142,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                                 lastIndexedFilesMapped,
                                 lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
                                 syncName,
+                                syncFilesParams.considerOtherIndexedFilesWithSyncName,
                                 { UI.targetDir.currentReadDir = it },
                                 now
                             )
