@@ -57,7 +57,7 @@ object UI {
         private set
     var syncFinished by mutableStateOf(false)
     var failures by mutableStateOf(listOf<String>())
-    var conflicts by mutableStateOf(listOf<String>())
+    var conflicts by mutableStateOf(listOf<Triple<String, (() -> Unit)?, (() -> Unit)?>>())
 
     fun addCurrentOperation(operation: String) {
         currentOperations = (currentOperations + operation).takeLast(10)
@@ -159,7 +159,23 @@ fun frame(exitApplication: () -> Unit) {
 
                     Text("Conflicts:", fontSize = fontSize, fontWeight = Bold)
                     UI.conflicts.forEach {
-                        Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color.Red)
+                        Text(it.first, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color.Red)
+
+                        @Composable
+                        fun btn(s: String, action: () -> Unit) {
+                            Button(onClick = {
+                                try {
+                                    action()
+                                    UI.conflicts -= it
+                                } catch (e: Exception) {
+                                    println(e.message)
+                                }
+                            }) {
+                                Text("Resolve conflict: $s wins", fontSize = fontSize)
+                            }
+                        }
+                        it.second?.let { btn("source", it) }
+                        it.third?.let { btn("target", it) }
                     }
                 }
 

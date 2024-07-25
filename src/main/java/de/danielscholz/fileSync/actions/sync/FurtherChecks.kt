@@ -1,8 +1,10 @@
 package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.SyncFilesParams
+import de.danielscholz.fileSync.common.FoldersContext
 import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.common.formatAsFileSize
+import de.danielscholz.fileSync.common.ifNotEmpty
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.isFolderMarker
 import de.danielscholz.fileSync.ui.UI
@@ -11,6 +13,7 @@ import java.nio.file.Files
 import javax.swing.JOptionPane
 
 
+context(FoldersContext)
 fun furtherChecks(
     sourceDir: File,
     targetDir: File,
@@ -33,6 +36,26 @@ fun furtherChecks(
 
     sourceChecks.printout()
     targetChecks.printout()
+
+    sourceChangesWithDetails.foldersToAdd.forEach {
+        println("Folder to create (source): " + it.path())
+    }
+    targetChangesWithDetails.foldersToAdd.forEach {
+        println("Folder to create (target): " + it.path())
+    }
+
+    sourceChangesWithDetails.filesToAdd.sortedByDescending { it.size }.ifNotEmpty {
+        it.take(10).forEach {
+            println("File to add (source): " + it.pathAndName() + " " + it.size.formatAsFileSize())
+        }
+        if (it.size > 10) println("...")
+    }
+    targetChangesWithDetails.filesToAdd.sortedByDescending { it.size }.ifNotEmpty {
+        it.take(10).forEach {
+            println("File to add (target): " + it.pathAndName() + " " + it.size.formatAsFileSize())
+        }
+        if (it.size > 10) println("...")
+    }
 
     return sourceChecks.check() && targetChecks.check()
 }
