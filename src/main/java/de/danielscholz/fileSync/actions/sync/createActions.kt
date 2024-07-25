@@ -55,6 +55,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                     Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
                     syncResultFiles.addWithCheck(it)
                     currentFilesTarget.addWithCheck(it)
+                    bytesCopied(it.size)
                 }
             }
         }
@@ -74,6 +75,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
                 syncResultFiles.replace(to)
                 currentFilesTarget.replace(to)
+                bytesCopied(to.size)
             }
         }
     }
@@ -120,6 +122,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 syncResultFiles.addWithCheck(to)
                 currentFilesTarget.removeWithCheck(from)
                 currentFilesTarget.addWithCheck(to)
+                bytesCopied(to.size)
             }
         }
     }

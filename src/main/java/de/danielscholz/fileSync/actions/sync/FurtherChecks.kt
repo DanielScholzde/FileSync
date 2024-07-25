@@ -75,11 +75,16 @@ class ChangesWithDetails(
     val foldersToDelete = changes.deleted.filter { it.isFolderMarker }
 
     private val totalNumberOfFiles = currentFiles.size + filesToAdd.size + filesToDelete.size
-    val changedNumberOfFiles = filesToAdd.size + changes.contentChanged.size + changes.modifiedChanged.size + changes.movedOrRenamed.size + filesToDelete.size
+    val changedNumberOfFiles = 0 +
+            filesToAdd.size +
+            filesToDelete.size +
+            changes.contentChanged.size +
+            changes.modifiedChanged.size +
+            changes.movedOrRenamed.size +
+            changes.movedAndContentChanged.size
     val changedPercent = if (totalNumberOfFiles > 0) changedNumberOfFiles * 100 / totalNumberOfFiles else 0
 
-    // does not regard deleted files since they are not deleted but moved to history folder
-    val diskspaceNeeded = filesToAdd.fileSize() + changes.contentChanged.fileSize()
+    val diskspaceNeeded = changes.diskspaceNeeded()
 
     private val fileStore = Files.getFileStore(dir.toPath())
     private val totalSpace = fileStore.totalSpace

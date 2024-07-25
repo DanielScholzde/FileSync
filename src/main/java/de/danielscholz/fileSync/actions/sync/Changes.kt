@@ -1,6 +1,7 @@
 package de.danielscholz.fileSync.actions.sync
 
 import androidx.compose.runtime.Immutable
+import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.persistence.FileEntity
 import kotlinx.datetime.Instant
 
@@ -17,6 +18,8 @@ interface Changes {
     fun renamed() = movedOrRenamed.filter { it.renamed && !it.moved }
     fun moved() = movedOrRenamed.filter { !it.renamed && it.moved }
     fun movedAndRenamed() = movedOrRenamed.filter { it.renamed && it.moved }
+
+    fun diskspaceNeeded(): Long
 }
 
 class MutableChanges(
@@ -54,6 +57,9 @@ class MutableChanges(
             movedAndContentChanged.isNotEmpty() ||
             movedOrRenamed.isNotEmpty() ||
             modifiedChanged.isNotEmpty()
+
+    // does not regard deleted files since they are not deleted but moved to history folder
+    override fun diskspaceNeeded() = added.fileSize() + contentChanged.fileSize() + movedAndContentChanged.to().fileSize()
 }
 
 

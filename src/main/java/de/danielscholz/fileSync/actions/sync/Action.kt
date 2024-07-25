@@ -57,4 +57,8 @@ class ProcessEnv {
         }
     }
 
+    fun bytesCopied(bytes: Long) {
+        UI.currentBytesCopied += bytes
+    }
+
 }

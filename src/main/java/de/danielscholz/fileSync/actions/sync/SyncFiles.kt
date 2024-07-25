@@ -189,6 +189,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                     if (!syncFilesParams.ignoreConflicts) return
                 }
 
+                UI.totalBytesToCopy = sourceChanges.diskspaceNeeded() + targetChanges.diskspaceNeeded()
+
                 if (!furtherChecks(sourceDir, targetDir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncFilesParams)) {
                     return
                 }
@@ -236,6 +238,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                     it.action(if (!it.switchedSourceAndTarget) actionEnv else actionEnvReversed)
                     testIfCancel()
                 }
+
+                UI.clearCurrentOperations()
 
                 hasChanges = actions.isNotEmpty()
             }

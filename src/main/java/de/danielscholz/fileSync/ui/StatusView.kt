@@ -27,15 +27,12 @@ import de.danielscholz.fileSync.common.supply
 
 
 val isWindows = supply {
-    val OS = System.getProperty("os.name", "generic").lowercase()
-    if ((OS.indexOf("mac") >= 0) || (OS.indexOf("darwin") >= 0)) {
-        false
-    } else if (OS.indexOf("win") >= 0) {
-        true
-    } else if (OS.indexOf("nux") >= 0) {
-        false
-    } else {
-        false
+    val os = System.getProperty("os.name", "generic").lowercase()
+    when {
+        "mac" in os || "darwin" in os -> false
+        "win" in os -> true
+        "nux" in os -> false
+        else -> false
     }
 }
 
@@ -53,6 +50,8 @@ object UI {
     val sourceDir = Dir()
     val targetDir = Dir()
 
+    var totalBytesToCopy by mutableStateOf(0L)
+    var currentBytesCopied by mutableStateOf(0L)
     var currentOperations by mutableStateOf<List<String>>(listOf())
         private set
     var syncFinished by mutableStateOf(false)
@@ -61,6 +60,10 @@ object UI {
 
     fun addCurrentOperation(operation: String) {
         currentOperations = (currentOperations + operation).takeLast(10)
+    }
+
+    fun clearCurrentOperations() {
+        currentOperations = listOf()
     }
 }
 
@@ -99,10 +102,10 @@ fun frame(exitApplication: () -> Unit) {
                 }
 
                 if (UI.sourceDir.filesHashCalculatedSize > 0L) {
-                    Text("Indexed (source): " + UI.sourceDir.filesHashCalculatedSize.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                    Text("New indexed (source): " + UI.sourceDir.filesHashCalculatedSize.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
                 }
                 if (UI.targetDir.filesHashCalculatedSize > 0L) {
-                    Text("Indexed (target): " + UI.targetDir.filesHashCalculatedSize.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
+                    Text("New indexed (target): " + UI.targetDir.filesHashCalculatedSize.formatAsFileSize(), Modifier.padding(vertical = 5.dp), fontSize = fontSize)
                 }
 
                 @Composable
@@ -181,6 +184,13 @@ fun frame(exitApplication: () -> Unit) {
 
                 if (UI.currentOperations.isNotEmpty()) {
                     Text("Sync:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
+                    if (UI.totalBytesToCopy > 0) {
+                        Text(
+                            "Progress: ${UI.currentBytesCopied * 100 / UI.totalBytesToCopy}% (transferred: ${UI.currentBytesCopied.formatAsFileSize()})",
+                            Modifier.padding(vertical = 5.dp),
+                            fontSize = fontSize
+                        )
+                    }
                     UI.currentOperations.forEach { Text(it, Modifier.padding(all = 3.dp), fontSize = fontSize) }
                 }
 
