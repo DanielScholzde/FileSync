@@ -62,6 +62,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::ignoreConflicts, BooleanParam())
             //add(paramValues::saveIndexResultDespiteDryRun, BooleanParam())
             add(paramValues::verbose, BooleanParam())
+            add(paramValues::warnIfFileCopyHasNoOriginal, BooleanParam())
         }) {
 
         SyncFiles(

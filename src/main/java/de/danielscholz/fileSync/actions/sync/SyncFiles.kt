@@ -3,6 +3,8 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.common.*
+import de.danielscholz.fileSync.matching.MatchMode
+import de.danielscholz.fileSync.matching.equalsForFileBy
 import de.danielscholz.fileSync.persistence.*
 import de.danielscholz.fileSync.ui.UI
 import de.danielscholz.fileSync.ui.startUiBlocking
@@ -174,7 +176,14 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
         fun addFailure(failure: String) {
             failures += failure
-            UI.failures = failures.toList()
+            UI.failures = failures.toList() // create immutable copy
+        }
+
+        val warnings = mutableListOf<String>()
+
+        fun addWarning(warning: String) {
+            warnings += warning
+            UI.warnings = warnings.toList() // create immutable copy
         }
 
         val hasChanges: Boolean
@@ -242,14 +251,38 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 UI.clearCurrentOperations()
 
                 hasChanges = actions.isNotEmpty()
+
+                printoutDuplFiles(syncResultFiles, "sync result")
+
+                if (syncFilesParams.warnIfFileCopyHasNoOriginal) {
+                    equalsForFileBy(MatchMode.HASH) {
+                        fun isCopy(it: FileEntity): Boolean {
+                            val path = it.path().lowercase()
+                            return " kopie/" in path ||
+                                    "_kopie/" in path ||
+                                    " copy/" in path ||
+                                    "_copy/" in path
+                        }
+
+                        val fileCopies = syncResultFiles.filter { isCopy(it) && !it.isFolderMarker }
+                        val notFileCopies = syncResultFiles.filter { !isCopy(it) }
+                        val notFileCopiesByName = notFileCopies.multiAssociateBy { it.name }
+                        (fileCopies subtract notFileCopies)
+                            .sortedBy { it.pathAndName() }
+                            .forEach {
+                                val possibleMatches = notFileCopiesByName[it.name]
+                                val s =
+                                    if (possibleMatches.isNotEmpty()) " But there are possible matches: ${possibleMatches.joinToString { "${it.pathAndName()} (modified: ${it.modified.toStr()})" }}" else ""
+                                val msg =
+                                    "${it.pathAndName()} (modified: ${it.modified.toStr()}) This file within 'copy' directory is NOT a copy. Original file could have been deleted or modified!$s"
+                                println(msg)
+                                addWarning(msg)
+                            }
+                    }
+                }
             }
         }
 
-        if (hasChanges) {
-            with(FoldersContext(folders)) {
-                printoutDuplFiles(syncResultFiles, "sync result")
-            }
-        }
 
         val deletedFiles = mutableSetOf<DeletedFileEntity>()
         exec {

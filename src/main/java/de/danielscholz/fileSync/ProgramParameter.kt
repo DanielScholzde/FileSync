@@ -26,6 +26,9 @@ class SyncFilesParams {
     @Description("BackupMode")
     var backupMode: Boolean = false
 
+    @Description("")
+    var warnIfFileCopyHasNoOriginal: Boolean = false
+
     @Description("Maximum of allowed file changes in percent. If more files changed, a confirmation popup window will appear (can be disabled with parameter '--confirmations no').")
     var maxChangedFilesWarningPercent = 5
 

@@ -56,6 +56,7 @@ object UI {
         private set
     var syncFinished by mutableStateOf(false)
     var failures by mutableStateOf(listOf<String>())
+    var warnings by mutableStateOf(listOf<String>())
     var conflicts by mutableStateOf(listOf<Triple<String, (() -> Unit)?, (() -> Unit)?>>())
 
     fun addCurrentOperation(operation: String) {
@@ -197,9 +198,18 @@ fun frame(exitApplication: () -> Unit) {
                 if (UI.failures.isNotEmpty()) {
                     Spacer(Modifier.height(15.dp))
 
-                    Text("Fehler:", fontSize = fontSize, fontWeight = Bold)
+                    Text("Failures:", fontSize = fontSize, fontWeight = Bold)
                     UI.failures.forEach {
                         Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color.Red)
+                    }
+                }
+
+                if (UI.warnings.isNotEmpty()) {
+                    Spacer(Modifier.height(15.dp))
+
+                    Text("Warnings:", fontSize = fontSize, fontWeight = Bold)
+                    UI.warnings.forEach {
+                        Text(it, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color(255, 103, 0))
                     }
                 }
             }

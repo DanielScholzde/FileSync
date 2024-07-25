@@ -191,13 +191,13 @@ fun checkAndFix(
                 }
 
             (sourceChanges.contentChanged.from() - currentFilesTarget)
-                .ifNotEmptyCreateConflicts(sourceDir, "content changed file does not exists within target dir")
+                .ifNotEmptyCreateConflicts(targetDir, "content changed file does not exists within target dir")
 
             (sourceChanges.movedOrRenamed.from() - currentFilesTarget)
-                .ifNotEmptyCreateConflicts(sourceDir, "source of moved file does not exists within target dir")
+                .ifNotEmptyCreateConflicts(targetDir, "source of moved file does not exists within target dir")
 
             (sourceChanges.movedAndContentChanged.from() - currentFilesTarget)
-                .ifNotEmptyCreateConflicts(sourceDir, "source of moved and content changed file does not exists within target dir")
+                .ifNotEmptyCreateConflicts(targetDir, "source of moved and content changed file does not exists within target dir")
 
             (sourceChanges.movedOrRenamed.to() intersect currentFilesTarget)
                 .ifNotEmptyCreateConflicts(sourceDir, targetDir, "target of moved file already exists within target dir") {
