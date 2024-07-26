@@ -256,16 +256,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
                 if (syncFilesParams.warnIfFileCopyHasNoOriginal) {
                     equalsForFileBy(MatchMode.HASH) {
-                        fun isCopy(it: FileEntity): Boolean {
-                            val path = it.path().lowercase()
-                            return " kopie/" in path ||
-                                    "_kopie/" in path ||
-                                    " copy/" in path ||
-                                    "_copy/" in path
-                        }
-
-                        val fileCopies = syncResultFiles.filter { isCopy(it) && !it.isFolderMarker }
-                        val notFileCopies = syncResultFiles.filter { !isCopy(it) }
+                        val fileCopies = syncResultFiles.filter { it.isWithinDirCopy() && !it.isFolderMarker }
+                        val notFileCopies = syncResultFiles.filter { !it.isWithinDirCopy() }
                         val notFileCopiesByName = notFileCopies.multiAssociateBy { it.name }
                         (fileCopies subtract notFileCopies)
                             .sortedBy { it.pathAndName() }
@@ -340,17 +332,18 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
     context(FoldersContext)
     private fun getDuplicateFiles(files: Set<FileEntity>): DuplFilesResult {
         val map = mutableListMultimapOf<String, FileEntity>()
-        files.forEach { file ->
-            file.hash?.let {
-                map.put(it, file)
+        files.filter { !it.isWithinDirCopy() }
+            .forEach { file ->
+                file.hash?.let {
+                    map.put(it, file)
+                }
             }
-        }
         val list: List<Collection<FileEntity>> = map.asMap().values.filter { it.size > 1 }
 
         val foldersWithDuplFiles = list
             .flatMap { duplFiles -> duplFiles.map { foldersCtx.getFullPath(it.folderId) to it.size } }
             .groupingBy { it.first }
-            .fold(0L) { m, c -> m + c.second }
+            .fold(0L) { accValue, elem -> accValue + elem.second }
             .entries
             .sortedByDescending { it.value }
             .map { it.key to it.value }
@@ -389,4 +382,12 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         )
     }
 
+    context(FoldersContext)
+    private fun FileEntity.isWithinDirCopy(): Boolean {
+        val path = this.path().lowercase()
+        return " kopie/" in path ||
+                "_kopie/" in path ||
+                " copy/" in path ||
+                "_copy/" in path
+    }
 }
