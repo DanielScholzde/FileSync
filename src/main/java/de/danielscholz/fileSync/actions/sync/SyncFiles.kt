@@ -18,7 +18,7 @@ import java.time.LocalDateTime as JavaLocalDateTime
 
 
 @Suppress("ConstPropertyName")
-class SyncFiles(private val syncFilesParams: SyncFilesParams, private val sourceDir: File, private val targetDir: File, filter: Filter) {
+class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, targetDir: File, filter: Filter) {
 
     companion object {
         private const val backupDir = ".syncFilesHistory"
@@ -36,16 +36,29 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
     private val syncName = syncFilesParams.syncName ?: (sourceDir.canonicalPath.toString() + "|" + targetDir.canonicalPath.toString()).hashCode().toString()
 
-    private val indexedFilesFileSource = File(sourceDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix")
-    private val indexedFilesFileTarget = File(targetDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix")
+    class Env(val dir: File, val indexedFilesFile: File, val deletedFilesFile: File, val caseSensitive: Boolean, val uiDir: UI.Dir) {
+        val statistics = MutableStatistics(uiDir)
+    }
 
-    private val syncResultFile = File(sourceDir, "$syncResultFilePrefix$syncName$commonFileSuffix")
+    private val source = Env(
+        sourceDir,
+        File(sourceDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix"),
+        File(sourceDir, "$deletedFilesFilePrefix$commonFileSuffix"),
+        isCaseSensitiveFileSystem(sourceDir) ?: throw Exception("Unable to determine if filesystem $sourceDir is case sensitive!"),
+        UI.sourceDir
+    )
 
-    private val deletedFilesFileSource = File(sourceDir, "$deletedFilesFilePrefix$commonFileSuffix")
-    private val deletedFilesFileTarget = File(targetDir, "$deletedFilesFilePrefix$commonFileSuffix")
+    private val target = Env(
+        targetDir,
+        File(targetDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix"),
+        File(targetDir, "$deletedFilesFilePrefix$commonFileSuffix"),
+        isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"),
+        UI.targetDir
+    )
 
-    private val csSource = isCaseSensitiveFileSystem(sourceDir) ?: throw Exception("Unable to determine if filesystem $sourceDir is case sensitive!")
-    private val csTarget = isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!")
+
+    private val syncResultFile = File(source.dir, "$syncResultFilePrefix$syncName$commonFileSuffix")
+
 
     val filter = Filter(
         fileFilter = { path, fileName ->
@@ -70,8 +83,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
 
     fun sync() {
-        guardWithLockFile(File(syncFilesParams.lockfileSourceDir ?: sourceDir, lockfileName)) {
-            guardWithLockFile(File(syncFilesParams.lockfileTargetDir ?: targetDir, lockfileName)) {
+        guardWithLockFile(File(syncFilesParams.lockfileSourceDir ?: source.dir, lockfileName)) {
+            guardWithLockFile(File(syncFilesParams.lockfileTargetDir ?: target.dir, lockfileName)) {
 
                 thread {
                     startUiBlocking()
@@ -87,10 +100,10 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
     }
 
     private fun syncIntern() {
-        println("Source dir: $sourceDir (case sensitive: $csSource)")
-        println("Target dir: $targetDir (case sensitive: $csTarget)\n")
+        println("Source dir: ${source.dir} (case sensitive: ${source.caseSensitive})")
+        println("Target dir: ${target.dir} (case sensitive: ${target.caseSensitive})\n")
 
-        val caseSensitiveContext = CaseSensitiveContext(csSource && csTarget)
+        val caseSensitiveContext = CaseSensitiveContext(source.caseSensitive && target.caseSensitive)
 
         val currentFilesSource: MutableCurrentFiles
         val currentFilesTarget: MutableCurrentFiles
@@ -100,9 +113,6 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
 
         val syncResultFiles: MutableSet<FileEntity>
 
-        val sourceStatistics = MutableStatistics(UI.sourceDir)
-        val targetStatistics = MutableStatistics(UI.targetDir)
-
         val folders = MutableFolders()
 
         with(MutableFoldersContext(folders)) {
@@ -110,49 +120,39 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             val lastSyncResultFiles = readSyncResult(syncResultFile)?.mapToRead(filter) ?: setOf()
             syncResultFiles = lastSyncResultFiles.toMutableSet()
 
+            fun CaseSensitiveContext.getCurrentFiles(env: Env): MutableCurrentFiles {
+                val currentFiles: MutableCurrentFiles
+                val lastIndexedFiles = readIndexedFiles(env.indexedFilesFile)
+                val lastIndexedFilesMapped = lastIndexedFiles?.mapToRead(filter) ?: setOf()
+                with(MutableStatisticsContext(env.statistics)) {
+                    currentFiles = getCurrentFiles(
+                        env.dir,
+                        filter,
+                        lastIndexedFilesMapped,
+                        lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
+                        syncName,
+                        syncFilesParams.considerOtherIndexedFilesWithSyncName,
+                        { env.uiDir.currentReadDir = it },
+                        now
+                    )
+                }
+                env.uiDir.currentReadDir = null
+                backup(env.dir, env.indexedFilesFile)
+                currentFiles.files.saveIndexedFilesTo(env.indexedFilesFile, now) // already save indexed files in the event of a subsequent error
+                return currentFiles
+            }
+
             execute(
                 {
-                    with(CaseSensitiveContext(csSource)) {
-                        val lastIndexedFiles = readIndexedFiles(indexedFilesFileSource)
-                        val lastIndexedFilesMapped = lastIndexedFiles?.mapToRead(filter) ?: setOf()
-                        with(MutableStatisticsContext(sourceStatistics)) {
-                            currentFilesSource = getCurrentFiles(
-                                sourceDir,
-                                filter,
-                                lastIndexedFilesMapped,
-                                lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
-                                syncName,
-                                syncFilesParams.considerOtherIndexedFilesWithSyncName,
-                                { UI.sourceDir.currentReadDir = it },
-                                now
-                            )
-                        }
-                        UI.sourceDir.currentReadDir = null
-                        backup(sourceDir, indexedFilesFileSource)
-                        currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource, now) // already save indexed files in the event of a subsequent error
-                        sourceChanges = getChanges(sourceDir, lastSyncResultFiles, currentFilesSource)
+                    with(CaseSensitiveContext(source.caseSensitive)) {
+                        currentFilesSource = getCurrentFiles(source)
+                        sourceChanges = getChanges(source.dir, lastSyncResultFiles, currentFilesSource)
                     }
                 },
                 {
-                    with(CaseSensitiveContext(csTarget)) {
-                        val lastIndexedFiles = readIndexedFiles(indexedFilesFileTarget)
-                        val lastIndexedFilesMapped = lastIndexedFiles?.mapToRead(filter) ?: setOf()
-                        with(MutableStatisticsContext(targetStatistics)) {
-                            currentFilesTarget = getCurrentFiles(
-                                targetDir,
-                                filter,
-                                lastIndexedFilesMapped,
-                                lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
-                                syncName,
-                                syncFilesParams.considerOtherIndexedFilesWithSyncName,
-                                { UI.targetDir.currentReadDir = it },
-                                now
-                            )
-                        }
-                        UI.targetDir.currentReadDir = null
-                        backup(targetDir, indexedFilesFileTarget)
-                        currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget, now) // already save indexed files in the event of a subsequent error
-                        targetChanges = getChanges(targetDir, lastSyncResultFiles, currentFilesTarget)
+                    with(CaseSensitiveContext(target.caseSensitive)) {
+                        currentFilesTarget = getCurrentFiles(target)
+                        targetChanges = getChanges(target.dir, lastSyncResultFiles, currentFilesTarget)
                     }
                 },
                 parallel = syncFilesParams.parallelIndexing
@@ -163,13 +163,13 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
             throw Exception("Target directory has changes, which is not allowed in backupMode!")
         }
 
-        println("Files / Folders (sourceDir): ${sourceStatistics.filesCount} / ${sourceStatistics.foldersCount}")
-        println("Files / Folders (targetDir): ${targetStatistics.filesCount} / ${targetStatistics.foldersCount}")
-        if (sourceStatistics.filesCount > 0) {
-            println("Hash reused (sourceDir): ${100 - 100 * sourceStatistics.filesHashCalculatedCount / sourceStatistics.filesCount}%")
+        println("Files / Folders (source dir): ${source.statistics.filesCount} / ${source.statistics.foldersCount}")
+        println("Files / Folders (target dir): ${target.statistics.filesCount} / ${target.statistics.foldersCount}")
+        if (source.statistics.filesCount > 0) {
+            println("Hash reused (source dir): ${100 - 100 * source.statistics.filesHashCalculatedCount / source.statistics.filesCount}%")
         }
-        if (targetStatistics.filesCount > 0) {
-            println("Hash reused (targetDir): ${100 - 100 * targetStatistics.filesHashCalculatedCount / targetStatistics.filesCount}%")
+        if (target.statistics.filesCount > 0) {
+            println("Hash reused (target dir): ${100 - 100 * target.statistics.filesHashCalculatedCount / target.statistics.filesCount}%")
         }
 
         val failures = mutableListOf<String>()
@@ -194,13 +194,13 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 printoutDuplFiles(currentFilesSource.files, "source")
                 printoutDuplFiles(currentFilesTarget.files, "target")
 
-                if (!checkAndFix(sourceDir, targetDir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFiles)) {
+                if (!checkAndFix(source.dir, target.dir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFiles)) {
                     if (!syncFilesParams.ignoreConflicts) return
                 }
 
                 UI.totalBytesToCopy = sourceChanges.diskspaceNeeded() + targetChanges.diskspaceNeeded()
 
-                if (!furtherChecks(sourceDir, targetDir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncFilesParams)) {
+                if (!furtherChecks(source.dir, target.dir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncFilesParams)) {
                     return
                 }
 
@@ -222,8 +222,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                     )
 
                 val actionEnv = ActionEnv(
-                    sourceDir = sourceDir,
-                    targetDir = targetDir,
+                    sourceDir = source.dir,
+                    targetDir = target.dir,
                     changedDir = changedDir,
                     deletedDir = deletedDir,
                     syncResultFiles = syncResultFiles,
@@ -233,8 +233,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
                 )
 
                 val actionEnvReversed = ActionEnv(
-                    sourceDir = targetDir,
-                    targetDir = sourceDir,
+                    sourceDir = target.dir,
+                    targetDir = source.dir,
                     changedDir = changedDir,
                     deletedDir = deletedDir,
                     syncResultFiles = syncResultFiles,
@@ -280,32 +280,32 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         exec {
             val hashes: Set<String> by myLazy { syncResultFiles.mapNotNullTo(mutableSetOf()) { it.hash } }
             (sourceChanges.deleted + targetChanges.deleted).filter { !it.isFolderMarker && (it.hash == null || it.hash !in hashes) }.let { list ->
-                deletedFiles += readDeletedFiles(deletedFilesFileSource)?.files ?: setOf()
-                deletedFiles += readDeletedFiles(deletedFilesFileTarget)?.files ?: setOf()
+                deletedFiles += readDeletedFiles(source.deletedFilesFile)?.files ?: setOf()
+                deletedFiles += readDeletedFiles(target.deletedFilesFile)?.files ?: setOf()
                 deletedFiles += list.map { DeletedFileEntity(it.hash, it.name) }
             }
         }
 
         if ((hasChanges || !syncResultFile.exists()) && !syncFilesParams.dryRun) {
-            backup(sourceDir, syncResultFile)
+            backup(source.dir, syncResultFile)
 
             with(FoldersContext(folders)) {
 
                 syncResultFiles.saveSyncResultTo(syncResultFile, failures)
 
                 if (hasChanges) {
-                    currentFilesSource.files.saveIndexedFilesTo(indexedFilesFileSource, now) // save again; it may have changed
-                    currentFilesTarget.files.saveIndexedFilesTo(indexedFilesFileTarget, now)
+                    currentFilesSource.files.saveIndexedFilesTo(source.indexedFilesFile, now) // save again; it may have changed
+                    currentFilesTarget.files.saveIndexedFilesTo(target.indexedFilesFile, now)
                 }
             }
 
 
             if (deletedFiles.isNotEmpty()) {
-                backup(sourceDir, deletedFilesFileSource)
-                backup(targetDir, deletedFilesFileTarget)
+                backup(source.dir, source.deletedFilesFile)
+                backup(target.dir, target.deletedFilesFile)
 
-                saveDeletedFiles(deletedFilesFileSource, DeletedFilesEntity(deletedFiles))
-                Files.copy(deletedFilesFileSource.toPath(), deletedFilesFileTarget.toPath(), COPY_ATTRIBUTES)
+                saveDeletedFiles(source.deletedFilesFile, DeletedFilesEntity(deletedFiles))
+                Files.copy(source.deletedFilesFile.toPath(), target.deletedFilesFile.toPath(), COPY_ATTRIBUTES)
             }
         }
     }
@@ -316,7 +316,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         if (duplicateFiles.totalSpace > 0) {
             println("Duplicates ($name): ${duplicateFiles.let { (it.totalSpace - it.nettoSpaceNeeded).formatAsFileSize() + " (${it.totalDuplFiles - it.nettoFiles} files)" }}")
             duplicateFiles.foldersWithDuplFiles.take(10).forEach { (dir, duplFileSize) ->
-                println("$sourceDir$dir ${duplFileSize.formatAsFileSize()}")
+                println("${source.dir}$dir ${duplFileSize.formatAsFileSize()}")
             }
         }
     }
@@ -372,8 +372,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, private val source
         saveSyncResult(
             file,
             SyncResultEntity(
-                sourcePath = sourceDir.canonicalPath,
-                targetPath = targetDir.canonicalPath,
+                sourcePath = source.dir.canonicalPath,
+                targetPath = target.dir.canonicalPath,
                 runDate = now,
                 failuresOccurred = failures,
                 files = this,

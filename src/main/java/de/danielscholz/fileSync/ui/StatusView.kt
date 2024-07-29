@@ -26,7 +26,7 @@ import de.danielscholz.fileSync.common.formatAsFileSize
 import de.danielscholz.fileSync.common.supply
 
 
-val isWindows = supply {
+private val isWindows = supply {
     val os = System.getProperty("os.name", "generic").lowercase()
     when {
         "mac" in os || "darwin" in os -> false
@@ -36,7 +36,7 @@ val isWindows = supply {
     }
 }
 
-val fontSize = if (isWindows) 15.sp else 25.sp
+private val fontSize = if (isWindows) 15.sp else 25.sp
 
 
 object UI {
