@@ -184,7 +184,7 @@ class FurtherChecks(
 
             val msg = "More files were changed or deleted than allowed\n" +
                     "(added: ${filesToAdd.size}, changed: ${changedNumberOfFiles - filesToDelete.size - filesToAdd.size}, deleted: ${filesToDelete.size}. This corresponds to: ${changedPercent}%). " +
-                    "Do you want to continue the sync process?"
+                    "Do you want to continue the sync process?" + (if (syncFilesParams.dryRun) " (dry-run)" else "")
 
             if (!syncFilesParams.confirmations) {
                 println(msg)

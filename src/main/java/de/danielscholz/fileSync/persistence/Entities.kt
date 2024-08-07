@@ -146,6 +146,9 @@ const val folderMarkerName = ".@folderMarker@"
 val FileEntity.isFolderMarker
     get() = this.size == 0L && this.name == folderMarkerName
 
+val FileEntity.isEmptyFile
+    get() = this.size == 0L && !this.isFolderMarker
+
 fun Collection<FileEntity>.usedFolderIds() = this.asSequence().filter { it.isFolderMarker }.map { it.folderId }.toSet()
 
 

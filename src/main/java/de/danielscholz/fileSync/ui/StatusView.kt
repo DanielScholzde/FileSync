@@ -50,6 +50,8 @@ object UI {
     val sourceDir = Dir()
     val targetDir = Dir()
 
+    var totalActions by mutableStateOf(0)
+    var actionsExecuted by mutableStateOf(0)
     var totalBytesToCopy by mutableStateOf(0L)
     var currentBytesCopied by mutableStateOf(0L)
     var currentOperations by mutableStateOf<List<String>>(listOf())
@@ -61,6 +63,13 @@ object UI {
 
     fun addCurrentOperation(operation: String) {
         currentOperations = (currentOperations + operation).takeLast(10)
+    }
+
+    fun addSuffixToLastOperation(suffix: String) {
+        if (currentOperations.isNotEmpty()) {
+            val last = currentOperations.last()
+            currentOperations = (currentOperations.dropLast(1) + (last + suffix))
+        }
     }
 
     fun clearCurrentOperations() {
@@ -185,11 +194,16 @@ fun frame(exitApplication: () -> Unit) {
 
                 if (UI.currentOperations.isNotEmpty()) {
                     Text("Sync:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
+                    if (UI.totalActions > 0) {
+                        Text(
+                            "Progress (actions): ${UI.actionsExecuted * 100L / UI.totalActions}%",
+                            Modifier.padding(vertical = 5.dp), fontSize = fontSize
+                        )
+                    }
                     if (UI.totalBytesToCopy > 0) {
                         Text(
-                            "Progress: ${UI.currentBytesCopied * 100 / UI.totalBytesToCopy}% (transferred: ${UI.currentBytesCopied.formatAsFileSize()})",
-                            Modifier.padding(vertical = 5.dp),
-                            fontSize = fontSize
+                            "Progress (transferred content): ${UI.currentBytesCopied * 100 / UI.totalBytesToCopy}% (${UI.currentBytesCopied.formatAsFileSize()})",
+                            Modifier.padding(vertical = 5.dp), fontSize = fontSize
                         )
                     }
                     UI.currentOperations.forEach { Text(it, Modifier.padding(all = 3.dp), fontSize = fontSize) }

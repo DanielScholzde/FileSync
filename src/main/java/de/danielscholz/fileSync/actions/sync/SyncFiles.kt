@@ -5,6 +5,7 @@ import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.MatchMode
 import de.danielscholz.fileSync.matching.equalsForFileBy
+import de.danielscholz.fileSync.matching.pathAndName
 import de.danielscholz.fileSync.persistence.*
 import de.danielscholz.fileSync.ui.UI
 import de.danielscholz.fileSync.ui.startUiBlocking
@@ -186,8 +187,6 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
             UI.warnings = warnings.toList() // create immutable copy
         }
 
-        val hasChanges: Boolean
-
         with(FoldersContext(folders)) {
             with(caseSensitiveContext) {
 
@@ -199,6 +198,14 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
                 }
 
                 UI.totalBytesToCopy = sourceChanges.diskspaceNeeded() + targetChanges.diskspaceNeeded()
+
+                equalsForFileBy(pathAndName) {
+                    (currentFilesSource.files.filter { it.isEmptyFile } + currentFilesTarget.files.filter { it.isEmptyFile })
+                        .filter { it.name != ".gitkeep" }
+                        .forEach {
+                            addWarning("File is empty: ${it.pathAndName()}")
+                        }
+                }
 
                 if (!furtherChecks(source.dir, target.dir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncFilesParams)) {
                     return
@@ -243,69 +250,69 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
                     dryRun = syncFilesParams.dryRun
                 )
 
-                actions.forEach {
-                    it.action(if (!it.switchedSourceAndTarget) actionEnv else actionEnvReversed)
-                    testIfCancel()
-                }
+                try {
+                    actions.forEach {
+                        it.action(if (!it.switchedSourceAndTarget) actionEnv else actionEnvReversed)
+                        testIfCancel()
+                        //Thread.sleep(50)
+                    }
 
-                UI.clearCurrentOperations()
+                    UI.clearCurrentOperations()
 
-                hasChanges = actions.isNotEmpty()
+                    printoutDuplFiles(syncResultFiles, "sync result")
 
-                printoutDuplFiles(syncResultFiles, "sync result")
+                    if (syncFilesParams.warnIfFileCopyHasNoOriginal) {
+                        equalsForFileBy(MatchMode.HASH) {
+                            val fileCopies = syncResultFiles.filter { it.isWithinDirCopy() && !it.isFolderMarker }
+                            val notFileCopies = syncResultFiles.filter { !it.isWithinDirCopy() }
+                            val notFileCopiesByName = notFileCopies.multiAssociateBy { it.name }
+                            (fileCopies subtract notFileCopies)
+                                .sortedBy { it.pathAndName() }
+                                .forEach {
+                                    val possibleMatches = notFileCopiesByName[it.name]
+                                    val s =
+                                        if (possibleMatches.isNotEmpty()) " But there are possible matches: ${possibleMatches.joinToString { "${it.pathAndName()} (modified: ${it.modified.toStr()})" }}" else ""
+                                    val msg =
+                                        "${it.pathAndName()} (modified: ${it.modified.toStr()}) This file within 'copy' directory is NOT a copy. Original file could have been deleted or modified!$s"
+                                    println(msg)
+                                    addWarning(msg)
+                                }
+                        }
+                    }
 
-                if (syncFilesParams.warnIfFileCopyHasNoOriginal) {
-                    equalsForFileBy(MatchMode.HASH) {
-                        val fileCopies = syncResultFiles.filter { it.isWithinDirCopy() && !it.isFolderMarker }
-                        val notFileCopies = syncResultFiles.filter { !it.isWithinDirCopy() }
-                        val notFileCopiesByName = notFileCopies.multiAssociateBy { it.name }
-                        (fileCopies subtract notFileCopies)
-                            .sortedBy { it.pathAndName() }
-                            .forEach {
-                                val possibleMatches = notFileCopiesByName[it.name]
-                                val s =
-                                    if (possibleMatches.isNotEmpty()) " But there are possible matches: ${possibleMatches.joinToString { "${it.pathAndName()} (modified: ${it.modified.toStr()})" }}" else ""
-                                val msg =
-                                    "${it.pathAndName()} (modified: ${it.modified.toStr()}) This file within 'copy' directory is NOT a copy. Original file could have been deleted or modified!$s"
-                                println(msg)
-                                addWarning(msg)
-                            }
+                } finally {
+
+                    val deletedFiles = mutableSetOf<DeletedFileEntity>()
+                    exec {
+                        val hashes: Set<String> by myLazy { syncResultFiles.mapNotNullTo(mutableSetOf()) { it.hash } }
+                        (sourceChanges.deleted + targetChanges.deleted).filter { !it.isFolderMarker && (it.hash == null || it.hash !in hashes) }.let { list ->
+                            deletedFiles += readDeletedFiles(source.deletedFilesFile)?.files ?: setOf()
+                            deletedFiles += readDeletedFiles(target.deletedFilesFile)?.files ?: setOf()
+                            deletedFiles += list.map { DeletedFileEntity(it.hash, it.name) }
+                        }
+                    }
+
+                    val hasChanges = actionEnv.successfullyRealProcessed > 0 || actionEnvReversed.successfullyRealProcessed > 0
+
+                    if ((hasChanges || !syncResultFile.exists()) && !syncFilesParams.dryRun) {
+                        backup(source.dir, syncResultFile)
+
+                        syncResultFiles.saveSyncResultTo(syncResultFile, failures)
+
+                        if (hasChanges) {
+                            currentFilesSource.files.saveIndexedFilesTo(source.indexedFilesFile, now) // save again; at least one of this files
+                            currentFilesTarget.files.saveIndexedFilesTo(target.indexedFilesFile, now) // should have changed
+                        }
+
+                        if (deletedFiles.isNotEmpty()) {
+                            backup(source.dir, source.deletedFilesFile)
+                            backup(target.dir, target.deletedFilesFile)
+
+                            saveDeletedFiles(source.deletedFilesFile, DeletedFilesEntity(deletedFiles))
+                            Files.copy(source.deletedFilesFile.toPath(), target.deletedFilesFile.toPath(), COPY_ATTRIBUTES)
+                        }
                     }
                 }
-            }
-        }
-
-
-        val deletedFiles = mutableSetOf<DeletedFileEntity>()
-        exec {
-            val hashes: Set<String> by myLazy { syncResultFiles.mapNotNullTo(mutableSetOf()) { it.hash } }
-            (sourceChanges.deleted + targetChanges.deleted).filter { !it.isFolderMarker && (it.hash == null || it.hash !in hashes) }.let { list ->
-                deletedFiles += readDeletedFiles(source.deletedFilesFile)?.files ?: setOf()
-                deletedFiles += readDeletedFiles(target.deletedFilesFile)?.files ?: setOf()
-                deletedFiles += list.map { DeletedFileEntity(it.hash, it.name) }
-            }
-        }
-
-        if ((hasChanges || !syncResultFile.exists()) && !syncFilesParams.dryRun) {
-            backup(source.dir, syncResultFile)
-
-            with(FoldersContext(folders)) {
-
-                syncResultFiles.saveSyncResultTo(syncResultFile, failures)
-
-                if (hasChanges) {
-                    currentFilesSource.files.saveIndexedFilesTo(source.indexedFilesFile, now) // save again; it may have changed
-                    currentFilesTarget.files.saveIndexedFilesTo(target.indexedFilesFile, now)
-                }
-            }
-
-
-            if (deletedFiles.isNotEmpty()) {
-                backup(source.dir, source.deletedFilesFile)
-                backup(target.dir, target.deletedFilesFile)
-
-                saveDeletedFiles(source.deletedFilesFile, DeletedFilesEntity(deletedFiles))
-                Files.copy(source.deletedFilesFile.toPath(), target.deletedFilesFile.toPath(), COPY_ATTRIBUTES)
             }
         }
     }

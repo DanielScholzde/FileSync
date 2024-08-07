@@ -29,20 +29,26 @@ class ActionEnv(
     private val dryRun: Boolean
 ) {
     private val processEnv = ProcessEnv()
+    var successfullyRealProcessed = 0
 
     fun process(action: String, files: String, block: ProcessEnv.() -> Unit) {
-        try {
-            print("$action:".padEnd(14) + files)
-            UI.addCurrentOperation("$action $files")
-            if (!dryRun) {
-                processEnv.block()
+        print("$action:".padEnd(14) + files)
+        UI.addCurrentOperation("$action $files")
+        var result: String
+        if (!dryRun) {
+            try {
+                processEnv.block() // execute action; may throw an exception!
+                successfullyRealProcessed++
+                result = " ok"
+            } catch (e: Exception) {
+                result = ": " + e.message + " (" + e::class.simpleName + ")"
+                addFailure(action + result)
             }
-            println(" ok")
-        } catch (e: Exception) {
-            val failure = ": " + e.message + " (" + e::class.simpleName + ")"
-            println(failure)
-            addFailure(action + failure)
+        } else {
+            result = " ok (dry-run)"
         }
+        println(result)
+        UI.addSuffixToLastOperation(result)
     }
 }
 

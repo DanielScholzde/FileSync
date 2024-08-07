@@ -132,10 +132,13 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
             Action(it.folderId, "", locationOfChangesToBeMade, switchedSourceAndTarget, 100 - foldersCtx.getDepth(it.folderId)) {
                 val toDelete = File(targetDir, it.path())
                 process("delete dir", "$toDelete") {
-                    if (toDelete.delete()) {
-                        syncResultFiles.removeWithCheck(it)
-                        currentFilesTarget.removeWithCheck(it)
+                    val file = File(toDelete, "Thumbs.db")
+                    if (file.isFile) {
+                        file.delete() || throw Exception("Directory ${it.path()} could not be deleted, because 'Thumbs.db' could not be deleted!")
                     }
+                    toDelete.delete() || throw Exception("Directory ${it.path()} could not be deleted!")
+                    syncResultFiles.removeWithCheck(it)
+                    currentFilesTarget.removeWithCheck(it)
                 }
             }
         } else {
