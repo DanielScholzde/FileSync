@@ -25,54 +25,8 @@ fun getFilter(paramValues: SyncFilesParams): Filter {
         }
     }
 
-    val excludedPathMatchers = (paramValues.excludedPaths + paramValues.defaultExcludedPaths).map {
-        val excludedPath = it.replace('\\', '/')
-        val excludedPathLC = excludedPath.lowercase()
-        when {
-            "/" in excludedPath && "*" in excludedPath -> {
-                val escaped = excludedPath
-                    .replace("(", "\\(")
-                    .replace("[", "\\[")
-                    .replace(".", "\\.")
-                var pattern = escaped
-                    .replace("*", ".*")
-                    .replace("?", ".")
-                if (!pattern.endsWith(".*"))
-                    pattern += ".*"
-                if (!pattern.startsWith("//"))
-                    pattern = ".*$pattern"
-                val regex = Regex(pattern, RegexOption.IGNORE_CASE)
-                PathMatcher { fullPath, _ ->
-                    regex.matches("/$fullPath")
-                }
-            }
-            "/" in excludedPath -> {
-                PathMatcher { fullPath, _ ->
-                    if (excludedPathLC.startsWith("//"))
-                        excludedPathLC in "/$fullPath".lowercase()
-                    else
-                        excludedPathLC in fullPath.lowercase()
-                }
-            }
-            "*" in excludedPath -> {
-                val escaped = excludedPath
-                    .replace("(", "\\(")
-                    .replace("[", "\\[")
-                    .replace(".", "\\.")
-                val pattern = escaped
-                    .replace("*", ".*")
-                    .replace("?", ".")
-                val regex = Regex(pattern, RegexOption.IGNORE_CASE)
-                PathMatcher { _, folderName ->
-                    regex.matches(folderName)
-                }
-            }
-            else -> {
-                PathMatcher { _, folderName ->
-                    folderName.equals(excludedPath, ignoreCase = true)
-                }
-            }
-        }
+    val excludedPathMatchers = (paramValues.excludedPaths + paramValues.defaultExcludedPaths).map { path ->
+        createPathMatcher(path)
     }
 
     val folderFilter = FolderFilter { fullPath, folderName ->
@@ -86,11 +40,61 @@ fun getFilter(paramValues: SyncFilesParams): Filter {
     return Filter(folderFilter, fileFilter)
 }
 
+fun createPathMatcher(path: String): PathMatcher {
+    val excludedPath = path.replace('\\', '/')
+    val excludedPathLC = excludedPath.lowercase()
+    return when {
+        "/" in excludedPath && "*" in excludedPath -> {
+            val escaped = excludedPath
+                .replace("(", "\\(")
+                .replace("[", "\\[")
+                .replace(".", "\\.")
+            var pattern = escaped
+                .replace("*", ".*")
+                .replace("?", ".")
+            if (!pattern.endsWith(".*"))
+                pattern += ".*"
+            if (!pattern.startsWith("//"))
+                pattern = ".*$pattern"
+            val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+            PathMatcher { fullPath, _ ->
+                regex.matches("/$fullPath")
+            }
+        }
+        "/" in excludedPath -> {
+            PathMatcher { fullPath, _ ->
+                if (excludedPathLC.startsWith("//"))
+                    excludedPathLC in "/$fullPath".lowercase()
+                else
+                    excludedPathLC in fullPath.lowercase()
+            }
+        }
+        "*" in excludedPath -> {
+            val escaped = excludedPath
+                .replace("(", "\\(")
+                .replace("[", "\\[")
+                .replace(".", "\\.")
+            val pattern = escaped
+                .replace("*", ".*")
+                .replace("?", ".")
+            val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+            PathMatcher { _, folderName ->
+                regex.matches(folderName)
+            }
+        }
+        else -> {
+            PathMatcher { _, folderName ->
+                folderName.equals(excludedPath, ignoreCase = true)
+            }
+        }
+    }
+}
+
 
 private fun interface FilenameMatcher {
     fun matches(path: String, filename: String): Boolean
 }
 
-private fun interface PathMatcher {
+fun interface PathMatcher {
     fun matches(fullPath: String, folderName: String): Boolean
 }

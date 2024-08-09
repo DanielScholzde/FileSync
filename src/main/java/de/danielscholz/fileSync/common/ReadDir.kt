@@ -93,6 +93,15 @@ fun readDir(dir: File, subPath: String = "/"): FolderResult {
 }
 
 
+class FileAbstr(val file: File, val encrypted: Boolean, val password: String?) {
+    private val basicFileAttributes: BasicFileAttributes by myLazy { Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS) }
+
+    val size get() = basicFileAttributes.size()
+    val modified get() = basicFileAttributes.lastModifiedTime().toKotlinInstantIgnoreMillis()
+
+    val inputStream = file.inputStream()
+}
+
 fun getBasicFileAttributes(file: File): BasicFileAttributes =
     Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
 

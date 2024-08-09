@@ -1,6 +1,7 @@
 package de.danielscholz.fileSync
 
 import de.danielscholz.fileSync.actions.sync.SyncFiles
+import de.danielscholz.fileSync.actions.sync.createPathMatcher
 import de.danielscholz.fileSync.actions.sync.getFilter
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.kargparser.ArgParseException
@@ -48,6 +49,8 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
             add(paramValues::targetDir, FileParam(checkIsDir = true), required = true)
             add(paramValues::excludedPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
+            add(paramValues::encryptedTargetPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
+            add(paramValues::password, StringParam())
             add(paramValues::lockfileSourceDir, FileParam(checkIsDir = true))
             add(paramValues::lockfileTargetDir, FileParam(checkIsDir = true))
             add(paramValues::excludedFiles, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
@@ -69,7 +72,9 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             paramValues,
             paramValues.sourceDir!!.canonicalFile,
             paramValues.targetDir!!.canonicalFile,
-            getFilter(paramValues)
+            getFilter(paramValues),
+            paramValues.encryptedTargetPaths.map { createPathMatcher(it) },
+            paramValues.password
         ).sync()
     }
 

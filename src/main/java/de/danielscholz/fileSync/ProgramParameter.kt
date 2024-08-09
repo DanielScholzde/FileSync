@@ -53,6 +53,15 @@ class SyncFilesParams {
     )
     var excludedPaths: Set<String> = setOf()
 
+    @Description(
+        "Part of path (without filename) OR absolute path. Separator char is \"/\". You can use * for an arbitrary pattern. An absolute path is defined by starting with \"//\", e.g. \"//absolute/path/\"\n" +
+                "Hint: a full directory name is matched by \"name\". If the underlying filesystem is case-sensitive, these entries are also."
+    )
+    var encryptedTargetPaths: Set<String> = setOf()
+
+    @Description("Password")
+    var password: String? = null
+
     @Description("Directory where the synchronization lockfile should be placed (for sourceDir)")
     var lockfileSourceDir: File? = null
 

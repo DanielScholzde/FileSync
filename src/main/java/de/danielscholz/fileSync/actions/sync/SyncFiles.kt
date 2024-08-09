@@ -19,7 +19,7 @@ import java.time.LocalDateTime as JavaLocalDateTime
 
 
 @Suppress("ConstPropertyName")
-class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, targetDir: File, filter: Filter) {
+class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, targetDir: File, filter: Filter, encryptTargetPaths: List<PathMatcher>, password: String?) {
 
     companion object {
         private const val backupDir = ".syncFilesHistory"
@@ -37,7 +37,15 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
 
     private val syncName = syncFilesParams.syncName ?: (sourceDir.canonicalPath.toString() + "|" + targetDir.canonicalPath.toString()).hashCode().toString()
 
-    class Env(val dir: File, val indexedFilesFile: File, val deletedFilesFile: File, val caseSensitive: Boolean, val uiDir: UI.Dir) {
+    class Env(
+        val dir: File,
+        val indexedFilesFile: File,
+        val deletedFilesFile: File,
+        val caseSensitive: Boolean,
+        val uiDir: UI.Dir,
+        val encryptPaths: List<PathMatcher>,
+        val password: String?
+    ) {
         val statistics = MutableStatistics(uiDir)
     }
 
@@ -46,7 +54,9 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
         File(sourceDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix"),
         File(sourceDir, "$deletedFilesFilePrefix$commonFileSuffix"),
         isCaseSensitiveFileSystem(sourceDir) ?: throw Exception("Unable to determine if filesystem $sourceDir is case sensitive!"),
-        UI.sourceDir
+        UI.sourceDir,
+        listOf(),
+        null
     )
 
     private val target = Env(
@@ -54,7 +64,9 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
         File(targetDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix"),
         File(targetDir, "$deletedFilesFilePrefix$commonFileSuffix"),
         isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"),
-        UI.targetDir
+        UI.targetDir,
+        encryptTargetPaths,
+        password
     )
 
 

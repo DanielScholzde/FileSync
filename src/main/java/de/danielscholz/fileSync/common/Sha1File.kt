@@ -7,9 +7,11 @@ import java.security.MessageDigest
 import java.util.*
 
 
-fun computeSHA1(file: File): String {
+fun computeSHA1(file: File): String = computeSHA1(FileInputStream(file))
+
+fun computeSHA1(inputStream: FileInputStream): String {
     val digest = MessageDigest.getInstance("SHA-1")
-    DigestInputStream(FileInputStream(file), digest).use { digestInputStream ->
+    DigestInputStream(inputStream, digest).use { digestInputStream ->
         val buffer = ByteArray(4096)
         while (digestInputStream.read(buffer, 0, buffer.size) != -1) {
             // read file stream without buffer
