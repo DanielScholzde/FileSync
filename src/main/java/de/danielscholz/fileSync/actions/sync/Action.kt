@@ -1,7 +1,6 @@
 package de.danielscholz.fileSync.actions.sync
 
-import de.danielscholz.fileSync.common.getBasicFileAttributes
-import de.danielscholz.fileSync.common.toKotlinInstantIgnoreMillis
+import de.danielscholz.fileSync.common.FileSystemEncryption
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.ui.UI
 import java.io.File
@@ -26,9 +25,10 @@ class ActionEnv(
     val syncResultFiles: MutableSet<FileEntity>,
     val currentFilesTarget: MutableSet<FileEntity>, // may be currentFilesSource, if switchedSourceAndTarget==true
     private val addFailure: (String) -> Unit,
-    private val dryRun: Boolean
+    private val dryRun: Boolean,
+    fs: FileSystemEncryption
 ) {
-    private val processEnv = ProcessEnv()
+    private val processEnv = ProcessEnv(fs)
     var successfullyRealProcessed = 0
 
     fun process(action: String, files: String, block: ProcessEnv.() -> Unit) {
@@ -53,14 +53,10 @@ class ActionEnv(
 }
 
 
-class ProcessEnv {
+class ProcessEnv(private val fs: FileSystemEncryption) {
 
     fun checkIsUnchanged(file: File, attributes: FileEntity) {
-        getBasicFileAttributes(file).let {
-            if (it.lastModifiedTime().toKotlinInstantIgnoreMillis() != attributes.modified || it.size() != attributes.size) {
-                throw Exception("File ${file.name} has changed since indexing!")
-            }
-        }
+        fs.checkIsUnchanged(file, attributes)
     }
 
     fun bytesCopied(bytes: Long) {

@@ -1,23 +1,18 @@
 package de.danielscholz.fileSync.actions.sync
 
-import de.danielscholz.fileSync.common.FoldersContext
-import de.danielscholz.fileSync.common.addWithCheck
-import de.danielscholz.fileSync.common.removeWithCheck
-import de.danielscholz.fileSync.common.replace
+import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.persistence.isFolderMarker
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 
 
 context(FoldersContext)
-fun createActions(sourceChanges: Changes, targetChanges: Changes): List<Action> =
-    sourceChanges.createActions(switchedSourceAndTarget = false, locationOfChangesToBeMade = Location.TARGET) +
-            targetChanges.createActions(switchedSourceAndTarget = true, locationOfChangesToBeMade = Location.SOURCE)
+fun createActions(sourceChanges: Changes, targetChanges: Changes, fs: FileSystemEncryption): List<Action> =
+    sourceChanges.createActions(switchedSourceAndTarget = false, locationOfChangesToBeMade = Location.TARGET, fs = fs) +
+            targetChanges.createActions(switchedSourceAndTarget = true, locationOfChangesToBeMade = Location.SOURCE, fs = fs)
 
 
 context(FoldersContext)
-private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfChangesToBeMade: Location): List<Action> {
+private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfChangesToBeMade: Location, fs: FileSystemEncryption): List<Action> {
 
     val actions = mutableListOf<Action>()
 
@@ -39,9 +34,9 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
     added.forEach {
         actions += if (it.isFolderMarker) {
             Action(it.folderId, "", locationOfChangesToBeMade, switchedSourceAndTarget, -1) {
-                val targetFile = File(targetDir, it.path())
-                process("create dir", "$targetFile") {
-                    targetFile.mkdirs()
+                val directoryToCreate = File(targetDir, it.path())
+                process("create dir", "$directoryToCreate") {
+                    fs.createDirsFor(directoryToCreate)
                     syncResultFiles.addWithCheck(it)
                     currentFilesTarget.addWithCheck(it)
                 }
@@ -52,7 +47,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 val targetFile = File(targetDir, it.pathAndName())
                 process("add", "$sourceFile -> $targetFile") {
                     checkIsUnchanged(sourceFile, it)
-                    Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
+                    fs.copy(sourceFile, targetFile, it.fileHash?.hash)
                     syncResultFiles.addWithCheck(it)
                     currentFilesTarget.addWithCheck(it)
                     bytesCopied(it.size)
@@ -70,9 +65,9 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 checkIsUnchanged(sourceFile, to)
                 checkIsUnchanged(targetFile, from)
                 val backupFile = File(File(targetDir, changedDir), to.pathAndName())
-                backupFile.parentFile.mkdirs()
-                Files.move(targetFile.toPath(), backupFile.toPath())
-                Files.copy(sourceFile.toPath(), targetFile.toPath(), COPY_ATTRIBUTES)
+                fs.createDirsFor(backupFile.parentFile)
+                fs.move(targetFile, backupFile)
+                fs.copy(sourceFile, targetFile, to.fileHash?.hash)
                 syncResultFiles.replace(to)
                 currentFilesTarget.replace(to)
                 bytesCopied(to.size)
@@ -92,11 +87,11 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 if (it.renamed && !it.moved && from.name != to.name && from.nameLowercase == to.nameLowercase) {
                     val tmpFile = targetFile.resolveSibling(targetFile.name + "__tmp")
                     if (!tmpFile.exists()) {
-                        Files.move(sourceFile.toPath(), tmpFile.toPath())
-                        Files.move(tmpFile.toPath(), targetFile.toPath())
+                        fs.move(sourceFile, tmpFile)
+                        fs.move(tmpFile, targetFile)
                     } else throw Exception("tmp file already exists!")
                 } else {
-                    Files.move(sourceFile.toPath(), targetFile.toPath())
+                    fs.move(sourceFile, targetFile)
                 }
                 syncResultFiles.removeWithCheck(from)
                 syncResultFiles.addWithCheck(to)
@@ -115,9 +110,9 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
             process("copy", "$sourceFile -> $targetToFile") {
                 checkIsUnchanged(sourceFile, to)
                 val backupFile = File(File(targetDir, changedDir), from.pathAndName())
-                backupFile.parentFile.mkdirs()
-                Files.move(targetFromFile.toPath(), backupFile.toPath())
-                Files.copy(sourceFile.toPath(), targetToFile.toPath(), COPY_ATTRIBUTES)
+                fs.createDirsFor(backupFile.parentFile)
+                fs.move(targetFromFile, backupFile)
+                fs.copy(sourceFile, targetToFile, to.fileHash?.hash)
                 syncResultFiles.removeWithCheck(from)
                 syncResultFiles.addWithCheck(to)
                 currentFilesTarget.removeWithCheck(from)
@@ -130,13 +125,13 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
     deleted.forEach {
         actions += if (it.isFolderMarker) {
             Action(it.folderId, "", locationOfChangesToBeMade, switchedSourceAndTarget, 100 - foldersCtx.getDepth(it.folderId)) {
-                val toDelete = File(targetDir, it.path())
-                process("delete dir", "$toDelete") {
-                    val file = File(toDelete, "Thumbs.db")
+                val directoryToDelete = File(targetDir, it.path())
+                process("delete dir", "$directoryToDelete") {
+                    val file = File(directoryToDelete, "Thumbs.db")
                     if (file.isFile) {
                         file.delete() || throw Exception("Directory ${it.path()} could not be deleted, because 'Thumbs.db' could not be deleted!")
                     }
-                    toDelete.delete() || throw Exception("Directory ${it.path()} could not be deleted!")
+                    directoryToDelete.delete() || throw Exception("Directory ${it.path()} could not be deleted!")
                     syncResultFiles.removeWithCheck(it)
                     currentFilesTarget.removeWithCheck(it)
                 }
@@ -147,8 +142,8 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 val backupFile = File(File(targetDir, deletedDir), it.pathAndName())
                 process("delete", "$toDelete") {
                     checkIsUnchanged(toDelete, it)
-                    backupFile.parentFile.mkdirs()
-                    Files.move(toDelete.toPath(), backupFile.toPath())
+                    fs.createDirsFor(backupFile.parentFile)
+                    fs.move(toDelete, backupFile)
                     syncResultFiles.removeWithCheck(it)
                     currentFilesTarget.removeWithCheck(it)
                 }
@@ -163,7 +158,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
             process("modified attr", "$sourceFile -> $targetFile") {
                 checkIsUnchanged(sourceFile, to)
                 checkIsUnchanged(targetFile, from)
-                targetFile.setLastModified(sourceFile.lastModified()) || throw Exception("set of last modification date failed!")
+                fs.copyLastModified(sourceFile, targetFile)
                 syncResultFiles.replace(to)
                 currentFilesTarget.replace(to)
             }

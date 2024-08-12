@@ -1,6 +1,7 @@
 package de.danielscholz.fileSync.common
 
 import de.danielscholz.fileSync.actions.sync.SyncFiles
+import de.danielscholz.fileSync.persistence.FileEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
@@ -11,15 +12,19 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 
 
-private const val _FSENCRYPTED = ".fsencrypted"
+private const val FS_ENCRYPTED = ".fsencrypted"
 
 
-class FileSystemAbstraction(val sourceEnv: SyncFiles.Env, val targetEnv: SyncFiles.Env) {
+class FileSystemEncryption(private val source: SyncFiles.Env, private val target: SyncFiles.Env, private val changedDir: String, private val deletedDir: String) {
+
+    fun createDirsFor(dir: File) {
+        dir.mkdirs() || throw Exception("Creation of directory ${dir.absolutePath} failed")
+    }
 
     @Suppress("NAME_SHADOWING")
     fun move(from: File, to: File) {
-        val from = File2(from, sourceEnv, targetEnv)
-        val to = File2(to, sourceEnv, targetEnv)
+        val from = File2(from, source, target, changedDir, deletedDir)
+        val to = File2(to, source, target, changedDir, deletedDir)
         when {
             from.encrypted && to.shouldEncrypt -> {
                 if (from.encryptPassword == to.encryptPassword) {
@@ -28,7 +33,7 @@ class FileSystemAbstraction(val sourceEnv: SyncFiles.Env, val targetEnv: SyncFil
                     runBlocking {
                         decryptFileToFlow(from.fileIn, from.encryptPassword).encryptToFile(to.fileOut, to.encryptPassword)
                     }
-                    to.fileOut.setLastModified(from.fileIn.lastModified())
+                    copyLastModified(from, to)
                     Files.delete(from.fileIn.toPath())
                 }
             }
@@ -36,14 +41,14 @@ class FileSystemAbstraction(val sourceEnv: SyncFiles.Env, val targetEnv: SyncFil
                 runBlocking {
                     readFile(from.fileIn).encryptToFile(to.fileOut, to.encryptPassword)
                 }
-                to.fileOut.setLastModified(from.fileIn.lastModified())
+                copyLastModified(from, to)
                 Files.delete(from.fileIn.toPath())
             }
             from.encrypted && !to.shouldEncrypt -> {
                 runBlocking {
                     decryptFileToFlow(from.fileIn, from.encryptPassword).writeToFile(to.fileOut)
                 }
-                to.fileOut.setLastModified(from.fileIn.lastModified())
+                copyLastModified(from, to)
                 Files.delete(from.fileIn.toPath())
             }
             else -> {
@@ -53,9 +58,9 @@ class FileSystemAbstraction(val sourceEnv: SyncFiles.Env, val targetEnv: SyncFil
     }
 
     @Suppress("NAME_SHADOWING")
-    fun copy(from: File, to: File) {
-        val from = File2(from, sourceEnv, targetEnv)
-        val to = File2(to, sourceEnv, targetEnv)
+    fun copy(from: File, to: File, expectedHash: String?) {
+        val from = File2(from, source, target, changedDir, deletedDir)
+        val to = File2(to, source, target, changedDir, deletedDir)
         when {
             from.encrypted && to.shouldEncrypt -> {
                 if (from.encryptPassword == to.encryptPassword) {
@@ -64,23 +69,44 @@ class FileSystemAbstraction(val sourceEnv: SyncFiles.Env, val targetEnv: SyncFil
                     runBlocking {
                         decryptFileToFlow(from.fileIn, from.encryptPassword).encryptToFile(to.fileOut, to.encryptPassword)
                     }
-                    to.fileOut.setLastModified(from.fileIn.lastModified())
+                    copyLastModified(from, to)
                 }
             }
             !from.encrypted && to.shouldEncrypt -> {
                 runBlocking {
                     readFile(from.fileIn).encryptToFile(to.fileOut, to.encryptPassword)
                 }
-                to.fileOut.setLastModified(from.fileIn.lastModified())
+                copyLastModified(from, to)
             }
             from.encrypted && !to.shouldEncrypt -> {
                 runBlocking {
                     decryptFileToFlow(from.fileIn, from.encryptPassword).writeToFile(to.fileOut)
                 }
-                to.fileOut.setLastModified(from.fileIn.lastModified())
+                copyLastModified(from, to)
             }
             else -> {
                 Files.copy(from.fileIn.toPath(), to.fileOut.toPath(), COPY_ATTRIBUTES)
+            }
+        }
+    }
+
+    @Suppress("NAME_SHADOWING")
+    fun copyLastModified(from: File, to: File) {
+        val from = File2(from, source, target, changedDir, deletedDir)
+        val to = File2(to, source, target, changedDir, deletedDir)
+
+        copyLastModified(from, to)
+    }
+
+    private fun copyLastModified(from: File2, to: File2) {
+        to.fileOut.setLastModified(from.fileIn.lastModified()) || throw Exception("set of last modification date failed!")
+    }
+
+    fun checkIsUnchanged(file: File, attributes: FileEntity) {
+        val file2 = File2(file, source, target, changedDir, deletedDir)
+        getBasicFileAttributes(file2.fileIn).let {
+            if (it.lastModifiedTime().toKotlinInstantIgnoreMillis() != attributes.modified || it.size() != attributes.size) {
+                throw Exception("File ${file.name} has changed since indexing!")
             }
         }
     }
@@ -108,46 +134,52 @@ class FileSystemAbstraction(val sourceEnv: SyncFiles.Env, val targetEnv: SyncFil
     }
 }
 
-class File2(file: File, source: SyncFiles.Env, target: SyncFiles.Env) {
+class File2(file: File, val source: SyncFiles.Env, val target: SyncFiles.Env, changedDir: String, deletedDir: String) {
+
+    private val filePath: String
+
+    private val env: SyncFiles.Env
+
+    val encryptPassword: String get() = env.password!!
+
+    init {
+        val canonicalPath = file.canonicalPath
+        val prefix1 = source.dir.canonicalPath
+        val prefix2 = target.dir.canonicalPath
+
+        fun String.removeOther(): String {
+            return this.removePrefix(changedDir).removePrefix(deletedDir)
+        }
+
+        when {
+            canonicalPath.startsWith(prefix1) -> {
+                filePath = canonicalPath.removePrefix(prefix1).removeOther()
+                env = source
+            }
+            canonicalPath.startsWith(prefix2) -> {
+                filePath = canonicalPath.removePrefix(prefix2).removeOther()
+                env = target
+            }
+            else -> throw IllegalStateException()
+        }
+    }
 
     val encrypted = file.isEncrypted()
-    val shouldEncrypt = file.shouldEncrypt(source, target)
+    val shouldEncrypt = file.shouldEncrypt()
 
     val fileIn = if (encrypted) file.toEncryptedPath() else file
     val fileOut = if (shouldEncrypt) file.toEncryptedPath() else file
 
-    lateinit var encryptPassword: String
-        private set
-
-    init {
-        if (encrypted) {
-            val canonicalPath = file.canonicalPath
-
-            encryptPassword = when {
-                canonicalPath.startsWith(source.dir.canonicalPath) -> source.password!!
-                canonicalPath.startsWith(target.dir.canonicalPath) -> target.password!!
-                else -> throw Exception("Password for encryption is missing!")
-            }
-        }
+    private fun File.toEncryptedPath(): File {
+        return File(this.path + FS_ENCRYPTED)
     }
-}
 
-fun File.toEncryptedPath(): File {
-    return File(this.path + _FSENCRYPTED)
-}
-
-fun File.isEncrypted(): Boolean {
-    return toEncryptedPath().isFile
-}
-
-fun File.shouldEncrypt(source: SyncFiles.Env, target: SyncFiles.Env): Boolean {
-    val canonicalPath = this.canonicalPath
-    val name = this.name
-    if (canonicalPath.startsWith(source.dir.canonicalPath)) {
-        return source.password != null && source.encryptPaths.any { it.matches(canonicalPath, name) }
+    private fun File.isEncrypted(): Boolean {
+        return toEncryptedPath().isFile
     }
-    if (canonicalPath.startsWith(target.dir.canonicalPath)) {
-        return target.password != null && target.encryptPaths.any { it.matches(canonicalPath, name) }
+
+    private fun File.shouldEncrypt(): Boolean {
+        val name = this.name
+        return env.password != null && env.encryptPaths.any { it.matches(filePath, name) }
     }
-    throw IllegalStateException()
 }

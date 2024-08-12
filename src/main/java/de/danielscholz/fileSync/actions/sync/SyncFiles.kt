@@ -228,7 +228,9 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
                     throw Exception("Target directory has changes, which is not allowed in backupMode!")
                 }
 
-                val actions = createActions(sourceChanges, targetChanges)
+                val fs = FileSystemEncryption(source, target, changedDir, deletedDir)
+
+                val actions = createActions(sourceChanges, targetChanges, fs)
                     .sortedWith(
                         compareBy(
                             { it.locationOfChangesToBeMade }, // first: all changes within sourceDir
@@ -248,7 +250,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
                     syncResultFiles = syncResultFiles,
                     currentFilesTarget = currentFilesTarget.files,
                     addFailure = ::addFailure,
-                    dryRun = syncFilesParams.dryRun
+                    dryRun = syncFilesParams.dryRun,
+                    fs = fs
                 )
 
                 val actionEnvReversed = ActionEnv(
@@ -259,7 +262,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
                     syncResultFiles = syncResultFiles,
                     currentFilesTarget = currentFilesSource.files,
                     addFailure = ::addFailure,
-                    dryRun = syncFilesParams.dryRun
+                    dryRun = syncFilesParams.dryRun,
+                    fs = fs
                 )
 
                 try {
