@@ -74,7 +74,10 @@ class FileSystemEncryption(private val source: SyncFiles.Env, private val target
             }
             !from.encrypted && to.shouldEncrypt -> {
                 runBlocking {
-                    readFile(from.fileIn).encryptToFile(to.fileOut, to.encryptPassword)
+                    readFile(from.fileIn).let {
+                        val hash = it.tee({ encryptToFile(to.fileOut, to.encryptPassword) }, { computeSHA1() }).second
+                        if (hash != expectedHash) throw Exception("Hash is not equal!")
+                    }
                 }
                 copyLastModified(from, to)
             }
