@@ -48,6 +48,7 @@ fun getCurrentFiles(
     considerOtherIndexedFilesWithSyncName: String?,
     processDirCallback: (String) -> Unit,
     now: LocalDateTime,
+    fs: FileSystemEncryption
 ): MutableCurrentFiles {
 
     val files = mutableSetOf<FileEntity>()
@@ -166,7 +167,7 @@ fun getCurrentFiles(
 
     try {
 
-        process(readDir(dir), foldersCtx.rootFolderId)
+        process(readDir(dir, fs = fs), foldersCtx.rootFolderId)
 
     } catch (e: Exception) {
         files.saveIndexedFilesTo(cancelledIndexingResultFile, now)

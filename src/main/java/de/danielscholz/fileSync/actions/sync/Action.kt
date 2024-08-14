@@ -26,9 +26,8 @@ class ActionEnv(
     val currentFilesTarget: MutableSet<FileEntity>, // may be currentFilesSource, if switchedSourceAndTarget==true
     private val addFailure: (String) -> Unit,
     private val dryRun: Boolean,
-    fs: FileSystemEncryption
+    private val fs: FileSystemEncryption
 ) {
-    private val processEnv = ProcessEnv(fs)
     var successfullyRealProcessed = 0
 
     fun process(action: String, files: String, block: ProcessEnv.() -> Unit) {
@@ -37,9 +36,10 @@ class ActionEnv(
         var result: String
         if (!dryRun) {
             try {
+                val processEnv = ProcessEnv(fs)
                 processEnv.block() // execute action; may throw an exception!
                 successfullyRealProcessed++
-                result = " ok"
+                result = " ok" + (if (processEnv.encrypted) " (encrypted)" else "")
             } catch (e: Exception) {
                 result = ": " + e.message + " (" + e::class.simpleName + ")"
                 addFailure(action + result)
@@ -53,10 +53,12 @@ class ActionEnv(
 }
 
 
-class ProcessEnv(private val fs: FileSystemEncryption) {
+class ProcessEnv(val fs: FileSystemEncryption) {
+
+    var encrypted = false
 
     fun checkIsUnchanged(file: File, attributes: FileEntity) {
-        fs.checkIsUnchanged(file, attributes)
+        fs.checkIsUnchanged(file, attributes.modified, attributes.size)
     }
 
     fun bytesCopied(bytes: Long) {

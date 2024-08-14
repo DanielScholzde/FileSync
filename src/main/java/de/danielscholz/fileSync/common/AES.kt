@@ -19,12 +19,12 @@ import kotlin.time.measureTimedValue
 private fun deriveSecretKeyFromPassword(salt: ByteArray, password: String): SecretKey {
     val (aesSecretKey, duration) = measureTimedValue {
         val secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val keySpec = PBEKeySpec(password.toCharArray(), salt, 3_000_000, 256)
+        val keySpec = PBEKeySpec(password.toCharArray(), salt, 1_000_000, 256)
         val secretKey = secretKeyFactory.generateSecret(keySpec)
         val aesSecretKey = SecretKeySpec(secretKey.encoded, "AES")
         aesSecretKey
     }
-    println("Password key derivation function duration: $duration")
+    //println("Password key derivation function duration: $duration")
     return aesSecretKey
 }
 
@@ -44,6 +44,8 @@ private fun getCachedSaltOrNull() =
 private const val randomBytesSize = 16
 internal const val BUFFER_SIZE = 4096
 
+const val AES_FILESIZE_OVERHEAD = randomBytesSize * 2
+
 private fun generateRandomBytes(): ByteArray {
     val bytes = ByteArray(randomBytesSize)
     SecureRandom().nextBytes(bytes)
@@ -51,16 +53,14 @@ private fun generateRandomBytes(): ByteArray {
 }
 
 private fun encryptFile(password: String, inputFile: File, outputFile: File) {
-    val iv = generateRandomBytes()
     val salt = getCachedSaltOrNull() ?: generateRandomBytes()
-
     val key = deriveSecretKeyFromPasswordCached(salt, password)
+
+    val iv = generateRandomBytes()
     val cipher = getCipher(key, iv, Cipher.ENCRYPT_MODE)
 
     FileInputStream(inputFile).use { inputStream ->
-        //val size = inputFile.length()
         FileOutputStream(outputFile).use { outputStream ->
-            //outputStream.write()
             outputStream.write(iv)
             outputStream.write(salt)
 
@@ -70,23 +70,23 @@ private fun encryptFile(password: String, inputFile: File, outputFile: File) {
 }
 
 suspend fun Flow<ByteArray>.encryptToFile(outputFile: File, password: String) {
-    val iv = generateRandomBytes()
     val salt = getCachedSaltOrNull() ?: generateRandomBytes()
-
     val key = deriveSecretKeyFromPasswordCached(salt, password)
+
+    val iv = generateRandomBytes()
     val cipher = getCipher(key, iv, Cipher.ENCRYPT_MODE)
 
-    //val size = inputFile.length()
     FileOutputStream(outputFile).use { outputStream ->
-        //outputStream.write()
         outputStream.write(iv)
         outputStream.write(salt)
 
         this.collect { data ->
-            cipher.update(data, 0, data.size)?.let {
-                outputStream.write(it)
+            cipher.update(data, 0, data.size)?.let { encryptedData ->
+                //println("write encrypted block (${Thread.currentThread().name})")
+                outputStream.write(encryptedData)
             }
         }
+        //println("write encrypted finished")
         outputStream.write(cipher.doFinal())
     }
 }
@@ -105,6 +105,27 @@ private fun decryptFile(password: String, inputFile: File, outputFile: File) {
         FileOutputStream(outputFile).use { outputStream ->
             process(cipher, inputStream, outputStream)
         }
+    }
+}
+
+fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
+    FileInputStream(inputFile).use { inputStream ->
+        val iv = ByteArray(randomBytesSize)
+        val salt = ByteArray(randomBytesSize)
+        if (inputStream.read(iv) != randomBytesSize) throw Exception()
+        if (inputStream.read(salt) != randomBytesSize) throw Exception()
+
+        val key = deriveSecretKeyFromPasswordCached(salt, password)
+        val cipher = getCipher(key, iv, Cipher.DECRYPT_MODE)
+
+        val buffer = ByteArray(BUFFER_SIZE)
+        var bytesRead: Int
+        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+            cipher.update(buffer, 0, bytesRead)?.let {
+                emit(it)
+            }
+        }
+        emit(cipher.doFinal())
     }
 }
 
@@ -166,30 +187,11 @@ private fun decryptFile(password: String, inputFile: File, outputFile: File) {
 //    }
 //}
 
-fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
-    FileInputStream(inputFile).use { inputStream ->
-        val iv = ByteArray(randomBytesSize)
-        val salt = ByteArray(randomBytesSize)
-        if (inputStream.read(iv) != randomBytesSize) throw Exception()
-        if (inputStream.read(salt) != randomBytesSize) throw Exception()
 
-        val key = deriveSecretKeyFromPasswordCached(salt, password)
-        val cipher = getCipher(key, iv, Cipher.DECRYPT_MODE)
-
-        val buffer = ByteArray(BUFFER_SIZE)
-        var bytesRead: Int
-        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-            cipher.update(buffer, 0, bytesRead)?.let {
-                emit(it)
-            }
-        }
-        emit(cipher.doFinal())
-    }
-}
 
 
 private fun getCipher(key: SecretKey, iv: ByteArray, mode: Int): Cipher =
-    Cipher.getInstance("AES/CBC/PKCS5Padding").apply { init(mode, key, IvParameterSpec(iv)) }
+    Cipher.getInstance("AES/CFB/NoPadding").apply { init(mode, key, IvParameterSpec(iv)) }
 
 private fun process(cipher: Cipher, inputStream: InputStream, outputStream: OutputStream) {
     val buffer = ByteArray(BUFFER_SIZE)
@@ -206,6 +208,7 @@ private fun process(cipher: Cipher, inputStream: InputStream, outputStream: Outp
 fun main() {
     val password = "test"
     encryptFile(password, File("Test.txt"), File("Test.txt.encrypt"))
+    if (File("Test.txt.encrypt").length() != File("Test.txt").length() + AES_FILESIZE_OVERHEAD) throw Exception("Size")
     decryptFile(password, File("Test.txt.encrypt"), File("Test2.txt"))
     if (!Files.readAllBytes(File("Test.txt").toPath()).contentEquals(Files.readAllBytes(File("Test2.txt").toPath()))) throw Exception("sdfhjk")
 }

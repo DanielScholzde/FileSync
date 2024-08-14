@@ -21,9 +21,12 @@ suspend fun <T, R1, R2> Flow<T>.tee(consumer1: suspend Flow<T>.() -> R1, consume
             result2 = c2.consumeAsFlow().consumer2()
         }
         this@tee.collect {
+            //println("send to channel 1 (${Thread.currentThread().name})")
             c1.send(it)
+            //println("send to channel 2 (${Thread.currentThread().name})")
             c2.send(it)
         }
+        //println("tee finished (${Thread.currentThread().name})")
         c1.close()
         c2.close()
     }

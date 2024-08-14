@@ -126,6 +126,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
 
         val syncResultFiles: MutableSet<FileEntity>
 
+        val fs = FileSystemEncryption(source, target, changedDir, deletedDir)
+
         val folders = MutableFolders()
 
         with(MutableFoldersContext(folders)) {
@@ -146,7 +148,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
                         syncName,
                         syncFilesParams.considerOtherIndexedFilesWithSyncName,
                         { env.uiDir.currentReadDir = it },
-                        now
+                        now,
+                        fs
                     )
                 }
                 env.uiDir.currentReadDir = null
@@ -228,9 +231,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
                     throw Exception("Target directory has changes, which is not allowed in backupMode!")
                 }
 
-                val fs = FileSystemEncryption(source, target, changedDir, deletedDir)
-
-                val actions = createActions(sourceChanges, targetChanges, fs)
+                val actions = createActions(sourceChanges, targetChanges)
                     .sortedWith(
                         compareBy(
                             { it.locationOfChangesToBeMade }, // first: all changes within sourceDir

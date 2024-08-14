@@ -96,5 +96,6 @@ private fun interface FilenameMatcher {
 }
 
 fun interface PathMatcher {
+    // fullPath must start and end with a '/'
     fun matches(fullPath: String, folderName: String): Boolean
 }

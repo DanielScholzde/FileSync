@@ -48,7 +48,7 @@ class FileEntry(
 }
 
 
-fun readDir(dir: File, subPath: String = "/"): FolderResult {
+fun readDir(dir: File, subPath: String = "/", fs: FileSystemEncryption): FolderResult {
     val files = mutableListOf<FileEntry>()
     val folders = mutableListOf<FolderEntry>()
     val filesAndFolders = dir.listFiles()
@@ -60,25 +60,24 @@ fun readDir(dir: File, subPath: String = "/"): FolderResult {
                 folders += FolderEntry(
                     name = file.name,
                     fullPath = path,
-                    content = { readDir(file, path) }
+                    content = { readDir(file, path, fs) }
                 )
             } else if (attributes.isRegularFile) {
-                val size = attributes.size()
+                val encrypted = file.name.endsWith(FS_ENCRYPTED)
+                val file_ = if (encrypted) File(file.path.removeSuffix(FS_ENCRYPTED)) else file
+                val size = fs.getSize(file_)
                 val created = attributes.creationTime().toKotlinInstantIgnoreMillis()
                 val modified = attributes.lastModifiedTime().toKotlinInstantIgnoreMillis()
                 files += FileEntry(
-                    name = file.name,
+                    name = file_.name,
                     path = subPath,
                     created = created,
                     modified = modified,
                     hidden = file.isHidden,
                     size = size,
                     hash = myLazy {
-                        val attr = getBasicFileAttributes(file)
-                        if (attr.size() != size || modified != attr.lastModifiedTime().toKotlinInstantIgnoreMillis()) {
-                            throw Exception("File changed!")
-                        }
-                        if (size > 0) computeSHA1(file) else null
+                        fs.checkIsUnchanged(file_, modified, size)
+                        if (size > 0) fs.computeSHA1(file_) else null
                     }
                 )
             } else {

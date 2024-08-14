@@ -8,6 +8,7 @@ enum class ExcludedBy {
 
 fun interface FolderFilter {
     // folderName is last part of path
+    // fullPath must start and end with a '/'
     fun excluded(fullPath: String, folderName: String): ExcludedBy? // result == null -> include folder
 }
 
