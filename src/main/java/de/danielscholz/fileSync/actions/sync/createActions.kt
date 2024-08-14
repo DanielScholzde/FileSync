@@ -1,6 +1,7 @@
 package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.common.*
+import de.danielscholz.fileSync.persistence.isEmptyFile
 import de.danielscholz.fileSync.persistence.isFolderMarker
 import java.io.File
 
@@ -35,7 +36,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
         actions += if (it.isFolderMarker) {
             Action(it.folderId, "", locationOfChangesToBeMade, switchedSourceAndTarget, -1) {
                 val directoryToCreate = File(targetDir, it.path())
-                process("create dir", "$directoryToCreate") {
+                processDir("create dir", "$directoryToCreate") {
                     fs.createDirsFor(directoryToCreate)
                     syncResultFiles.addWithCheck(it)
                     currentFilesTarget.addWithCheck(it)
@@ -45,7 +46,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
             Action(it.folderId, it.name, locationOfChangesToBeMade, switchedSourceAndTarget) {
                 val sourceFile = File(sourceDir, it.pathAndName())
                 val targetFile = File(targetDir, it.pathAndName())
-                process("add", "$sourceFile -> $targetFile") {
+                process("add", "$sourceFile -> $targetFile", it.isEmptyFile) {
                     checkIsUnchanged(sourceFile, it)
                     fs.copy(sourceFile, targetFile, it.size, it.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                     syncResultFiles.addWithCheck(it)
@@ -61,12 +62,12 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
         actions += Action(to.folderId, to.name, locationOfChangesToBeMade, switchedSourceAndTarget) {
             val sourceFile = File(sourceDir, to.pathAndName())
             val targetFile = File(targetDir, to.pathAndName())
-            process("copy", "$sourceFile -> $targetFile") {
+            process("copy", "$sourceFile -> $targetFile", to.isEmptyFile) {
                 checkIsUnchanged(sourceFile, to)
                 checkIsUnchanged(targetFile, from)
                 val backupFile = File(File(targetDir, changedDir), to.pathAndName())
                 fs.createDirsFor(backupFile.parentFile)
-                fs.move(targetFile, backupFile, from.size)
+                fs.move(targetFile, backupFile, from.size, from.fileHash?.hash)
                 fs.copy(sourceFile, targetFile, to.size, to.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                 syncResultFiles.replace(to)
                 currentFilesTarget.replace(to)
@@ -81,17 +82,17 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
             val sourceFile = File(targetDir, from.pathAndName())
             val targetFile = File(targetDir, to.pathAndName())
             val action = if (it.moved && it.renamed) "move+rename" else if (it.moved) "move" else "rename"
-            process(action, "$sourceFile -> $targetFile") {
+            process(action, "$sourceFile -> $targetFile", to.isEmptyFile) {
                 checkIsUnchanged(sourceFile, to)
                 // special case: change in lower/upper case only
                 if (it.renamed && !it.moved && from.name != to.name && from.nameLowercase == to.nameLowercase) {
                     val tmpFile = targetFile.resolveSibling(targetFile.name + "__tmp")
                     if (!tmpFile.exists()) {
-                        fs.move(sourceFile, tmpFile, to.size)
-                        fs.move(tmpFile, targetFile, to.size).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                        fs.move(sourceFile, tmpFile, from.size, from.fileHash?.hash)
+                        fs.move(tmpFile, targetFile, from.size, from.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                     } else throw Exception("tmp file already exists!")
                 } else {
-                    fs.move(sourceFile, targetFile, to.size).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                    fs.move(sourceFile, targetFile, from.size, from.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                 }
                 syncResultFiles.removeWithCheck(from)
                 syncResultFiles.addWithCheck(to)
@@ -107,11 +108,11 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
             val sourceFile = File(sourceDir, to.pathAndName())
             val targetFromFile = File(targetDir, from.pathAndName())
             val targetToFile = File(targetDir, to.pathAndName())
-            process("copy", "$sourceFile -> $targetToFile") {
+            process("copy", "$sourceFile -> $targetToFile", to.isEmptyFile) {
                 checkIsUnchanged(sourceFile, to)
                 val backupFile = File(File(targetDir, changedDir), from.pathAndName())
                 fs.createDirsFor(backupFile.parentFile)
-                fs.move(targetFromFile, backupFile, from.size)
+                fs.move(targetFromFile, backupFile, from.size, from.fileHash?.hash)
                 fs.copy(sourceFile, targetToFile, to.size, to.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                 syncResultFiles.removeWithCheck(from)
                 syncResultFiles.addWithCheck(to)
@@ -126,12 +127,10 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
         actions += if (it.isFolderMarker) {
             Action(it.folderId, "", locationOfChangesToBeMade, switchedSourceAndTarget, 100 - foldersCtx.getDepth(it.folderId)) {
                 val directoryToDelete = File(targetDir, it.path())
-                process("delete dir", "$directoryToDelete") {
+                processDir("delete dir", "$directoryToDelete") {
                     val file = File(directoryToDelete, "Thumbs.db")
-                    if (file.isFile) {
-                        file.delete() || throw Exception("Directory ${it.path()} could not be deleted, because 'Thumbs.db' could not be deleted!")
-                    }
-                    directoryToDelete.delete() || throw Exception("Directory ${it.path()} could not be deleted!")
+                    if (file.isFile) fs.deleteFile(file)
+                    fs.deleteDir(directoryToDelete)
                     syncResultFiles.removeWithCheck(it)
                     currentFilesTarget.removeWithCheck(it)
                 }
@@ -140,10 +139,10 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
             Action(it.folderId, it.name, locationOfChangesToBeMade, switchedSourceAndTarget) {
                 val toDelete = File(targetDir, it.pathAndName())
                 val backupFile = File(File(targetDir, deletedDir), it.pathAndName())
-                process("delete", "$toDelete") {
+                process("delete", "$toDelete", it.isEmptyFile) {
                     checkIsUnchanged(toDelete, it)
                     fs.createDirsFor(backupFile.parentFile)
-                    fs.move(toDelete, backupFile, it.size)
+                    fs.move(toDelete, backupFile, it.size, it.fileHash?.hash)
                     syncResultFiles.removeWithCheck(it)
                     currentFilesTarget.removeWithCheck(it)
                 }
@@ -155,7 +154,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
         actions += Action(to.folderId, to.name, locationOfChangesToBeMade, switchedSourceAndTarget) {
             val sourceFile = File(sourceDir, to.pathAndName())
             val targetFile = File(targetDir, to.pathAndName())
-            process("modified attr", "$sourceFile -> $targetFile") {
+            process("modified attr", "$sourceFile -> $targetFile", to.isEmptyFile) {
                 checkIsUnchanged(sourceFile, to)
                 checkIsUnchanged(targetFile, from)
                 fs.copyLastModified(sourceFile, targetFile)

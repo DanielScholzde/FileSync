@@ -129,66 +129,6 @@ fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
     }
 }
 
-//fun decryptFileTo(password: String, inputFile: File): InputStream {
-//    return object : InputStream() {
-//
-//        lateinit var cipher: Cipher
-//        lateinit var inputStream: InputStream
-//
-//        val buffer = ByteArray(4096)
-//        var bufferFilledBytes: Int = 0
-//        var output: ByteArray = ByteArray(0)
-//        var outputRead: Int = 0
-//        var initialized = false
-//        var finished = false
-//
-//        fun init() {
-//            inputStream = FileInputStream(inputFile)
-//            val iv = ByteArray(randomBytesSize)
-//            val salt = ByteArray(randomBytesSize)
-//            if (inputStream.read(iv) != randomBytesSize) throw Exception()
-//            if (inputStream.read(salt) != randomBytesSize) throw Exception()
-//
-//            val key = deriveSecretKeyFromPasswordCached(salt, password)
-//            cipher = getCipher(key, iv, Cipher.DECRYPT_MODE)
-//            initialized = true
-//        }
-//
-//        fun fetchBuffer(): Boolean {
-//            if (!initialized) init()
-//            if (finished) return false
-//
-//            if (inputStream.read(buffer).also { bufferFilledBytes = it } > 0) {
-//                output = cipher.update(buffer, 0, bufferFilledBytes)!!
-//                bufferFilledBytes = output.size
-//                return true
-//            } else {
-//                output = cipher.doFinal()
-//                bufferFilledBytes = output.size
-//                finished = true
-//                return true
-//            }
-//        }
-//
-//        override fun read(): Int {
-//            if (finished) return -1
-//            if (outputRead >= bufferFilledBytes) {
-//                fetchBuffer()
-//                outputRead = 0
-//            }
-//            val res = output[outputRead].toInt()
-//            outputRead++
-//            return res
-//        }
-//
-//        override fun close() {
-//            if (initialized) inputStream.close()
-//        }
-//    }
-//}
-
-
-
 
 private fun getCipher(key: SecretKey, iv: ByteArray, mode: Int): Cipher =
     Cipher.getInstance("AES/CFB/NoPadding").apply { init(mode, key, IvParameterSpec(iv)) }

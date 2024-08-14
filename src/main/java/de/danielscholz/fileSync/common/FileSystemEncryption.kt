@@ -21,42 +21,57 @@ class FileSystemEncryption private constructor(
     val target: SyncFiles.Env,
     val changedDir: String,
     val deletedDir: String,
+    val dryRun: Boolean,
     dummy: Unit
 ) {
 
-    constructor(source: SyncFiles.Env, target: SyncFiles.Env, changedDir: String, deletedDir: String) : this(
+    constructor(source: SyncFiles.Env, target: SyncFiles.Env, changedDir: String, deletedDir: String, dryRun: Boolean) : this(
         source,
         target,
         changedDir.ensurePrefix("/"),
         deletedDir.ensurePrefix("/"),
+        dryRun,
         Unit
     )
 
-    val sourceDirCanonicalPath = source.dir.canonicalPath
-    val targetDirCanonicalPath = target.dir.canonicalPath
+    val sourceDirCanonicalPath: String = source.dir.canonicalPath
+    val targetDirCanonicalPath: String = target.dir.canonicalPath
 
     enum class State { ENCRYPTED, NOT_ENCRYPTED }
 
-    fun move(from: File, to: File, fileSize: Long) = execAction(
+    private enum class Action { COPY, MOVE }
+
+    fun move(from: File, to: File, fileSize: Long, expectedHash: String?) = execAction(
         File2(from, fileSize),
         File2(to, fileSize),
-        null, Action.MOVE
+        expectedHash,
+        Action.MOVE
     )
 
     fun copy(from: File, to: File, fileSize: Long, expectedHash: String?) = execAction(
         File2(from, fileSize),
         File2(to, fileSize),
-        expectedHash, Action.COPY
+        expectedHash,
+        Action.COPY
     )
 
     private fun execAction(from: File2, to: File2, expectedHash: String?, action: Action): State {
 
+        if (dryRun) return if (to.shouldEncrypt) State.ENCRYPTED else State.NOT_ENCRYPTED
+
         suspend fun Flow<ByteArray>.runWithHashCheck(sink: suspend Flow<ByteArray>.() -> Unit) {
             if (expectedHash != null) {
                 val hash = this.tee(sink, { computeSHA1() }).second
-                if (hash != expectedHash) throw Exception("Hash is not equal! expected: $expectedHash, current: $hash")
+                if (hash != expectedHash) throw Exception("Hash is not equal! Maybe the Password is wrong or File has changed since indexing!")
             } else {
                 this.encryptToFile(to.fileOut, to.encryptPassword)
+            }
+        }
+
+        fun Action.exec(source: File, target: File) {
+            when (this) {
+                Action.COPY -> Files.copy(source.toPath(), target.toPath(), COPY_ATTRIBUTES)
+                Action.MOVE -> Files.move(source.toPath(), target.toPath())
             }
         }
 
@@ -94,31 +109,30 @@ class FileSystemEncryption private constructor(
         return if (to.shouldEncrypt) State.ENCRYPTED else State.NOT_ENCRYPTED
     }
 
-    private enum class Action { COPY, MOVE }
-
-    private fun Action.exec(source: File, target: File) {
-        when (this) {
-            Action.COPY -> Files.copy(source.toPath(), target.toPath(), COPY_ATTRIBUTES)
-            Action.MOVE -> Files.move(source.toPath(), target.toPath())
-        }
-    }
-
     fun copyLastModified(from: File, to: File) {
+        if (dryRun) return
         File2(to).fileIn.setLastModified(File2(from).fileIn.lastModified()) || throw Exception("set of last modification date failed!")
     }
 
     private fun copyLastModifiedIntern(from: File, to: File) {
+        if (dryRun) return
         to.setLastModified(from.lastModified()) || throw Exception("set of last modification date failed!")
     }
 
     fun createDirsFor(dir: File) {
+        if (dryRun) return
         dir.mkdirs() || throw Exception("Creation of directory ${dir.absolutePath} failed")
     }
 
-//    fun getLastModified(file: File): Instant {
-//        val attr = getBasicFileAttributes(File2(file).fileIn)
-//        return attr.lastModifiedTime().toKotlinInstantIgnoreMillis()
-//    }
+    fun deleteFile(file: File) {
+        if (dryRun) return
+        file.delete() || throw Exception("File $file could not be deleted!")
+    }
+
+    fun deleteDir(file: File) {
+        if (dryRun) return
+        file.delete() || throw Exception("Directory $file could not be deleted!")
+    }
 
     fun getSize(file: File): Long {
         return File2(file).fileSize()

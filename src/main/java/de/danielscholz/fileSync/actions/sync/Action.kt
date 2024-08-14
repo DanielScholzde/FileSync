@@ -25,27 +25,26 @@ class ActionEnv(
     val syncResultFiles: MutableSet<FileEntity>,
     val currentFilesTarget: MutableSet<FileEntity>, // may be currentFilesSource, if switchedSourceAndTarget==true
     private val addFailure: (String) -> Unit,
-    private val dryRun: Boolean,
     private val fs: FileSystemEncryption
 ) {
     var successfullyRealProcessed = 0
 
-    fun process(action: String, files: String, block: ProcessEnv.() -> Unit) {
+    fun processDir(action: String, files: String, block: ProcessEnv.() -> Unit) {
+        process(action, files, false, block)
+    }
+
+    fun process(action: String, files: String, emptyFile: Boolean, block: ProcessEnv.() -> Unit) {
         print("$action:".padEnd(14) + files)
         UI.addCurrentOperation("$action $files")
         var result: String
-        if (!dryRun) {
-            try {
-                val processEnv = ProcessEnv(fs)
-                processEnv.block() // execute action; may throw an exception!
-                successfullyRealProcessed++
-                result = " ok" + (if (processEnv.encrypted) " (encrypted)" else "")
-            } catch (e: Exception) {
-                result = ": " + e.message + " (" + e::class.simpleName + ")"
-                addFailure(action + result)
-            }
-        } else {
-            result = " ok (dry-run)"
+        try {
+            val processEnv = ProcessEnv(fs)
+            processEnv.block() // execute action; may throw an exception!
+            successfullyRealProcessed++
+            result = " ok" + (if (processEnv.encrypted) " (encrypted)" else "") + (if (emptyFile) " (empty file)" else "") + (if (fs.dryRun) " (dry-run)" else "")
+        } catch (e: Exception) {
+            result = ": " + e.message + " (" + e::class.simpleName + ")"
+            addFailure(action + result)
         }
         println(result)
         UI.addSuffixToLastOperation(result)

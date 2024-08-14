@@ -73,7 +73,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             paramValues.sourceDir!!.canonicalFile,
             paramValues.targetDir!!.canonicalFile,
             getFilter(paramValues),
-            paramValues.encryptedTargetPaths.map { createPathMatcher(it) },
+            paramValues.encryptedTargetPaths.map { createPathMatcher(it, true) },
             paramValues.password
         ).sync()
     }

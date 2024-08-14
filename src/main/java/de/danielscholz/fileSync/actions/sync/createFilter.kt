@@ -26,7 +26,7 @@ fun getFilter(paramValues: SyncFilesParams): Filter {
     }
 
     val excludedPathMatchers = (paramValues.excludedPaths + paramValues.defaultExcludedPaths).map { path ->
-        createPathMatcher(path)
+        createPathMatcher(path, false)
     }
 
     val folderFilter = FolderFilter { fullPath, folderName ->
@@ -40,7 +40,13 @@ fun getFilter(paramValues: SyncFilesParams): Filter {
     return Filter(folderFilter, fileFilter)
 }
 
-fun createPathMatcher(path: String): PathMatcher {
+
+fun createPathMatcher(path: String, considerFullPath: Boolean): PathMatcher {
+
+    fun checkFullPath(fullPath: String) {
+        if (!fullPath.startsWith('/') || !fullPath.endsWith('/')) throw IllegalArgumentException("Full path must start and end with '/'")
+    }
+
     val excludedPath = path.replace('\\', '/')
     val excludedPathLC = excludedPath.lowercase()
     return when {
@@ -57,16 +63,20 @@ fun createPathMatcher(path: String): PathMatcher {
             if (!pattern.startsWith("//"))
                 pattern = ".*$pattern"
             val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+
             PathMatcher { fullPath, _ ->
+                checkFullPath(fullPath)
                 regex.matches("/$fullPath")
             }
         }
         "/" in excludedPath -> {
             PathMatcher { fullPath, _ ->
-                if (excludedPathLC.startsWith("//"))
-                    excludedPathLC in "/$fullPath".lowercase()
-                else
+                checkFullPath(fullPath)
+                if (excludedPathLC.startsWith("//")) {
+                    "/$fullPath".lowercase().startsWith(excludedPathLC)
+                } else {
                     excludedPathLC in fullPath.lowercase()
+                }
             }
         }
         "*" in excludedPath -> {
@@ -78,13 +88,31 @@ fun createPathMatcher(path: String): PathMatcher {
                 .replace("*", ".*")
                 .replace("?", ".")
             val regex = Regex(pattern, RegexOption.IGNORE_CASE)
-            PathMatcher { _, folderName ->
-                regex.matches(folderName)
+
+            if (considerFullPath) {
+                PathMatcher { fullPath, _ ->
+                    checkFullPath(fullPath)
+                    fullPath.split('/').any { regex.matches(it) }
+                }
+            } else {
+                PathMatcher { fullPath, folderName ->
+                    checkFullPath(fullPath)
+                    regex.matches(folderName)
+                }
             }
         }
         else -> {
-            PathMatcher { _, folderName ->
-                folderName.equals(excludedPath, ignoreCase = true)
+            if (considerFullPath) {
+                val p = "/$excludedPath/"
+                PathMatcher { fullPath, _ ->
+                    checkFullPath(fullPath)
+                    fullPath.contains(p, ignoreCase = true)
+                }
+            } else {
+                PathMatcher { fullPath, folderName ->
+                    checkFullPath(fullPath)
+                    folderName.equals(excludedPath, ignoreCase = true)
+                }
             }
         }
     }

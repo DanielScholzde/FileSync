@@ -126,7 +126,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
 
         val syncResultFiles: MutableSet<FileEntity>
 
-        val fs = FileSystemEncryption(source, target, changedDir, deletedDir)
+        val fs = FileSystemEncryption(source, target, changedDir, deletedDir, syncFilesParams.dryRun)
 
         val folders = MutableFolders()
 
@@ -251,7 +251,6 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
                     syncResultFiles = syncResultFiles,
                     currentFilesTarget = currentFilesTarget.files,
                     addFailure = ::addFailure,
-                    dryRun = syncFilesParams.dryRun,
                     fs = fs
                 )
 
@@ -263,7 +262,6 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
                     syncResultFiles = syncResultFiles,
                     currentFilesTarget = currentFilesSource.files,
                     addFailure = ::addFailure,
-                    dryRun = syncFilesParams.dryRun,
                     fs = fs
                 )
 
