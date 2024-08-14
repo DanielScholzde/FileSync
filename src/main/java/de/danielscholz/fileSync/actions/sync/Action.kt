@@ -4,6 +4,7 @@ import de.danielscholz.fileSync.common.FileSystemEncryption
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.ui.UI
 import java.io.File
+import kotlin.time.measureTime
 
 
 enum class Location { SOURCE, TARGET }
@@ -39,9 +40,15 @@ class ActionEnv(
         var result: String
         try {
             val processEnv = ProcessEnv(fs)
-            processEnv.block() // execute action; may throw an exception!
+            val duration = measureTime {
+                processEnv.block() // execute action; may throw an exception!
+            }
             successfullyRealProcessed++
-            result = " ok" + (if (processEnv.encrypted) " (encrypted)" else "") + (if (emptyFile) " (empty file)" else "") + (if (fs.dryRun) " (dry-run)" else "")
+            result = " ok" +
+                    (if (processEnv.encrypted) " (encrypted)" else "") +
+                    (if (emptyFile) " (empty file)" else "") +
+                    (if (fs.dryRun) " (dry-run)" else "") +
+                    " duration: $duration"
         } catch (e: Exception) {
             result = ": " + e.message + " (" + e::class.simpleName + ")"
             addFailure(action + result)

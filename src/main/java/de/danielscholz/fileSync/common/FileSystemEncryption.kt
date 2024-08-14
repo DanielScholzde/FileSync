@@ -2,12 +2,9 @@ package de.danielscholz.fileSync.common
 
 import de.danielscholz.fileSync.actions.sync.SyncFiles
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 import java.nio.file.attribute.FileTime
@@ -151,33 +148,9 @@ class FileSystemEncryption private constructor(
         val file2 = File2(file)
         var hash: String
         runBlocking {
-            hash = readFile(file2.fileIn).computeSHA1()
+            hash = (if (file2.encrypted) decryptFileToFlow(file2.fileIn, file2.encryptPassword) else readFile(file2.fileIn)).computeSHA1()
         }
         return hash
-    }
-
-    private fun readFile(file: File): Flow<ByteArray> = flow {
-        FileInputStream(file).use { inputStream ->
-            val buffer = ByteArray(BUFFER_SIZE)
-            var bytesRead: Int
-            while (inputStream.read(buffer).also { bytesRead = it } > 0) {
-                if (buffer.size == bytesRead) {
-                    //println("emit1")
-                    emit(buffer) // Attention: no copy!!
-                } else {
-                    //println("emit2")
-                    emit(buffer.copyOf(bytesRead))
-                }
-            }
-        }
-    }
-
-    private suspend fun Flow<ByteArray>.writeToFile(file: File) {
-        FileOutputStream(file).use { outputStream ->
-            this.collect { data ->
-                outputStream.write(data)
-            }
-        }
     }
 
     private fun File2(file: File) = File2(file, this)

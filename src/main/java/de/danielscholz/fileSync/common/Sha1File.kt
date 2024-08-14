@@ -23,11 +23,11 @@ import java.util.*
 
 suspend fun Flow<ByteArray>.computeSHA1(): String {
     val digest = MessageDigest.getInstance("SHA-1")
-    this.collect {
+    this.collect { data ->
         //println("update digest (${Thread.currentThread().name})")
-        digest.update(it)
+        digest.update(data)
         testIfCancel()
     }
     //println("sha1 finished")
-    return Base64.getEncoder().encodeToString(digest.digest()) // TODO
+    return Base64.getEncoder().encodeToString(digest.digest())
 }

@@ -92,42 +92,10 @@ fun readDir(dir: File, subPath: String = "/", fs: FileSystemEncryption): FolderR
 }
 
 
-class FileAbstr(val file: File, val encrypted: Boolean, val password: String?) {
-    private val basicFileAttributes: BasicFileAttributes by myLazy { Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS) }
-
-    val size get() = basicFileAttributes.size()
-    val modified get() = basicFileAttributes.lastModifiedTime().toKotlinInstantIgnoreMillis()
-
-    val inputStream = file.inputStream()
-}
-
 fun getBasicFileAttributes(file: File): BasicFileAttributes =
     Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
 
 fun FileTime.toKotlinInstantIgnoreMillis(): Instant = toInstant().ignoreMillis().toKotlinInstant()
-
-
-//class Path(val path: String, val originalPath: String, var used: Boolean = false)
-//
-//private fun List<Path>.removeFirstPathElement(): List<Path> {
-//    if (this.isEmpty()) return this
-//    return this.mapNotNull {
-//        val s = it.path.removePrefix("/").removeSuffix("/")
-//        if (s.contains('/')) Path(s.substring(s.indexOf('/') + 1), it.originalPath) else null
-//    }
-//}
-//
-//private fun matchesPath(name: String, includePaths: List<Path>, caseSensitive: Boolean): List<Path> {
-//    var matched = listOf<Path>()
-//    if (includePaths.isNotEmpty()) {
-//        matched = includePaths.filter {
-//            val b = it.path.equals(name, !caseSensitive) || it.path.startsWith("$name/", !caseSensitive)
-//            if (b) it.used = true
-//            b
-//        }
-//    }
-//    return matched
-//}
 
 
 fun isCaseSensitiveFileSystem(dir: File): Boolean? {

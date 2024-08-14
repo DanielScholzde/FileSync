@@ -4,7 +4,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 
 
 suspend fun <T, R1, R2> Flow<T>.tee(consumer1: suspend Flow<T>.() -> R1, consumer2: suspend Flow<T>.() -> R2): Pair<R1, R2> {
@@ -31,4 +35,29 @@ suspend fun <T, R1, R2> Flow<T>.tee(consumer1: suspend Flow<T>.() -> R1, consume
         c2.close()
     }
     return result1!! to result2!!
+}
+
+
+fun readFile(file: File): Flow<ByteArray> = flow {
+    FileInputStream(file).use { inputStream ->
+        val buffer = ByteArray(BUFFER_SIZE)
+        var bytesRead: Int
+        while (inputStream.read(buffer).also { bytesRead = it } > 0) {
+            if (buffer.size == bytesRead) {
+                //println("emit1")
+                emit(buffer) // Attention: no copy!!
+            } else {
+                //println("emit2")
+                emit(buffer.copyOf(bytesRead))
+            }
+        }
+    }
+}
+
+suspend fun Flow<ByteArray>.writeToFile(file: File) {
+    FileOutputStream(file).use { outputStream ->
+        this.collect { data ->
+            outputStream.write(data)
+        }
+    }
 }
