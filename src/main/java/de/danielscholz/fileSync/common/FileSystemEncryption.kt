@@ -38,19 +38,25 @@ class FileSystemEncryption private constructor(
 
     private enum class Action { COPY, MOVE }
 
-    fun move(from: File, to: File, fileSize: Long, expectedHash: String?) = execAction(
-        File2(from, fileSize),
-        File2(to, fileSize),
-        expectedHash,
-        Action.MOVE
-    )
+    fun move(from: File, to: File, expectedHash: String?): State {
+        val fileSize = getSize(from)
+        return execAction(
+            File2(from, fileSize),
+            File2(to, fileSize),
+            expectedHash,
+            Action.MOVE
+        )
+    }
 
-    fun copy(from: File, to: File, fileSize: Long, expectedHash: String?) = execAction(
-        File2(from, fileSize),
-        File2(to, fileSize),
-        expectedHash,
-        Action.COPY
-    )
+    fun copy(from: File, to: File, expectedHash: String?): State {
+        val fileSize = getSize(from)
+        return execAction(
+            File2(from, fileSize),
+            File2(to, fileSize),
+            expectedHash,
+            Action.COPY
+        )
+    }
 
     private fun execAction(from: File2, to: File2, expectedHash: String?, action: Action): State {
 
@@ -146,9 +152,9 @@ class FileSystemEncryption private constructor(
 
     fun computeSHA1(file: File): String {
         val file2 = File2(file)
-        var hash: String
-        runBlocking {
-            hash = (if (file2.encrypted) decryptFileToFlow(file2.fileIn, file2.encryptPassword) else readFile(file2.fileIn)).computeSHA1()
+        val hash = runBlocking {
+            val flow = if (file2.encrypted) decryptFileToFlow(file2.fileIn, file2.encryptPassword) else readFile(file2.fileIn)
+            flow.computeSHA1()
         }
         return hash
     }

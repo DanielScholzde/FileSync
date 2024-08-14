@@ -38,6 +38,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
     private val syncName = syncFilesParams.syncName ?: (sourceDir.canonicalPath.toString() + "|" + targetDir.canonicalPath.toString()).hashCode().toString()
 
     class Env(
+        val name: String,
         val dir: File,
         val indexedFilesFile: File,
         val deletedFilesFile: File,
@@ -50,6 +51,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
     }
 
     private val source = Env(
+        "source",
         sourceDir,
         File(sourceDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix"),
         File(sourceDir, "$deletedFilesFilePrefix$commonFileSuffix"),
@@ -60,6 +62,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
     )
 
     private val target = Env(
+        "target",
         targetDir,
         File(targetDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix"),
         File(targetDir, "$deletedFilesFilePrefix$commonFileSuffix"),
@@ -208,7 +211,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
                 printoutDuplFiles(currentFilesSource.files, "source")
                 printoutDuplFiles(currentFilesTarget.files, "target")
 
-                if (!checkAndFix(source.dir, target.dir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFiles)) {
+                if (!checkAndFix(source.dir, target.dir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFiles, fs)) {
                     if (!syncFilesParams.ignoreConflicts) return
                 }
 

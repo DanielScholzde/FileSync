@@ -5,8 +5,6 @@ import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.ui.UI
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 
 
 context(FoldersContext, CaseSensitiveContext)
@@ -17,7 +15,8 @@ fun checkAndFix(
     targetChanges: MutableChanges,
     currentFilesSource: MutableCurrentFiles,
     currentFilesTarget: MutableCurrentFiles,
-    syncResultFiles: MutableSet<FileEntity>
+    syncResultFiles: MutableSet<FileEntity>,
+    fs: FileSystemEncryption
 ): Boolean {
 
     val failures = mutableListOf<Triple<String, (() -> Unit)?, (() -> Unit)?>>()
@@ -98,7 +97,7 @@ fun checkAndFix(
 
                 listOf(pair).ifNotEmptyCreateConflicts(sourceDir, targetDir, "changed modification date (not equal) within source and target",
                     { conflictWinningFile, otherFile ->
-                        otherFile.setLastModified(conflictWinningFile.lastModified())
+                        fs.copyLastModified(conflictWinningFile, otherFile)
                     }) {
                     it.modified.toStr()
                 }
@@ -152,7 +151,7 @@ fun checkAndFix(
         .filter(MODIFIED_NEQ)
         .ifNotEmptyCreateConflicts(sourceDir, targetDir, "changed modification date (not equal) within source and target",
             { conflictWinningFile, otherFile ->
-                otherFile.setLastModified(conflictWinningFile.lastModified())
+                fs.copyLastModified(conflictWinningFile, otherFile)
             }) {
             it.modified.toStr()
         }
@@ -163,22 +162,25 @@ fun checkAndFix(
         targetDir: File,
         sourceChanges: MutableChanges,
         targetChanges: MutableChanges,
-        currentFilesTarget: Set<FileEntity>
+        currentFilesTarget: Set<FileEntity>,
+        targetEnvName: String,
     ) {
         equalsForFileBy(pathAndName) {
             (sourceChanges.added intersect currentFilesTarget)
                 .filter(HASH_NEQ or MODIFIED_NEQ)
                 .partition(HASH_NEQ)
                 .also { (hashNEQ, modifiedNEQ) ->
-                    hashNEQ.ifNotEmptyCreateConflicts(sourceDir, targetDir, "already exists within target dir (and has different content and/or modification date)",
+                    hashNEQ.ifNotEmptyCreateConflicts(
+                        sourceDir, targetDir, "already exists within $targetEnvName dir (and has different content and/or modification date)",
                         { conflictWinningFile, otherFile ->
-                            Files.copy(conflictWinningFile.toPath(), otherFile.toPath(), COPY_ATTRIBUTES)
+                            fs.copy(conflictWinningFile, otherFile, null)
                         }) {
                         "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.substring(0, 10)}.."
                     }
-                    modifiedNEQ.ifNotEmptyCreateConflicts(sourceDir, targetDir, "already exists within target dir (and has different modification date)",
+                    modifiedNEQ.ifNotEmptyCreateConflicts(
+                        sourceDir, targetDir, "already exists within $targetEnvName dir (and has different modification date)",
                         { conflictWinningFile, otherFile ->
-                            otherFile.setLastModified(conflictWinningFile.lastModified())
+                            fs.copyLastModified(conflictWinningFile, otherFile)
                         }) {
                         "modified: ${it.modified.toStr()}"
                     }
@@ -186,33 +188,33 @@ fun checkAndFix(
 
 
             (sourceChanges.deleted intersect targetChanges.contentChanged.to())
-                .ifNotEmptyCreateConflicts(sourceDir, targetDir, "deleted source file but changed content within target dir") {
+                .ifNotEmptyCreateConflicts(sourceDir, targetDir, "deleted source file but changed content within $targetEnvName dir") {
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.substring(0, 10)}.."
                 }
 
             (sourceChanges.contentChanged.from() - currentFilesTarget)
-                .ifNotEmptyCreateConflicts(targetDir, "content changed file does not exists within target dir")
+                .ifNotEmptyCreateConflicts(targetDir, "content changed file does not exists within $targetEnvName dir")
 
             (sourceChanges.movedOrRenamed.from() - currentFilesTarget)
-                .ifNotEmptyCreateConflicts(targetDir, "source of moved file does not exists within target dir")
+                .ifNotEmptyCreateConflicts(targetDir, "source of moved file does not exists within $targetEnvName dir")
 
             (sourceChanges.movedAndContentChanged.from() - currentFilesTarget)
-                .ifNotEmptyCreateConflicts(targetDir, "source of moved and content changed file does not exists within target dir")
+                .ifNotEmptyCreateConflicts(targetDir, "source of moved and content changed file does not exists within $targetEnvName dir")
 
             (sourceChanges.movedOrRenamed.to() intersect currentFilesTarget)
-                .ifNotEmptyCreateConflicts(sourceDir, targetDir, "target of moved file already exists within target dir") {
+                .ifNotEmptyCreateConflicts(sourceDir, targetDir, "target of moved file already exists within $targetEnvName dir") {
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.substring(0, 10)}.."
                 }
 
             (sourceChanges.movedAndContentChanged.to() intersect currentFilesTarget)
-                .ifNotEmptyCreateConflicts(sourceDir, targetDir, "target of moved and content changed file already exists within target dir") {
+                .ifNotEmptyCreateConflicts(sourceDir, targetDir, "target of moved and content changed file already exists within $targetEnvName dir") {
                     "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.substring(0, 10)}.."
                 }
         }
     }
 
-    directionalChecks(sourceDir, targetDir, sourceChanges, targetChanges, currentFilesTarget.files)
-    directionalChecks(targetDir, sourceDir, targetChanges, sourceChanges, currentFilesSource.files)
+    directionalChecks(sourceDir, targetDir, sourceChanges, targetChanges, currentFilesTarget.files, "target")
+    directionalChecks(targetDir, sourceDir, targetChanges, sourceChanges, currentFilesSource.files, "source")
 
     if (failures.isNotEmpty()) {
         println("Conflicts:\n${failures.joinToString("\n") { it.first }}")

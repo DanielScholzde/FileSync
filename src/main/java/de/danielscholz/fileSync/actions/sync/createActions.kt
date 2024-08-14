@@ -48,7 +48,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 val targetFile = File(targetDir, it.pathAndName())
                 process("add", "$sourceFile -> $targetFile", it.isEmptyFile) {
                     checkIsUnchanged(sourceFile, it)
-                    fs.copy(sourceFile, targetFile, it.size, it.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                    fs.copy(sourceFile, targetFile, it.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                     syncResultFiles.addWithCheck(it)
                     currentFilesTarget.addWithCheck(it)
                     bytesCopied(it.size)
@@ -67,8 +67,8 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 checkIsUnchanged(targetFile, from)
                 val backupFile = File(File(targetDir, changedDir), to.pathAndName())
                 fs.createDirsFor(backupFile.parentFile)
-                fs.move(targetFile, backupFile, from.size, from.fileHash?.hash)
-                fs.copy(sourceFile, targetFile, to.size, to.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                fs.move(targetFile, backupFile, from.fileHash?.hash)
+                fs.copy(sourceFile, targetFile, to.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                 syncResultFiles.replace(to)
                 currentFilesTarget.replace(to)
                 bytesCopied(to.size)
@@ -88,11 +88,11 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 if (it.renamed && !it.moved && from.name != to.name && from.nameLowercase == to.nameLowercase) {
                     val tmpFile = targetFile.resolveSibling(targetFile.name + "__tmp")
                     if (!tmpFile.exists()) {
-                        fs.move(sourceFile, tmpFile, from.size, from.fileHash?.hash)
-                        fs.move(tmpFile, targetFile, from.size, from.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                        fs.move(sourceFile, tmpFile, from.fileHash?.hash)
+                        fs.move(tmpFile, targetFile, from.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                     } else throw Exception("tmp file already exists!")
                 } else {
-                    fs.move(sourceFile, targetFile, from.size, from.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                    fs.move(sourceFile, targetFile, from.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                 }
                 syncResultFiles.removeWithCheck(from)
                 syncResultFiles.addWithCheck(to)
@@ -112,8 +112,8 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 checkIsUnchanged(sourceFile, to)
                 val backupFile = File(File(targetDir, changedDir), from.pathAndName())
                 fs.createDirsFor(backupFile.parentFile)
-                fs.move(targetFromFile, backupFile, from.size, from.fileHash?.hash)
-                fs.copy(sourceFile, targetToFile, to.size, to.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                fs.move(targetFromFile, backupFile, from.fileHash?.hash)
+                fs.copy(sourceFile, targetToFile, to.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                 syncResultFiles.removeWithCheck(from)
                 syncResultFiles.addWithCheck(to)
                 currentFilesTarget.removeWithCheck(from)
@@ -142,7 +142,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 process("delete", "$toDelete", it.isEmptyFile) {
                     checkIsUnchanged(toDelete, it)
                     fs.createDirsFor(backupFile.parentFile)
-                    fs.move(toDelete, backupFile, it.size, it.fileHash?.hash)
+                    fs.move(toDelete, backupFile, it.fileHash?.hash)
                     syncResultFiles.removeWithCheck(it)
                     currentFilesTarget.removeWithCheck(it)
                 }
