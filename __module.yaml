@@ -14,7 +14,7 @@ settings:
   kotlin:
     languageVersion: 2.0
     freeCompilerArgs:
-      - 'context-receivers'
+      - '-Xcontext-receivers'
     serialization:
       format: json
     verbose: true
