@@ -1,11 +1,27 @@
 product: jvm/app
 
 dependencies:
-  - de.danielscholz:KArgParser:0.1-SNAPSHOT
+  - $compose.desktop.currentOs
+  - $compose.foundation
+  - $compose.material3
+  - org.jetbrains.kotlin:kotlin-reflect
   - org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0-RC
   - org.jetbrains.kotlinx:kotlinx-datetime:0.6.0
-  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC
+  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC.2
   - com.google.guava:guava:33.2.0-jre
+
+settings:
+  kotlin:
+    languageVersion: 2.0
+    freeCompilerArgs:
+      - 'context-receivers'
+    serialization:
+      format: json
+    verbose: true
+  compose:
+    enabled: true
+    version: 1.6.10
+  junit: junit-5
 
 #repositories:
 #  - https://repo.spring.io/ui/native/release
