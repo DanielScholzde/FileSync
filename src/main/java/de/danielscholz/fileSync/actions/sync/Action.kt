@@ -4,6 +4,7 @@ import de.danielscholz.fileSync.common.FileSystemEncryption
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.ui.UI
 import java.io.File
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.measureTime
 
 
@@ -48,7 +49,7 @@ class ActionEnv(
                     (if (processEnv.encrypted) " (encrypted)" else "") +
                     (if (emptyFile) " (empty file)" else "") +
                     (if (fs.dryRun) " (dry-run)" else "") +
-                    " duration: $duration"
+                    (if (duration > 1.seconds) " duration: $duration" else "")
         } catch (e: Exception) {
             result = ": " + e.message + " (" + e::class.simpleName + ")"
             addFailure(action + result)

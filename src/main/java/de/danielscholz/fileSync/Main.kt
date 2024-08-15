@@ -49,8 +49,10 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
             add(paramValues::targetDir, FileParam(checkIsDir = true), required = true)
             add(paramValues::excludedPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
-            add(paramValues::encryptedTargetPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
-            add(paramValues::password, StringParam())
+            add(paramValues::encryptSourcePaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
+            add(paramValues::encryptTargetPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
+            add(paramValues::passwordSource, StringParam())
+            add(paramValues::passwordTarget, StringParam())
             add(paramValues::lockfileSourceDir, FileParam(checkIsDir = true))
             add(paramValues::lockfileTargetDir, FileParam(checkIsDir = true))
             add(paramValues::excludedFiles, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
@@ -72,9 +74,9 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             paramValues,
             paramValues.sourceDir!!.canonicalFile,
             paramValues.targetDir!!.canonicalFile,
-            getFilter(paramValues),
-            paramValues.encryptedTargetPaths.map { createPathMatcher(it, true) },
-            paramValues.password
+            getFilter(paramValues.excludedFiles + paramValues.defaultExcludedFiles, paramValues.excludedPaths + paramValues.defaultExcludedPaths),
+            paramValues.encryptSourcePaths.map { createPathMatcher(it, true) },
+            paramValues.encryptTargetPaths.map { createPathMatcher(it, true) },
         ).sync()
     }
 

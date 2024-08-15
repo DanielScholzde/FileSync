@@ -38,12 +38,12 @@ typealias SaltHexStr = String
 private val keyCache = mutableMapOf<Pair<SaltHexStr, String>, SecretKey>()
 
 private fun deriveSecretKeyFromPasswordCached(salt: ByteArray, password: String) =
-    keyCache.computeIfAbsent(salt.toHexString(HexFormat.UpperCase) to password) {
+    keyCache.computeIfAbsent(salt.toHexString(kotlin.text.HexFormat.UpperCase) to password) {
         deriveSecretKeyFromPassword(salt, password)
     }
 
 private fun getCachedSaltOrNull() =
-    keyCache.keys.firstOrNull()?.first?.hexToByteArray(HexFormat.UpperCase)
+    keyCache.keys.firstOrNull()?.first?.hexToByteArray(kotlin.text.HexFormat.UpperCase)
 
 
 private const val randomBytesSize = 16
@@ -75,15 +75,19 @@ suspend fun Flow<ByteArray>.encryptToFile(outputFile: File, password: String) {
         outputStream.write(salt)
 
         this.collect { data ->
+            //println("encryptToFile.collect: ${data.size}  ${data.sum()}  ${Thread.currentThread().name}")
             digest.update(data)
-            cipher.update(data, 0, data.size)?.let { encryptedData ->
+            cipher.update(data)?.let { encryptedData ->
                 //println("write encrypted block (${Thread.currentThread().name})")
                 outputStream.write(encryptedData)
             }
         }
         //println("write encrypted finished")
         outputStream.write(cipher.doFinal())
-        outputStream.write(digest.digest())
+
+        val sha1 = digest.digest()
+        outputStream.write(sha1)
+        //println("SHA-1 of encrypted file ${outputFile.name}: ${sha1.toBase64()}")
     }
 }
 
@@ -156,6 +160,7 @@ fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
         }
 
         if (!digest.digest().contentEquals(sha1)) throw Exception("Decoding of encrypted file results in different SHA-1 checksum!")
+        //println("SHA-1 included within ${inputFile.name}: ${sha1.toBase64()}")
     }
 }
 
@@ -165,21 +170,33 @@ private fun getCipher(key: SecretKey, iv: ByteArray, mode: Int): Cipher =
 
 
 fun main(): Unit = runBlocking {
+
+//    val flow = flow {
+//        emit(1)
+//        emit(2)
+//        emit(3)
+//        emit(4)
+//    }
+//    flow.tee({ collect { println("1: "+it+" "+System.nanoTime()) } }, { collect { println("2: "+it+" "+System.nanoTime()) } })
+//    println()
+//    flow.tee({ collect { println("1: "+it) } }, { collect { println("2: "+it) } })
+//
+//return@runBlocking Unit
+
     val password = "test"
     val file = "Test_copy.mpg"
 
     // warmup
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
 
     measureTime {
         readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
@@ -189,7 +206,7 @@ fun main(): Unit = runBlocking {
 
     decryptFileToFlow(File("$file.encrypt"), password).writeToFile(File("$file.tmp"))
 
-    if (!Files.readAllBytes(File(file).toPath()).contentEquals(Files.readAllBytes(File("$file.tmp").toPath()))) throw Exception("sdfhjk")
+    if (!Files.readAllBytes(File(file).toPath()).contentEquals(Files.readAllBytes(File("$file.tmp").toPath()))) throw Exception("UNGLEICH!")
 
     File("$file.tmp").delete()
     File("$file.encrypt").delete()

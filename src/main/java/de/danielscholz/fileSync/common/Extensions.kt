@@ -3,6 +3,7 @@ package de.danielscholz.fileSync.common
 import de.danielscholz.fileSync.actions.sync.Addition
 import de.danielscholz.fileSync.actions.sync.ContentChanged
 import de.danielscholz.fileSync.persistence.FileEntity
+import java.util.*
 
 
 fun String.ensureSuffix(suffix: String): String {
@@ -17,6 +18,8 @@ fun String.getFileExtension(): String? {
     val ext = substringAfterLast('.', "")
     return if (ext.isNotBlank()) ext else null
 }
+
+fun ByteArray.toBase64(): String = Base64.getEncoder().encodeToString(this)
 
 
 @JvmName("fileSize1")

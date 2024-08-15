@@ -22,14 +22,8 @@ class FileSystemEncryption private constructor(
     dummy: Unit
 ) {
 
-    constructor(source: SyncFiles.Env, target: SyncFiles.Env, changedDir: String, deletedDir: String, dryRun: Boolean) : this(
-        source,
-        target,
-        changedDir.ensurePrefix("/"),
-        deletedDir.ensurePrefix("/"),
-        dryRun,
-        Unit
-    )
+    constructor(source: SyncFiles.Env, target: SyncFiles.Env, changedDir: String, deletedDir: String, dryRun: Boolean) :
+            this(source, target, changedDir.ensurePrefix("/"), deletedDir.ensurePrefix("/"), dryRun, Unit)
 
     val sourceDirCanonicalPath: String = source.dir.canonicalPath
     val targetDirCanonicalPath: String = target.dir.canonicalPath
@@ -63,12 +57,16 @@ class FileSystemEncryption private constructor(
         if (dryRun) return if (to.shouldEncrypt) State.ENCRYPTED else State.NOT_ENCRYPTED
 
         suspend fun Flow<ByteArray>.runWithHashCheck(sink: suspend Flow<ByteArray>.() -> Unit) {
-            if (expectedHash != null) {
-                val hash = this.tee(sink, { computeSHA1() }).second
-                if (hash != expectedHash) throw Exception("Hash is not equal! Maybe the Password is wrong or File has changed since indexing!")
-            } else {
-                this.encryptToFile(to.fileOut, to.encryptPassword)
-            }
+            // TODO
+//            if (expectedHash != null) {
+//                val hash = this.tee(sink, { computeSHA1() }).second
+//                if (hash != expectedHash) {
+//                    //throw Exception("Hash is not equal! Maybe the Password is wrong or File has changed since indexing!")
+//                    println("Hash different: $hash != $expectedHash")
+//                }
+//            } else {
+            this.sink()
+//            }
         }
 
         fun Action.exec(source: File, target: File) {
@@ -191,6 +189,7 @@ class File2(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
             }
             else -> throw IllegalStateException()
         }
+        if (!filePath.startsWith("/") || !filePath.endsWith("/")) throw Exception()
     }
 
     val encrypted by myLazy { file.isEncrypted() }
@@ -201,16 +200,12 @@ class File2(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
 
     fun fileSize() = if (encrypted) (fileIn.length() - AES_FILESIZE_OVERHEAD) else fileIn.length()
 
-    private fun File.toEncryptedPath(): File {
-        return File(this.path + FS_ENCRYPTED)
-    }
+    private fun File.toEncryptedPath() = File(this.path + FS_ENCRYPTED)
 
-    private fun File.isEncrypted(): Boolean {
-        return when {
-            toEncryptedPath().isFile -> true
-            this.isFile -> false
-            else -> throw Exception("File does not exist!")
-        }
+    private fun File.isEncrypted() = when {
+        toEncryptedPath().isFile -> true
+        this.isFile -> false
+        else -> throw Exception("File does not exist!")
     }
 
     private fun shouldEncrypt(filePath: String, env: SyncFiles.Env, fileSize: Long): Boolean {

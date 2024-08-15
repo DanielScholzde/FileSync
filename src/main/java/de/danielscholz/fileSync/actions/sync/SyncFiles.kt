@@ -19,7 +19,14 @@ import java.time.LocalDateTime as JavaLocalDateTime
 
 
 @Suppress("ConstPropertyName")
-class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, targetDir: File, filter: Filter, encryptTargetPaths: List<PathMatcher>, password: String?) {
+class SyncFiles(
+    private val syncFilesParams: SyncFilesParams,
+    sourceDir: File,
+    targetDir: File,
+    filter: Filter,
+    encryptSourcePaths: List<PathMatcher>,
+    encryptTargetPaths: List<PathMatcher>
+) {
 
     companion object {
         private const val backupDir = ".syncFilesHistory"
@@ -57,8 +64,8 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
         File(sourceDir, "$deletedFilesFilePrefix$commonFileSuffix"),
         isCaseSensitiveFileSystem(sourceDir) ?: throw Exception("Unable to determine if filesystem $sourceDir is case sensitive!"),
         UI.sourceDir,
-        listOf(),
-        null
+        encryptSourcePaths,
+        syncFilesParams.passwordSource
     )
 
     private val target = Env(
@@ -69,7 +76,7 @@ class SyncFiles(private val syncFilesParams: SyncFilesParams, sourceDir: File, t
         isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"),
         UI.targetDir,
         encryptTargetPaths,
-        password
+        syncFilesParams.passwordTarget
     )
 
 

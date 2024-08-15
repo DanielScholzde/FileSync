@@ -1,11 +1,9 @@
 package de.danielscholz.fileSync.actions.sync
 
-import de.danielscholz.fileSync.SyncFilesParams
 
+fun getFilter(excludedFiles: Set<String>, excludedPaths: Set<String>): Filter {
 
-fun getFilter(paramValues: SyncFilesParams): Filter {
-
-    val excludedFilenameMatchers = (paramValues.excludedFiles + paramValues.defaultExcludedFiles).map { excludedFilename ->
+    val excludedFilenameMatchers = excludedFiles.map { excludedFilename ->
         if (excludedFilename.contains("*")) {
             val escaped = excludedFilename
                 .replace("(", "\\(")
@@ -25,7 +23,7 @@ fun getFilter(paramValues: SyncFilesParams): Filter {
         }
     }
 
-    val excludedPathMatchers = (paramValues.excludedPaths + paramValues.defaultExcludedPaths).map { path ->
+    val excludedPathMatchers = excludedPaths.map { path ->
         createPathMatcher(path, false)
     }
 

@@ -11,7 +11,7 @@ class SyncFilesParams {
     @Description("Name for sync of this pair of directories")
     var syncName: String? = null
 
-    @Description("")
+    @Description("Considers this index database also to prevent unnecessary indexing operations (only useful when synchronization is done with multiple sources or targets)")
     var considerOtherIndexedFilesWithSyncName: String? = null
 
     @Description("Source directory")
@@ -48,19 +48,28 @@ class SyncFilesParams {
     var excludedFiles: Set<String> = setOf()
 
     @Description(
-        "Part of path (without filename) OR absolute path. Separator char is \"/\". You can use * for an arbitrary pattern. An absolute path is defined by starting with \"//\", e.g. \"//absolute/path/\"\n" +
+        "Part of path OR absolute path (both without filename). Separator char is \"/\". You can use * for an arbitrary pattern. An absolute path is defined by starting with \"//\", e.g. \"//absolute/path/\"\n" +
                 "Hint: a full directory name is matched by \"name\". If the underlying filesystem is case-sensitive, these entries are also."
     )
     var excludedPaths: Set<String> = setOf()
 
     @Description(
-        "Part of path (without filename) OR absolute path. Separator char is \"/\". You can use * for an arbitrary pattern. An absolute path is defined by starting with \"//\", e.g. \"//absolute/path/\"\n" +
+        "Part of path OR absolute path (both without filename). Separator char is \"/\". You can use * for an arbitrary pattern. An absolute path is defined by starting with \"//\", e.g. \"//absolute/path/\"\n" +
                 "Hint: a full directory name is matched by \"name\". If the underlying filesystem is case-sensitive, these entries are also."
     )
-    var encryptedTargetPaths: Set<String> = setOf()
+    var encryptSourcePaths: Set<String> = setOf()
 
-    @Description("Password")
-    var password: String? = null
+    @Description(
+        "Part of path OR absolute path (both without filename). Separator char is \"/\". You can use * for an arbitrary pattern. An absolute path is defined by starting with \"//\", e.g. \"//absolute/path/\"\n" +
+                "Hint: a full directory name is matched by \"name\". If the underlying filesystem is case-sensitive, these entries are also."
+    )
+    var encryptTargetPaths: Set<String> = setOf()
+
+    @Description("Password for encryption of files within source directory")
+    var passwordSource: String? = null
+
+    @Description("Password for encryption of files within target directory")
+    var passwordTarget: String? = null
 
     @Description("Directory where the synchronization lockfile should be placed (for sourceDir)")
     var lockfileSourceDir: File? = null
@@ -68,7 +77,7 @@ class SyncFilesParams {
     @Description("Directory where the synchronization lockfile should be placed (for targetDir)")
     var lockfileTargetDir: File? = null
 
-    @Description("Should a test run be done without any file changes (except the database)?")
+    @Description("Should a test run be done without any file changes (except the index database)?")
     var dryRun = false
 
 //    @Description("Save indexed files metadata despite dry run")
