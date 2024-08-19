@@ -24,7 +24,8 @@ class ActionEnv(
     val targetDir: File,
     val changedDir: String,
     val deletedDir: String,
-    val syncResultFiles: MutableSet<FileEntity>,
+    val syncResultFilesSource: MutableSet<FileEntity>,
+    val syncResultFilesTarget: MutableSet<FileEntity>,
     val currentFilesTarget: MutableSet<FileEntity>, // may be currentFilesSource, if switchedSourceAndTarget==true
     private val addFailure: (String) -> Unit,
     private val fs: FileSystemEncryption

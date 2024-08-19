@@ -15,7 +15,8 @@ fun checkAndFix(
     targetChanges: MutableChanges,
     currentFilesSource: MutableCurrentFiles,
     currentFilesTarget: MutableCurrentFiles,
-    syncResultFiles: MutableSet<FileEntity>,
+    syncResultFilesSource: MutableSet<FileEntity>,
+    syncResultFilesTarget: MutableSet<FileEntity>,
     fs: FileSystemEncryption
 ): Boolean {
 
@@ -52,8 +53,10 @@ fun checkAndFix(
             val (sourceTo, targetTo) = pair
             if (sourceTo.modified == targetTo.modified) {
                 // here: sourceTo must be identical to targetTo!
-                syncResultFiles -= sourceTo // remove old instance (optional)
-                syncResultFiles.addWithCheck(sourceTo) // add new with changed hash
+                syncResultFilesSource -= sourceTo // remove old instance (optional)
+                syncResultFilesTarget -= targetTo // remove old instance (optional)
+                syncResultFilesSource.addWithCheck(sourceTo) // add new with changed hash
+                syncResultFilesTarget.addWithCheck(targetTo) // add new with changed hash
                 sourceChanges.added.remove(sourceTo) ||
                         // equals of ContentChanged considers only second property
                         sourceChanges.contentChanged.remove(ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, sourceTo)) ||
@@ -109,7 +112,8 @@ fun checkAndFix(
         sourceChanges.deleted intersect targetChanges.deleted
     }
         .forEach { (source, target) ->
-            syncResultFiles.removeWithCheck(source)
+            syncResultFilesSource.removeWithCheck(source)
+            syncResultFilesTarget.removeWithCheck(target)
             sourceChanges.deleted.removeWithCheck(source)
             targetChanges.deleted.removeWithCheck(target)
         }
@@ -123,11 +127,18 @@ fun checkAndFix(
                 if (sourceChange.from eq targetChange.from &&
                     sourceChange.to eq targetChange.to
                 ) {
-                    // here: sourceChange must be identical to targetChange! (except for folderId, which can be different in upper/lower case)
-                    if (syncResultFiles.remove(sourceChange.from)) {
-                        syncResultFiles.addWithCheck(sourceChange.to)
-                    } else if (syncResultFiles.remove(targetChange.from)) {
-                        syncResultFiles.addWithCheck(targetChange.to)
+                    // here: sourceChange must be identical to targetChange! (except for folderId and encryption state; folder can be different in upper/lower case)
+                    if (syncResultFilesSource.remove(sourceChange.from)) {
+                        syncResultFilesSource.addWithCheck(sourceChange.to)
+                    } else if (syncResultFilesSource.remove(targetChange.from)) {
+                        syncResultFilesSource.addWithCheck(targetChange.to)
+                    } else {
+                        throw IllegalStateException()
+                    }
+                    if (syncResultFilesTarget.remove(sourceChange.from)) {
+                        syncResultFilesTarget.addWithCheck(sourceChange.to)
+                    } else if (syncResultFilesTarget.remove(targetChange.from)) {
+                        syncResultFilesTarget.addWithCheck(targetChange.to)
                     } else {
                         throw IllegalStateException()
                     }

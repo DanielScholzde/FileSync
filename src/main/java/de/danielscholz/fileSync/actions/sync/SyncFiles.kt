@@ -80,7 +80,8 @@ class SyncFiles(
     )
 
 
-    private val syncResultFile = File(source.dir, "$syncResultFilePrefix$syncName$commonFileSuffix")
+    private val syncResultSourceFile = File(source.dir, "$syncResultFilePrefix$syncName$commonFileSuffix")
+    private val syncResultTargetFile = File(target.dir, "$syncResultFilePrefix$syncName$commonFileSuffix")
 
 
     val filter = Filter(
@@ -134,7 +135,8 @@ class SyncFiles(
         val sourceChanges: MutableChanges
         val targetChanges: MutableChanges
 
-        val syncResultFiles: MutableSet<FileEntity>
+        val syncResultFilesSource: MutableSet<FileEntity>
+        val syncResultFilesTarget: MutableSet<FileEntity>
 
         val fs = FileSystemEncryption(source, target, changedDir, deletedDir, syncFilesParams.dryRun)
 
@@ -142,8 +144,10 @@ class SyncFiles(
 
         with(MutableFoldersContext(folders)) {
 
-            val lastSyncResultFiles = readSyncResult(syncResultFile)?.mapToRead(filter) ?: setOf()
-            syncResultFiles = lastSyncResultFiles.toMutableSet()
+            val lastSyncResultFilesSource = readSyncResult(syncResultSourceFile)?.mapToRead(filter) ?: setOf()
+            val lastSyncResultFilesTarget = readSyncResult(syncResultTargetFile)?.mapToRead(filter) ?: setOf()
+            syncResultFilesSource = lastSyncResultFilesSource.toMutableSet()
+            syncResultFilesTarget = lastSyncResultFilesTarget.toMutableSet()
 
             fun CaseSensitiveContext.getCurrentFiles(env: Env): MutableCurrentFiles {
                 val currentFiles: MutableCurrentFiles
@@ -172,13 +176,13 @@ class SyncFiles(
                 {
                     with(CaseSensitiveContext(source.caseSensitive)) {
                         currentFilesSource = getCurrentFiles(source)
-                        sourceChanges = getChanges(source.dir, lastSyncResultFiles, currentFilesSource)
+                        sourceChanges = getChanges(source.dir, lastSyncResultFilesSource, currentFilesSource)
                     }
                 },
                 {
                     with(CaseSensitiveContext(target.caseSensitive)) {
                         currentFilesTarget = getCurrentFiles(target)
-                        targetChanges = getChanges(target.dir, lastSyncResultFiles, currentFilesTarget)
+                        targetChanges = getChanges(target.dir, lastSyncResultFilesTarget, currentFilesTarget)
                     }
                 },
                 parallel = syncFilesParams.parallelIndexing
@@ -218,7 +222,7 @@ class SyncFiles(
                 printoutDuplFiles(currentFilesSource.files, "source")
                 printoutDuplFiles(currentFilesTarget.files, "target")
 
-                if (!checkAndFix(source.dir, target.dir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFiles, fs)) {
+                if (!checkAndFix(source.dir, target.dir, sourceChanges, targetChanges, currentFilesSource, currentFilesTarget, syncResultFilesSource, syncResultFilesTarget, fs)) {
                     if (!syncFilesParams.ignoreConflicts) return
                 }
 
@@ -258,7 +262,7 @@ class SyncFiles(
                     targetDir = target.dir,
                     changedDir = changedDir,
                     deletedDir = deletedDir,
-                    syncResultFiles = syncResultFiles,
+                    syncResultFilesSource = syncResultFilesSource,
                     currentFilesTarget = currentFilesTarget.files,
                     addFailure = ::addFailure,
                     fs = fs
@@ -269,7 +273,7 @@ class SyncFiles(
                     targetDir = source.dir,
                     changedDir = changedDir,
                     deletedDir = deletedDir,
-                    syncResultFiles = syncResultFiles,
+                    syncResultFilesSource = syncResultFilesSource,
                     currentFilesTarget = currentFilesSource.files,
                     addFailure = ::addFailure,
                     fs = fs
@@ -284,12 +288,12 @@ class SyncFiles(
 
                     UI.clearCurrentOperations()
 
-                    printoutDuplFiles(syncResultFiles, "sync result")
+                    printoutDuplFiles(syncResultFilesSource, "sync result")
 
                     if (syncFilesParams.warnIfFileCopyHasNoOriginal) {
                         equalsForFileBy(MatchMode.HASH) {
-                            val fileCopies = syncResultFiles.filter { it.isWithinDirCopy() && !it.isFolderMarker }
-                            val notFileCopies = syncResultFiles.filter { !it.isWithinDirCopy() }
+                            val fileCopies = syncResultFilesSource.filter { it.isWithinDirCopy() && !it.isFolderMarker }
+                            val notFileCopies = syncResultFilesSource.filter { !it.isWithinDirCopy() }
                             val notFileCopiesByName = notFileCopies.multiAssociateBy { it.name }
                             (fileCopies subtract notFileCopies)
                                 .sortedBy { it.pathAndName() }
@@ -309,7 +313,7 @@ class SyncFiles(
 
                     val deletedFiles = mutableSetOf<DeletedFileEntity>()
                     exec {
-                        val hashes: Set<String> by myLazy { syncResultFiles.mapNotNullTo(mutableSetOf()) { it.hash } }
+                        val hashes: Set<String> by myLazy { syncResultFilesSource.mapNotNullTo(mutableSetOf()) { it.hash } }
                         (sourceChanges.deleted + targetChanges.deleted).filter { !it.isFolderMarker && (it.hash == null || it.hash !in hashes) }.let { list ->
                             deletedFiles += readDeletedFiles(source.deletedFilesFile)?.files ?: setOf()
                             deletedFiles += readDeletedFiles(target.deletedFilesFile)?.files ?: setOf()
@@ -322,7 +326,7 @@ class SyncFiles(
                     if ((hasChanges || !syncResultFile.exists()) && !syncFilesParams.dryRun) {
                         backup(source.dir, syncResultFile)
 
-                        syncResultFiles.saveSyncResultTo(syncResultFile, failures)
+                        syncResultFilesSource.saveSyncResultTo(syncResultFile, failures)
 
                         if (hasChanges) {
                             currentFilesSource.files.saveIndexedFilesTo(source.indexedFilesFile, now) // save again; at least one of this files

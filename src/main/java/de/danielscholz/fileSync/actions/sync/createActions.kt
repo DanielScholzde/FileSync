@@ -38,7 +38,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 val directoryToCreate = File(targetDir, it.path())
                 processDir("create dir", "$directoryToCreate") {
                     fs.createDirsFor(directoryToCreate)
-                    syncResultFiles.addWithCheck(it)
+                    syncResultFilesSource.addWithCheck(it)
                     currentFilesTarget.addWithCheck(it)
                 }
             }
@@ -49,7 +49,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 process("add", "$sourceFile -> $targetFile", it.isEmptyFile) {
                     checkIsUnchanged(sourceFile, it)
                     fs.copy(sourceFile, targetFile, it.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
-                    syncResultFiles.addWithCheck(it)
+                    syncResultFilesSource.addWithCheck(it)
                     currentFilesTarget.addWithCheck(it)
                     bytesCopied(it.size)
                 }
@@ -69,7 +69,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 fs.createDirsFor(backupFile.parentFile)
                 fs.move(targetFile, backupFile, from.fileHash?.hash)
                 fs.copy(sourceFile, targetFile, to.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
-                syncResultFiles.replace(to)
+                syncResultFilesSource.replace(to)
                 currentFilesTarget.replace(to)
                 bytesCopied(to.size)
             }
@@ -94,8 +94,8 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 } else {
                     fs.move(sourceFile, targetFile, from.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
                 }
-                syncResultFiles.removeWithCheck(from)
-                syncResultFiles.addWithCheck(to)
+                syncResultFilesSource.removeWithCheck(from)
+                syncResultFilesSource.addWithCheck(to)
                 currentFilesTarget.removeWithCheck(from)
                 currentFilesTarget.addWithCheck(to)
             }
@@ -114,8 +114,8 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 fs.createDirsFor(backupFile.parentFile)
                 fs.move(targetFromFile, backupFile, from.fileHash?.hash)
                 fs.copy(sourceFile, targetToFile, to.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
-                syncResultFiles.removeWithCheck(from)
-                syncResultFiles.addWithCheck(to)
+                syncResultFilesSource.removeWithCheck(from)
+                syncResultFilesSource.addWithCheck(to)
                 currentFilesTarget.removeWithCheck(from)
                 currentFilesTarget.addWithCheck(to)
                 bytesCopied(to.size)
@@ -131,7 +131,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                     val file = File(directoryToDelete, "Thumbs.db")
                     if (file.isFile) fs.deleteFile(file)
                     fs.deleteDir(directoryToDelete)
-                    syncResultFiles.removeWithCheck(it)
+                    syncResultFilesSource.removeWithCheck(it)
                     currentFilesTarget.removeWithCheck(it)
                 }
             }
@@ -143,7 +143,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                     checkIsUnchanged(toDelete, it)
                     fs.createDirsFor(backupFile.parentFile)
                     fs.move(toDelete, backupFile, it.fileHash?.hash)
-                    syncResultFiles.removeWithCheck(it)
+                    syncResultFilesSource.removeWithCheck(it)
                     currentFilesTarget.removeWithCheck(it)
                 }
             }
@@ -158,7 +158,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 checkIsUnchanged(sourceFile, to)
                 checkIsUnchanged(targetFile, from)
                 fs.copyLastModified(sourceFile, targetFile)
-                syncResultFiles.replace(to)
+                syncResultFilesSource.replace(to)
                 currentFilesTarget.replace(to)
             }
         }
