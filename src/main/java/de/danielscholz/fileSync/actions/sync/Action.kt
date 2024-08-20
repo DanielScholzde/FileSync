@@ -63,6 +63,7 @@ class ActionEnv(
 class ProcessEnv(val fs: FileSystemEncryption) {
 
     var encrypted = false
+        private set
 
     fun checkIsUnchanged(file: File, attributes: FileEntity) {
         fs.checkIsUnchanged(file, attributes.modified, attributes.size)
@@ -70,6 +71,12 @@ class ProcessEnv(val fs: FileSystemEncryption) {
 
     fun bytesCopied(bytes: Long) {
         UI.currentBytesCopied += bytes
+    }
+
+    fun FileSystemEncryption.State.processResult() {
+        if (this == FileSystemEncryption.State.ENCRYPTED) {
+            encrypted = true
+        }
     }
 
 }

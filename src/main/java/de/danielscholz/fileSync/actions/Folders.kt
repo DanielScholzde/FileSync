@@ -54,7 +54,7 @@ class MutableFolders : Folders {
 
         fun getFullPathIntern(id: Long): String {
             return foldersFullPathCache.getOrPut(id) {
-                val folder = folders[id] ?: throw Exception("Folder with id $id not found!")
+                val folder = folders[id] ?: throw Error("Folder with id $id not found!")
                 (folder.parentFolderId?.let { getFullPathIntern(it) } ?: "") + folder.name + "/"
             }
         }
@@ -74,7 +74,7 @@ class MutableFolders : Folders {
     @Synchronized
     fun getOrCreate(name: String, parentFolderId: Long): FolderEntity {
         if (!folders.containsKey(parentFolderId)) {
-            throw IllegalStateException()
+            throw Error("Folders does not contain key $parentFolderId")
         }
 
         foldersByParent[parentFolderId].firstOrNull { it.name == name }?.let {
@@ -91,12 +91,12 @@ class MutableFolders : Folders {
 
     @Synchronized
     override fun check() {
-        folders.entries.forEach {
-            if (it.key != it.value.id) throw Exception()
-            val parentFolderId = it.value.parentFolderId
+        folders.entries.forEach { (id, folder) ->
+            if (id != folder.id) throw Error("IDs are not equal")
+            val parentFolderId = folder.parentFolderId
             if (parentFolderId != null) {
-                if (folders[parentFolderId] == null) throw Exception()
-                if (it.value !in foldersByParent[parentFolderId]) throw Exception()
+                if (folders[parentFolderId] == null) throw Error("parentFolderId not found")
+                if (folder !in foldersByParent[parentFolderId]) throw Error("foldersByParent does not contain current folder")
             }
         }
     }

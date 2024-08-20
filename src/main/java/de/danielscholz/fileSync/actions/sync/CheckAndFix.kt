@@ -57,10 +57,10 @@ fun checkAndFix(
                 sourceChanges.added.remove(sourceTo) ||
                         // equals of ContentChanged considers only second property
                         sourceChanges.contentChanged.remove(ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, sourceTo)) ||
-                        throw IllegalStateException()
+                        throw Error("Element sourceTo could not be removed!")
                 targetChanges.added.remove(targetTo) ||
                         targetChanges.contentChanged.remove(ContentChanged(ContentChanged.DOES_NOT_MATTER_FILE, targetTo)) ||
-                        throw IllegalStateException()
+                        throw Error("Element targetTo could not be removed!")
             } else {
                 // fix modification date:
 //                val f1 = sourceTo.modified.toLocalDateTime(TimeZone.currentSystemDefault()).format(customFormat2)
@@ -129,7 +129,7 @@ fun checkAndFix(
                     } else if (syncResultFiles.remove(targetChange.from)) {
                         syncResultFiles.addWithCheck(targetChange.to)
                     } else {
-                        throw IllegalStateException()
+                        throw Error()
                     }
                     sourceChanges.movedOrRenamed.removeWithCheck(sourceChange)
                     targetChanges.movedOrRenamed.removeWithCheck(targetChange)

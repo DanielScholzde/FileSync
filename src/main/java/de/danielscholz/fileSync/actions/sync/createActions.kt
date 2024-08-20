@@ -48,7 +48,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 val targetFile = File(targetDir, it.pathAndName())
                 process("add", "$sourceFile -> $targetFile", it.isEmptyFile) {
                     checkIsUnchanged(sourceFile, it)
-                    fs.copy(sourceFile, targetFile, it.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                    fs.copy(sourceFile, targetFile, it.fileHash?.hash).processResult()
                     syncResultFiles.addWithCheck(it)
                     currentFilesTarget.addWithCheck(it)
                     bytesCopied(it.size)
@@ -68,7 +68,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 val backupFile = File(File(targetDir, changedDir), to.pathAndName())
                 fs.createDirsFor(backupFile.parentFile)
                 fs.move(targetFile, backupFile, from.fileHash?.hash)
-                fs.copy(sourceFile, targetFile, to.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                fs.copy(sourceFile, targetFile, to.fileHash?.hash).processResult()
                 syncResultFiles.replace(to)
                 currentFilesTarget.replace(to)
                 bytesCopied(to.size)
@@ -89,10 +89,10 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                     val tmpFile = targetFile.resolveSibling(targetFile.name + "__tmp")
                     if (!tmpFile.exists()) {
                         fs.move(sourceFile, tmpFile, from.fileHash?.hash)
-                        fs.move(tmpFile, targetFile, from.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                        fs.move(tmpFile, targetFile, from.fileHash?.hash).processResult()
                     } else throw Exception("tmp file already exists!")
                 } else {
-                    fs.move(sourceFile, targetFile, from.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                    fs.move(sourceFile, targetFile, from.fileHash?.hash).processResult()
                 }
                 syncResultFiles.removeWithCheck(from)
                 syncResultFiles.addWithCheck(to)
@@ -113,7 +113,7 @@ private fun Changes.createActions(switchedSourceAndTarget: Boolean, locationOfCh
                 val backupFile = File(File(targetDir, changedDir), from.pathAndName())
                 fs.createDirsFor(backupFile.parentFile)
                 fs.move(targetFromFile, backupFile, from.fileHash?.hash)
-                fs.copy(sourceFile, targetToFile, to.fileHash?.hash).also { if (it == FileSystemEncryption.State.ENCRYPTED) encrypted = true }
+                fs.copy(sourceFile, targetToFile, to.fileHash?.hash).processResult()
                 syncResultFiles.removeWithCheck(from)
                 syncResultFiles.addWithCheck(to)
                 currentFilesTarget.removeWithCheck(from)

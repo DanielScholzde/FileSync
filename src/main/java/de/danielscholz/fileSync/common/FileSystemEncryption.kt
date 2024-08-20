@@ -1,7 +1,6 @@
 package de.danielscholz.fileSync.common
 
 import de.danielscholz.fileSync.actions.sync.SyncFiles
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import java.io.File
@@ -23,10 +22,10 @@ class FileSystemEncryption private constructor(
 ) {
 
     constructor(source: SyncFiles.Env, target: SyncFiles.Env, changedDir: String, deletedDir: String, dryRun: Boolean) :
-            this(source, target, changedDir.ensurePrefix("/"), deletedDir.ensurePrefix("/"), dryRun, Unit)
+            this(source, target, changedDir.replace('\\', '/').ensurePrefix("/"), deletedDir.replace('\\', '/').ensurePrefix("/"), dryRun, Unit)
 
-    val sourceDirCanonicalPath: String = source.dir.canonicalPath
-    val targetDirCanonicalPath: String = target.dir.canonicalPath
+    val sourceDirCanonicalPath: String = source.dir.canonicalPath.replace('\\', '/')
+    val targetDirCanonicalPath: String = target.dir.canonicalPath.replace('\\', '/')
 
     enum class State { ENCRYPTED, NOT_ENCRYPTED }
 
@@ -56,7 +55,7 @@ class FileSystemEncryption private constructor(
 
         if (dryRun) return if (to.shouldEncrypt) State.ENCRYPTED else State.NOT_ENCRYPTED
 
-        suspend fun Flow<ByteArray>.runWithHashCheck(sink: suspend Flow<ByteArray>.() -> Unit) {
+//        suspend fun Flow<ByteArray>.runWithHashCheck(sink: suspend Flow<ByteArray>.() -> Unit) {
             // TODO
 //            if (expectedHash != null) {
 //                val hash = this.tee(sink, { computeSHA1() }).second
@@ -65,9 +64,9 @@ class FileSystemEncryption private constructor(
 //                    println("Hash different: $hash != $expectedHash")
 //                }
 //            } else {
-            this.sink()
+//            this.sink()
 //            }
-        }
+//        }
 
         fun Action.exec(source: File, target: File) {
             when (this) {
@@ -82,7 +81,12 @@ class FileSystemEncryption private constructor(
                     action.exec(from.fileIn, to.fileOut)
                 } else {
                     runBlocking {
-                        decryptFileToFlow(from.fileIn, from.encryptPassword).runWithHashCheck { encryptToFile(to.fileOut, to.encryptPassword) }
+                        decryptFileToFlow(from.fileIn, from.encryptPassword).encryptToFile(to.fileOut, to.encryptPassword)
+                        if (decryptFileToFlow(
+                                to.fileOut,
+                                to.encryptPassword
+                            ).computeSHA1() != expectedHash && expectedHash != null
+                        ) throw Exception("Hash is not equal to expected")
                     }
                     copyLastModifiedIntern(from.fileIn, to.fileOut)
                     if (action == Action.MOVE) Files.delete(from.fileIn.toPath())
@@ -90,14 +94,16 @@ class FileSystemEncryption private constructor(
             }
             !from.encrypted && to.shouldEncrypt -> {
                 runBlocking {
-                    readFile(from.fileIn).runWithHashCheck { encryptToFile(to.fileOut, to.encryptPassword) }
+                    readFile(from.fileIn).encryptToFile(to.fileOut, to.encryptPassword)
+                    if (decryptFileToFlow(to.fileOut, to.encryptPassword).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
                 }
                 copyLastModifiedIntern(from.fileIn, to.fileOut)
                 if (action == Action.MOVE) Files.delete(from.fileIn.toPath())
             }
             from.encrypted && !to.shouldEncrypt -> {
                 runBlocking {
-                    decryptFileToFlow(from.fileIn, from.encryptPassword).runWithHashCheck { writeToFile(to.fileOut) }
+                    decryptFileToFlow(from.fileIn, from.encryptPassword).writeToFile(to.fileOut)
+                    if (readFile(to.fileOut).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
                 }
                 copyLastModifiedIntern(from.fileIn, to.fileOut)
                 if (action == Action.MOVE) Files.delete(from.fileIn.toPath())
@@ -172,7 +178,7 @@ class File2(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
     val encryptPassword: String get() = env.password!!
 
     init {
-        val canonicalPath = file.parentFile.canonicalPath
+        val canonicalPath = file.parentFile.canonicalPath.replace('\\', '/')
 
         fun String.removeOther(): String {
             return this.removePrefix(fs.changedDir).removePrefix(fs.deletedDir).ensurePrefix("/").ensureSuffix("/")
@@ -187,9 +193,10 @@ class File2(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
                 filePath = canonicalPath.removePrefix(fs.targetDirCanonicalPath).removeOther()
                 env = fs.target
             }
-            else -> throw IllegalStateException()
+            else -> throw Error()
         }
-        if (!filePath.startsWith("/") || !filePath.endsWith("/")) throw Exception()
+        if (filePath.contains('\\') || filePath.contains("//")) throw Error("ERROR: $filePath")
+        if (!filePath.startsWith("/") || !filePath.endsWith("/")) throw Error("ERROR: $filePath")
     }
 
     val encrypted by myLazy { file.isEncrypted() }
@@ -205,7 +212,7 @@ class File2(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
     private fun File.isEncrypted() = when {
         toEncryptedPath().isFile -> true
         this.isFile -> false
-        else -> throw Exception("File does not exist!")
+        else -> throw Exception("File $this does not exist!")
     }
 
     private fun shouldEncrypt(filePath: String, env: SyncFiles.Env, fileSize: Long): Boolean {

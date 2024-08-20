@@ -45,7 +45,7 @@ fun Set<FileEntity>.saveIndexedFilesTo(file: File, dateTime: LocalDateTime) {
 }
 
 context(MutableFoldersContext)
-fun FilesAndFolder.mapToRead(filter: Filter): Set<FileEntity> {
+fun FilesAndFolder.mapToRead(filter: Filter): MutableSet<FileEntity> {
     val mapping = mutableMapOf<Long, Long>()
     mapping[foldersCtx.rootFolderId] = foldersCtx.rootFolderId
 
@@ -73,7 +73,7 @@ fun FilesAndFolder.mapToRead(filter: Filter): Set<FileEntity> {
         mapping[file.folderId]?.let { folderId ->
             if (file.folderId != folderId) file.copy(folderId = folderId) else file
         }
-    }.toSet()
+    }.toMutableSet()
 }
 
 

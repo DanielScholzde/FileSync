@@ -26,13 +26,13 @@ fun testIfCancel() {
 }
 
 fun guardWithLockFile(lockfile: File, block: () -> Unit) {
-    var exception: Exception? = null
+    var exception: Throwable? = null
     try {
         Files.createFile(lockfile.toPath())
 
         try {
             block()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             exception = e
         }
 

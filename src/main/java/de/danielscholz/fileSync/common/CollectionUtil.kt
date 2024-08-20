@@ -32,16 +32,16 @@ fun <E, T> Collection<E>.multiAssociateBy(keyExtractor: (E) -> T): ListMultimap<
 
 
 fun <E> MutableSet<E>.replace(element: E) {
-    this.remove(element) || throw IllegalStateException()
-    this.add(element) || throw IllegalStateException()
+    this.removeWithCheck(element)
+    this.addWithCheck(element)
 }
 
 fun <E> MutableSet<E>.addWithCheck(element: E) {
-    this.add(element) || throw IllegalStateException()
+    this.add(element) || throw IllegalStateException("Element could not be added to set")
 }
 
 fun <E> MutableSet<E>.removeWithCheck(element: E) {
-    this.remove(element) || throw IllegalStateException()
+    this.remove(element) || throw IllegalStateException("Element could not be removed from set")
 }
 
 

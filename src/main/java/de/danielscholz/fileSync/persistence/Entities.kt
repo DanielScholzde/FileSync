@@ -29,7 +29,7 @@ data class FileHashEntity(
 ) : EntityBase {
 
     init {
-        if (hash.isEmpty()) throw Exception()
+        if (hash.isEmpty()) throw Error("hash is empty")
     }
 
     override fun equals(other: Any?): Boolean {
@@ -54,9 +54,8 @@ data class FolderEntity(
 ) : EntityBase {
 
     init {
-        if (name.isEmpty() && parentFolderId != null) throw Exception()
-        if (name.contains('\\')) throw Exception()
-        if (name.contains("/")) throw Exception()
+        if (name.isEmpty() && parentFolderId != null) throw Error("Name must not be empty!")
+        if (name.contains('\\') || name.contains('/')) throw Error("Name invalid: $name")
     }
 
     override fun equals(other: Any?): Boolean {
@@ -106,10 +105,8 @@ data class FileEntity(
     val fileHash: FileHashEntity?, // only present if the file is not empty
 ) : EntityBase {
     init {
-        if (size < 0) throw Exception()
-        if (name.isEmpty()) throw Exception()
-        if (name.contains('\\')) throw Exception()
-        if (name.contains("/")) throw Exception()
+        if (size < 0) throw Error()
+        if (name.isEmpty() || name.contains('\\') || name.contains('/')) throw Error("Name invalid: $name")
     }
 
     @Transient

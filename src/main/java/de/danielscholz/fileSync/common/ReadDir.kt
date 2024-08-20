@@ -24,7 +24,7 @@ class FolderEntry(
     val content: () -> FolderResult
 ) {
     init {
-        if (!(fullPath.startsWith("/") && fullPath.endsWith("/"))) throw IllegalStateException()
+        if (!(fullPath.startsWith("/") && fullPath.endsWith("/")) || fullPath.contains('\\') || fullPath.contains("//")) throw Error("Path is wrong: $fullPath")
     }
 }
 
@@ -32,7 +32,7 @@ class FileEntry(
     val name: String,
     /**
      * excluding file name!
-     * starts with '/'
+     * starts and ends with '/'
      */
     val path: String,
     val created: Instant,
@@ -42,8 +42,8 @@ class FileEntry(
     val hash: Lazy<String?>
 ) {
     init {
-        if (!path.startsWith("/")) throw IllegalStateException()
-        if (path.contains("//")) throw IllegalStateException()
+        if (!(path.startsWith("/") && path.endsWith("/"))) throw Error("Path is wrong: $path")
+        if (path.contains("//") || path.contains('\\')) throw Error("Path is wrong: $path")
     }
 }
 

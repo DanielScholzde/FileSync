@@ -42,7 +42,7 @@ fun getFilter(excludedFiles: Set<String>, excludedPaths: Set<String>): Filter {
 fun createPathMatcher(path: String, considerFullPath: Boolean): PathMatcher {
 
     fun checkFullPath(fullPath: String) {
-        if (!fullPath.startsWith('/') || !fullPath.endsWith('/')) throw IllegalArgumentException("Full path must start and end with '/'")
+        if (!(fullPath.startsWith('/') && fullPath.endsWith('/')) || fullPath.contains('\\') || fullPath.contains("//")) throw Error("Full path must start and end with '/', but it is: $fullPath")
     }
 
     val excludedPath = path.replace('\\', '/')

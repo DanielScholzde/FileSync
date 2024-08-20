@@ -148,7 +148,12 @@ class SyncFiles(
             fun CaseSensitiveContext.getCurrentFiles(env: Env): MutableCurrentFiles {
                 val currentFiles: MutableCurrentFiles
                 val lastIndexedFiles = readIndexedFiles(env.indexedFilesFile)
-                val lastIndexedFilesMapped = lastIndexedFiles?.mapToRead(filter) ?: setOf()
+                val lastIndexedFilesMapped = lastIndexedFiles?.mapToRead(filter) ?: mutableSetOf() // TODO filter files?!
+
+                if (syncFilesParams.skipIndexing) {
+                    return MutableCurrentFiles(lastIndexedFilesMapped)
+                }
+
                 with(MutableStatisticsContext(env.statistics)) {
                     currentFiles = getCurrentFiles(
                         env.dir,
@@ -279,7 +284,7 @@ class SyncFiles(
                     actions.forEach {
                         it.action(if (!it.switchedSourceAndTarget) actionEnv else actionEnvReversed)
                         testIfCancel()
-                        //Thread.sleep(50)
+                        if (syncFilesParams.dryRun) Thread.sleep(80)
                     }
 
                     UI.clearCurrentOperations()

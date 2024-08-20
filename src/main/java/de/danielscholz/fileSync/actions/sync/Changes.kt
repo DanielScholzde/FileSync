@@ -47,7 +47,7 @@ class MutableChanges(
                 2 * movedOrRenamed.size +
                 modifiedChanged.size
         if (added != allAsSet.size) {
-            throw IllegalStateException()
+            throw Error("Sets does not have the same size!")
         }
     }
 

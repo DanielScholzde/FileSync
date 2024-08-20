@@ -26,6 +26,9 @@ class SyncFilesParams {
     @Description("BackupMode")
     var backupMode: Boolean = false
 
+    @Description("Skip indexing phase. Useful, when last run was a dry-run and no files changed since then")
+    var skipIndexing: Boolean = false
+
     @Description("")
     var warnIfFileCopyHasNoOriginal: Boolean = false
 
