@@ -127,7 +127,7 @@ class FileSystemEncryption private constructor(
     }
 
     fun createDirsFor(dir: File) {
-        if (dryRun) return
+        if (dryRun || dir.isDirectory) return
         dir.mkdirs() || throw Exception("Creation of directory ${dir.absolutePath} failed")
     }
 
