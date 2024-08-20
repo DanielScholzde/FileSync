@@ -17,6 +17,7 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
+import kotlin.math.max
 import kotlin.time.measureTime
 import kotlin.time.measureTimedValue
 
@@ -141,9 +142,9 @@ fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
 
             if (totalBytesRead > fileSizeNetto) {
                 val overEnd = (totalBytesRead - fileSizeNetto).toInt() // must be > 0
-                sha1 = buffer.copyOfRange(bytesRead - overEnd, bytesRead).let { if (sha1 != null) sha1!! + it else it }
+                sha1 = buffer.copyOfRange(max(bytesRead - overEnd, 0), bytesRead).let { if (sha1 != null) sha1!! + it else it }
 
-                cipher.update(buffer, 0, bytesRead - overEnd)?.let {
+                cipher.update(buffer, 0, max(bytesRead - overEnd, 0))?.let {
                     digest.update(it)
                     emit(it)
                 }

@@ -51,7 +51,8 @@ class ActionEnv(
                     (if (fs.dryRun) " (dry-run)" else "") +
                     (if (duration > 1.seconds) " duration: $duration" else "")
         } catch (e: Exception) {
-            result = ": " + e.message + " (" + e::class.simpleName + ")"
+            val stacktrace = e.stackTraceToString().split('\n').take(5).joinToString("|") { it.trim() }
+            result = ": " + e.message + " (" + e::class.simpleName + ") " + stacktrace
             addFailure(action + result)
         }
         println(result)

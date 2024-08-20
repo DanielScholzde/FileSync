@@ -210,8 +210,8 @@ class File2(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
     private fun File.toEncryptedPath() = File(this.path + FS_ENCRYPTED)
 
     private fun File.isEncrypted() = when {
-        toEncryptedPath().isFile -> true
         this.isFile -> false
+        toEncryptedPath().isFile -> true
         else -> throw Exception("File $this does not exist!")
     }
 

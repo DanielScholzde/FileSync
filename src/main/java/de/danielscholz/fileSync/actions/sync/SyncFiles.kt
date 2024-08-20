@@ -284,7 +284,7 @@ class SyncFiles(
                     actions.forEach {
                         it.action(if (!it.switchedSourceAndTarget) actionEnv else actionEnvReversed)
                         testIfCancel()
-                        if (syncFilesParams.dryRun) Thread.sleep(80)
+                        if (syncFilesParams.dryRun) Thread.sleep(20)
                     }
 
                     UI.clearCurrentOperations()
