@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalStdlibApi::class)
-
 package de.danielscholz.fileSync.common
 
 import kotlinx.coroutines.flow.Flow
@@ -38,11 +36,13 @@ typealias SaltHexStr = String
 
 private val keyCache = mutableMapOf<Pair<SaltHexStr, String>, SecretKey>()
 
+@OptIn(ExperimentalStdlibApi::class)
 private fun deriveSecretKeyFromPasswordCached(salt: ByteArray, password: String) =
     keyCache.computeIfAbsent(salt.toHexString(kotlin.text.HexFormat.UpperCase) to password) {
         deriveSecretKeyFromPassword(salt, password)
     }
 
+@OptIn(ExperimentalStdlibApi::class)
 private fun getCachedSaltOrNull() =
     keyCache.keys.firstOrNull()?.first?.hexToByteArray(kotlin.text.HexFormat.UpperCase)
 
@@ -141,7 +141,8 @@ fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
             totalBytesRead += bytesRead
 
             if (totalBytesRead > fileSizeNetto) {
-                val overEnd = (totalBytesRead - fileSizeNetto).toInt() // must be > 0
+                val overEnd = (totalBytesRead - fileSizeNetto).toInt() // must be > 0 and <= 20
+                // hint: bytesRead - overEnd can be less than 0 if last part of sha1 bytes are read into last buffer (bytesRead could be 10)
                 sha1 = buffer.copyOfRange(max(bytesRead - overEnd, 0), bytesRead).let { if (sha1 != null) sha1!! + it else it }
 
                 cipher.update(buffer, 0, max(bytesRead - overEnd, 0))?.let {
