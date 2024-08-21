@@ -29,7 +29,7 @@ class SyncFiles(
 ) {
 
     companion object {
-        private const val backupDir = ".syncFilesHistory"
+        internal const val syncFilesDir = ".syncFiles"
         private const val lockfileName = ".syncFiles_lockfile"
         internal const val indexedFilesFilePrefix = ".syncFilesIndex_"
         private const val syncResultFilePrefix = ".syncFilesResult_"
@@ -39,8 +39,8 @@ class SyncFiles(
 
     private val now = JavaLocalDateTime.now().ignoreMillis().toKotlinLocalDateTime()
     private val dateTimeStr = now.toString().replace(":", "").replace("T", " ")
-    private val changedDir = "$backupDir/modified/$dateTimeStr"
-    private val deletedDir = "$backupDir/deleted/$dateTimeStr"
+    private val changedDir = "$syncFilesDir/modified/$dateTimeStr"
+    private val deletedDir = "$syncFilesDir/deleted/$dateTimeStr"
 
     private val syncName = syncFilesParams.syncName ?: (sourceDir.canonicalPath.toString() + "|" + targetDir.canonicalPath.toString()).hashCode().toString()
 
@@ -60,8 +60,8 @@ class SyncFiles(
     private val source = Env(
         "source",
         sourceDir,
-        File(sourceDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix"),
-        File(sourceDir, "$deletedFilesFilePrefix$commonFileSuffix"),
+        File(sourceDir, "$syncFilesDir/$indexedFilesFilePrefix$syncName$commonFileSuffix"),
+        File(sourceDir, "$syncFilesDir/$deletedFilesFilePrefix$commonFileSuffix"),
         isCaseSensitiveFileSystem(sourceDir) ?: throw Exception("Unable to determine if filesystem $sourceDir is case sensitive!"),
         UI.sourceDir,
         encryptSourcePaths,
@@ -71,8 +71,8 @@ class SyncFiles(
     private val target = Env(
         "target",
         targetDir,
-        File(targetDir, "$indexedFilesFilePrefix$syncName$commonFileSuffix"),
-        File(targetDir, "$deletedFilesFilePrefix$commonFileSuffix"),
+        File(targetDir, "$syncFilesDir/$indexedFilesFilePrefix$syncName$commonFileSuffix"),
+        File(targetDir, "$syncFilesDir/$deletedFilesFilePrefix$commonFileSuffix"),
         isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"),
         UI.targetDir,
         encryptTargetPaths,
@@ -80,23 +80,19 @@ class SyncFiles(
     )
 
 
-    private val syncResultFile = File(source.dir, "$syncResultFilePrefix$syncName$commonFileSuffix")
+    private val syncResultFile = File(source.dir, "$syncFilesDir/$syncResultFilePrefix$syncName$commonFileSuffix")
 
 
     val filter = Filter(
         fileFilter = { path, fileName ->
-            if (fileName.startsWith(indexedFilesFilePrefix) && fileName.endsWith(commonFileSuffix) ||
-                fileName.startsWith(syncResultFilePrefix) && fileName.endsWith(commonFileSuffix) ||
-                fileName.startsWith(deletedFilesFilePrefix) && fileName.endsWith(commonFileSuffix) ||
-                fileName == lockfileName
-            ) {
+            if (fileName == lockfileName) {
                 ExcludedBy.SYSTEM
             } else {
                 filter.fileFilter.excluded(path, fileName)
             }
         },
         folderFilter = { fullPath, folderName ->
-            if (folderName == backupDir) {
+            if (folderName == syncFilesDir) {
                 ExcludedBy.SYSTEM
             } else {
                 filter.folderFilter.excluded(fullPath, folderName)
@@ -168,7 +164,7 @@ class SyncFiles(
                     )
                 }
                 env.uiDir.currentReadDir = null
-                backup(env.dir, env.indexedFilesFile)
+                backup(env.indexedFilesFile)
                 currentFiles.files.saveIndexedFilesTo(env.indexedFilesFile, now) // already save indexed files in the event of a subsequent error
                 return currentFiles
             }
@@ -329,7 +325,7 @@ class SyncFiles(
                     val hasChanges = actionEnv.successfullyRealProcessed > 0 || actionEnvReversed.successfullyRealProcessed > 0
 
                     if ((hasChanges || !syncResultFile.exists()) && !syncFilesParams.dryRun) {
-                        backup(source.dir, syncResultFile)
+                        backup(syncResultFile)
 
                         syncResultFiles.saveSyncResultTo(syncResultFile, failures)
 
@@ -339,8 +335,8 @@ class SyncFiles(
                         }
 
                         if (deletedFiles.isNotEmpty()) {
-                            backup(source.dir, source.deletedFilesFile)
-                            backup(target.dir, target.deletedFilesFile)
+                            backup(source.deletedFilesFile)
+                            backup(target.deletedFilesFile)
 
                             saveDeletedFiles(source.deletedFilesFile, DeletedFilesEntity(deletedFiles))
                             Files.copy(source.deletedFilesFile.toPath(), target.deletedFilesFile.toPath(), COPY_ATTRIBUTES)
@@ -398,11 +394,11 @@ class SyncFiles(
         )
     }
 
-    private fun backup(rootDir: File, file: File) {
+    private fun backup(file: File) {
         if (file.exists()) {
             Files.move(
                 file.toPath(),
-                File(rootDir, file.name.replace(commonFileSuffix, "_old$commonFileSuffix")).toPath(),
+                File(file.parent, file.name.replace(commonFileSuffix, "_old$commonFileSuffix")).toPath(),
                 REPLACE_EXISTING
             )
         }

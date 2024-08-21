@@ -3,6 +3,7 @@ package de.danielscholz.fileSync.actions.sync
 import com.google.common.collect.ListMultimap
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.commonFileSuffix
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.indexedFilesFilePrefix
+import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.syncFilesDir
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.FileHashEntity
@@ -55,14 +56,14 @@ fun getCurrentFiles(
 
 
     val indexedFilesFromOtherSync = considerOtherIndexedFilesWithSyncName?.let {
-        val indexResultFile = File(dir, "$indexedFilesFilePrefix${considerOtherIndexedFilesWithSyncName}$commonFileSuffix")
+        val indexResultFile = File(dir, "$syncFilesDir/$indexedFilesFilePrefix${considerOtherIndexedFilesWithSyncName}$commonFileSuffix")
         if (indexResultFile.isFile) {
             val indexedFilesEntity = readIndexedFiles(indexResultFile)!!
             indexedFilesEntity.mapToRead(filter) to indexedFilesEntity.runDate
         } else null
     }
 
-    val cancelledIndexingResultFile = File(dir, "$indexedFilesFilePrefix${syncName}_TEMP$commonFileSuffix")
+    val cancelledIndexingResultFile = File(dir, "$syncFilesDir/$indexedFilesFilePrefix${syncName}_TEMP$commonFileSuffix")
 
     val cancelledIndexedFiles = if (cancelledIndexingResultFile.isFile) {
         val cancelledIndexedFilesEntity = readIndexedFiles(cancelledIndexingResultFile)!!

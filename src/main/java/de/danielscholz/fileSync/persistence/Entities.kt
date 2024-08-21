@@ -12,7 +12,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import java.io.*
-import java.nio.file.Files
 
 
 sealed interface EntityBase
@@ -202,7 +201,6 @@ fun saveIndexedFiles(file: File, syncResult: IndexedFilesEntity) {
     BufferedOutputStream(FileOutputStream(file)).use {
         Json.encodeToStream(syncResult, it)
     }
-    setHidden(file)
 }
 
 
@@ -221,7 +219,6 @@ fun saveSyncResult(file: File, syncResult: SyncResultEntity) {
     BufferedOutputStream(FileOutputStream(file)).use {
         Json.encodeToStream(syncResult, it)
     }
-    setHidden(file)
 }
 
 
@@ -240,14 +237,13 @@ fun saveDeletedFiles(file: File, deletedFiles: DeletedFilesEntity) {
     BufferedOutputStream(FileOutputStream(file)).use {
         Json.encodeToStream(deletedFiles, it)
     }
-    setHidden(file)
 }
 
-private fun setHidden(file: File) {
-    if (file.isHidden()) return
-    try {
-        Files.setAttribute(file.toPath(), "dos:hidden", true)
-    } catch (e: Exception) {
-        // ignore
-    }
-}
+//private fun setHidden(file: File) {
+//    if (file.isHidden()) return
+//    try {
+//        Files.setAttribute(file.toPath(), "dos:hidden", true)
+//    } catch (e: Exception) {
+//        // ignore
+//    }
+//}
