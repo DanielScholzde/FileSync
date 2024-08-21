@@ -281,8 +281,11 @@ class SyncFiles(
                 )
 
                 try {
+                    UI.totalActions = actions.size
+
                     actions.forEach {
                         it.action(if (!it.switchedSourceAndTarget) actionEnv else actionEnvReversed)
+                        UI.actionsExecuted++
                         testIfCancel()
                         if (syncFilesParams.dryRun) Thread.sleep(20)
                     }
@@ -300,8 +303,9 @@ class SyncFiles(
                                 .sortedBy { it.pathAndName() }
                                 .forEach {
                                     val possibleMatches = notFileCopiesByName[it.name]
-                                    val s =
-                                        if (possibleMatches.isNotEmpty()) " But there are possible matches: ${possibleMatches.joinToString { "${it.pathAndName()} (modified: ${it.modified.toStr()})" }}" else ""
+                                    val s = if (possibleMatches.isNotEmpty()) {
+                                        " But there are possible matches: ${possibleMatches.joinToString { "${it.pathAndName()} (modified: ${it.modified.toStr()})" }}"
+                                    } else ""
                                     val msg =
                                         "${it.pathAndName()} (modified: ${it.modified.toStr()}) This file within 'copy' directory is NOT a copy. Original file could have been deleted or modified!$s"
                                     println(msg)

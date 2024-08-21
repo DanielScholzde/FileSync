@@ -95,11 +95,11 @@ fun frame(exitApplication: () -> Unit) {
         Box(modifier = Modifier.padding(15.dp)) {
             if (UI.syncFinished) {
                 Button(onClick = exitApplication) {
-                    Text("OK", fontSize = fontSize)
+                    Text("Close (sync finished)", fontSize = fontSize)
                 }
             } else {
                 Button(onClick = { Global.cancel = true; exitApplication() }) {
-                    Text("Abbrechen", fontSize = fontSize)
+                    Text("Cancel", fontSize = fontSize)
                 }
             }
         }
@@ -119,7 +119,7 @@ fun frame(exitApplication: () -> Unit) {
                 }
 
                 @Composable
-                fun pp(dir: UI.Dir, dirStr: String) {
+                fun displayChanges(dir: UI.Dir, dirStr: String) {
                     dir.changes?.apply {
                         Text("$dirStr:", Modifier.padding(vertical = 5.dp), fontSize = fontSize, fontWeight = Bold)
                         if (filesToAdd.isNotEmpty()) {
@@ -164,22 +164,24 @@ fun frame(exitApplication: () -> Unit) {
                     }
                 }
 
-                pp(UI.sourceDir, "SourceDir")
-                pp(UI.targetDir, "TargetDir")
+                displayChanges(UI.sourceDir, "SourceDir")
+                displayChanges(UI.targetDir, "TargetDir")
 
                 if (UI.conflicts.isNotEmpty()) {
                     Spacer(Modifier.height(15.dp))
 
                     Text("Conflicts:", fontSize = fontSize, fontWeight = Bold)
-                    UI.conflicts.forEach {
-                        Text(it.first, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color.Red)
+                    UI.conflicts.forEach { conflict ->
+                        val (msg, resolveConflictSource, resolveConflictTarget) = conflict
+
+                        Text(msg, Modifier.padding(all = 5.dp), fontSize = fontSize, color = Color.Red)
 
                         @Composable
                         fun btn(s: String, action: () -> Unit) {
                             Button(onClick = {
                                 try {
                                     action()
-                                    UI.conflicts -= it
+                                    UI.conflicts -= conflict
                                 } catch (e: Exception) {
                                     println(e.message)
                                 }
@@ -187,8 +189,8 @@ fun frame(exitApplication: () -> Unit) {
                                 Text("Resolve conflict: $s wins", fontSize = fontSize)
                             }
                         }
-                        it.second?.let { btn("source", it) }
-                        it.third?.let { btn("target", it) }
+                        resolveConflictSource?.let { btn("source", it) }
+                        resolveConflictTarget?.let { btn("target", it) }
                     }
                 }
 
