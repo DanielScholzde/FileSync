@@ -3,19 +3,22 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.ui.UI
 
 
-class MutableStatisticsContext(
-    val statisticsCtx: MutableStatistics
-)
+interface Statistics {
+    val filesCount: Int
+    val foldersCount: Int
+    val filesHashCalculatedCount: Int
+    val filesHashCalculatedSize: Long
+}
 
-class MutableStatistics(private val uiDir: UI.Dir) {
-    var filesCount = 0
-    var foldersCount = 0
-    var filesHashCalculatedCount = 0
+class MutableStatistics(private val uiDir: UI.Dir) : Statistics {
+    override var filesCount = 0
+    override var foldersCount = 0
+    override var filesHashCalculatedCount = 0
         set(value) {
             field = value
             uiDir.filesHashCalculatedCount = value
         }
-    var filesHashCalculatedSize = 0L
+    override var filesHashCalculatedSize = 0L
         set(value) {
             field = value
             uiDir.filesHashCalculatedSize = value

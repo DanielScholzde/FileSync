@@ -1,5 +1,6 @@
 package de.danielscholz.fileSync.actions.sync
 
+import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.persistence.FileEntity
@@ -7,7 +8,6 @@ import de.danielscholz.fileSync.ui.UI
 import java.io.File
 
 
-context(FoldersContext, CaseSensitiveContext)
 fun checkAndFix(
     sourceDir: File,
     targetDir: File,
@@ -16,14 +16,16 @@ fun checkAndFix(
     currentFilesSource: MutableCurrentFiles,
     currentFilesTarget: MutableCurrentFiles,
     syncResultFiles: MutableSet<FileEntity>,
-    fs: FileSystemEncryption
+    fs: FileSystemEncryption,
+    folders: Folders,
+    caseSensitive: Boolean
 ): Boolean {
 
     val failures = mutableListOf<Triple<String, (() -> Unit)?, (() -> Unit)?>>()
 
     fun Collection<FileEntity>.ifNotEmptyCreateConflicts(rootDir: File, detailMsg: String) {
         forEach {
-            failures += Triple("$rootDir${it.pathAndName()} $detailMsg", null, null)
+            failures += Triple("$rootDir${it.pathAndName(folders)} $detailMsg", null, null)
         }
     }
 
@@ -36,15 +38,15 @@ fun checkAndFix(
     ) {
         forEach { res ->
             failures += Triple(
-                "$leftDir${res.left.pathAndName()} != $rightDir${res.right.pathAndName()}: $detailMsg: ${diffExtractor(res.left)} != ${diffExtractor(res.right)}",
-                resolveConflict?.let { { resolveConflict(File(leftDir, res.left.pathAndName()), File(rightDir, res.right.pathAndName())) } },
-                resolveConflict?.let { { resolveConflict(File(rightDir, res.right.pathAndName()), File(leftDir, res.left.pathAndName())) } },
+                "$leftDir${res.left.pathAndName(folders)} != $rightDir${res.right.pathAndName(folders)}: $detailMsg: ${diffExtractor(res.left)} != ${diffExtractor(res.right)}",
+                resolveConflict?.let { { resolveConflict(File(leftDir, res.left.pathAndName(folders)), File(rightDir, res.right.pathAndName(folders))) } },
+                resolveConflict?.let { { resolveConflict(File(rightDir, res.right.pathAndName(folders)), File(leftDir, res.left.pathAndName(folders))) } },
             )
         }
     }
 
     // fix scenario: same added/changed files in both locations
-    equalsForFileBy(pathAndName) {
+    equalsForFileBy(pathAndName, folders, caseSensitive) {
         sourceChanges.added + sourceChanges.contentChanged.to() intersect targetChanges.added + targetChanges.contentChanged.to()
     }
         .filter(HASH_EQ)
@@ -105,7 +107,7 @@ fun checkAndFix(
         }
 
     // fix scenario: same deleted files in both locations
-    equalsForFileBy(pathAndName) {
+    equalsForFileBy(pathAndName, folders, caseSensitive) {
         sourceChanges.deleted intersect targetChanges.deleted
     }
         .forEach { (source, target) ->
@@ -115,11 +117,11 @@ fun checkAndFix(
         }
 
     // fix scenario: same moved files in both locations
-    equalsForFileChangeToBy(pathAndName) { // only considers 'to' values
+    equalsForFileChangeToBy(pathAndName, folders, caseSensitive) { // only considers 'to' values
         sourceChanges.movedOrRenamed intersect targetChanges.movedOrRenamed
     }
         .forEach { (sourceChange, targetChange) ->
-            equalsForFileBy(MatchMode.PATH + MatchMode.FILENAME + MatchMode.HASH + MatchMode.MODIFIED) {
+            equalsForFileBy(MatchMode.PATH + MatchMode.FILENAME + MatchMode.HASH + MatchMode.MODIFIED, folders, caseSensitive) {
                 if (sourceChange.from eq targetChange.from &&
                     sourceChange.to eq targetChange.to
                 ) {
@@ -137,7 +139,7 @@ fun checkAndFix(
             }
         }
 
-    equalsForFileBy(pathAndName) {
+    equalsForFileBy(pathAndName, folders, caseSensitive) {
         sourceChanges.contentChanged.to() intersect targetChanges.contentChanged.to()
     }
         .filter(HASH_NEQ)
@@ -145,7 +147,7 @@ fun checkAndFix(
             "size: ${it.size.formatAsFileSize()}, modified: ${it.modified.toStr()}, hash: ${it.hash?.substring(0, 10)}.."
         }
 
-    equalsForFileBy(pathAndName) {
+    equalsForFileBy(pathAndName, folders, caseSensitive) {
         sourceChanges.modifiedChanged.to() intersect targetChanges.modifiedChanged.to()
     }
         .filter(MODIFIED_NEQ)
@@ -165,7 +167,7 @@ fun checkAndFix(
         currentFilesTarget: Set<FileEntity>,
         targetEnvName: String,
     ) {
-        equalsForFileBy(pathAndName) {
+        equalsForFileBy(pathAndName, folders, caseSensitive) {
             (sourceChanges.added intersect currentFilesTarget)
                 .filter(HASH_NEQ or MODIFIED_NEQ)
                 .partition(HASH_NEQ)

@@ -1,7 +1,6 @@
 package de.danielscholz.fileSync.actions.sync
 
-import de.danielscholz.fileSync.common.CaseSensitiveContext
-import de.danielscholz.fileSync.common.FoldersContext
+import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.common.ifNotEmpty
 import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.matching.MatchMode.*
@@ -10,16 +9,15 @@ import de.danielscholz.fileSync.persistence.isFolderMarker
 import java.io.File
 
 
-context(CaseSensitiveContext, FoldersContext)
-fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResult: CurrentFiles): MutableChanges {
+fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResult: CurrentFiles, folders: Folders, caseSensitive: Boolean): MutableChanges {
 
     val currentFiles = currentFilesResult.files
 
-    val added = equalsForFileBy(pathAndName) {
+    val added = equalsForFileBy(pathAndName, folders, caseSensitive) {
         (currentFiles - lastSyncResultFiles).toMutableSet()
     }
 
-    val deleted = equalsForFileBy(pathAndName) {
+    val deleted = equalsForFileBy(pathAndName, folders, caseSensitive) {
         (lastSyncResultFiles - currentFiles).toMutableSet()
     }
 
@@ -60,10 +58,10 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
 //                }
 //                .filter {
 //                    // only consider the 'root' change
-//                    foldersCtx.get(it.oldFolderId).parentFolderId == foldersCtx.get(it.currentFolderId).parentFolderId
+//                    folders.get(it.oldFolderId).parentFolderId == folders.get(it.currentFolderId).parentFolderId
 //                }
 //                .forEach { (oldFolderId, currentFolderId) ->
-//                    println("Folder renamed : ${foldersCtx.getFullPath(oldFolderId)} --> ${foldersCtx.getFullPath(currentFolderId)}")
+//                    println("Folder renamed : ${folders.getFullPath(oldFolderId)} --> ${folders.getFullPath(currentFolderId)}")
 //                    folderRenamed.add(oldFolderId to currentFolderId)
 //
 //                    fun make(oldFolderId: Long, currentFolderId: Long) {
@@ -77,8 +75,8 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
 //                        deleted.removeIf { it.isFolderMarker && it.folderId == oldFolderId }
 //                        added.removeIf { it.isFolderMarker && it.folderId == currentFolderId }
 //
-//                        val map1 = foldersCtx.get(oldFolderId).children.associateBy { it.name }
-//                        val map2 = foldersCtx.get(currentFolderId).children.associateBy { it.name }
+//                        val map1 = folders.get(oldFolderId).children.associateBy { it.name }
+//                        val map2 = folders.get(currentFolderId).children.associateBy { it.name }
 //                        (map1.keys intersect map2.keys).forEach { folderName ->
 //                            val from = map1[folderName]!!.id
 //                            val to = map2[folderName]!!.id
@@ -93,7 +91,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
 
 
     // file renamed
-    equalsForFileBy(PATH + HASH + MODIFIED, true) {
+    equalsForFileBy(PATH + HASH + MODIFIED, folders, caseSensitive, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .map { MovedOrRenamed(it.left, it.right) }
@@ -105,7 +103,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
     }
 
     // file moved to other folder
-    equalsForFileBy(FILENAME + HASH + MODIFIED, true) {
+    equalsForFileBy(FILENAME + HASH + MODIFIED, folders, caseSensitive, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .map { MovedOrRenamed(it.left, it.right) }
@@ -117,7 +115,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
     }
 
     // file renamed and moved to other folder
-    equalsForFileBy(HASH + MODIFIED, true) {
+    equalsForFileBy(HASH + MODIFIED, folders, caseSensitive, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .map { MovedOrRenamed(it.left, it.right) }
@@ -129,7 +127,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
     }
 
     // special case: file moved to other folder and file content changed (but filename still the same)
-    equalsForFileBy(FILENAME, true) {
+    equalsForFileBy(FILENAME, folders, caseSensitive, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
             .filter(HASH_NEQ)
@@ -141,7 +139,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
             }
     }
 
-    val contentChanged = equalsForFileBy(pathAndName) {
+    val contentChanged = equalsForFileBy(pathAndName, folders, caseSensitive) {
         (lastSyncResultFiles intersect currentFiles)
             .filter(HASH_NEQ)
             .map { ContentChanged(it.left, it.right) }
@@ -149,7 +147,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
     }
 
     // attribute 'modification date' changed, but content is still the same
-    val modifiedChanged = equalsForFileBy(pathAndName) {
+    val modifiedChanged = equalsForFileBy(pathAndName, folders, caseSensitive) {
         (lastSyncResultFiles intersect currentFiles)
             .filter(HASH_EQ and MODIFIED_NEQ)
             .map { ModifiedChanged(it.left, it.right) }

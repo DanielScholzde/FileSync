@@ -5,7 +5,7 @@ import de.danielscholz.fileSync.persistence.FileEntity
 import java.util.*
 
 
-class EqualsAndHashCodeSupplierForFile(private val mode: EnumSet<MatchMode>, private val folders: Folders, private val isCaseSensitive: Boolean) :
+class EqualsAndHashCodeSupplierForFile(private val mode: EnumSet<MatchMode>, private val folders: Folders, private val caseSensitive: Boolean) :
     EqualsAndHashCodeSupplier<FileEntity> {
 
     override fun equals(obj1: FileEntity, obj2: FileEntity): Boolean {
@@ -21,7 +21,7 @@ class EqualsAndHashCodeSupplierForFile(private val mode: EnumSet<MatchMode>, pri
         }
 
         if (MatchMode.PATH in mode) {
-            if (isCaseSensitive) {
+            if (caseSensitive) {
                 if (obj1.folderId != obj2.folderId) return false
             } else {
                 if (folders.getFullPathLowercase(obj1.folderId) != folders.getFullPathLowercase(obj2.folderId)) return false

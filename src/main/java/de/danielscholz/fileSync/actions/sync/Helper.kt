@@ -1,7 +1,7 @@
 package de.danielscholz.fileSync.actions.sync
 
-import de.danielscholz.fileSync.common.FoldersContext
-import de.danielscholz.fileSync.common.MutableFoldersContext
+import de.danielscholz.fileSync.actions.Folders
+import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.persistence.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -32,42 +32,40 @@ val folderMarkerInstant = LocalDateTime(0, 1, 1, 0, 0).toInstant(UtcOffset.ZERO)
 
 val PAST_LOCAL_DATE_TIME = LocalDateTime(0, 1, 1, 0, 0, 0)
 
-context(FoldersContext)
-fun Set<FileEntity>.saveIndexedFilesTo(file: File, dateTime: LocalDateTime) {
+fun Set<FileEntity>.saveIndexedFilesTo(file: File, dateTime: LocalDateTime, folders: Folders) {
     saveIndexedFiles(
         file,
         IndexedFilesEntity(
             runDate = dateTime,
             files = this,
-            rootFolder = foldersCtx.get(foldersCtx.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
+            rootFolder = folders.get(folders.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
         )
     )
 }
 
-context(MutableFoldersContext)
-fun FilesAndFolder.mapToRead(filter: Filter): MutableSet<FileEntity> {
+fun FilesAndFolder.mapToRead(filter: Filter, folders: MutableFolders): MutableSet<FileEntity> {
     val mapping = mutableMapOf<Long, Long>()
-    mapping[foldersCtx.rootFolderId] = foldersCtx.rootFolderId
+    mapping[folders.rootFolderId] = folders.rootFolderId
 
     fun sync(folder: FolderEntity, parentFolderId: Long) {
-        if (filter.folderFilter.excluded(foldersCtx.getFullPath(parentFolderId) + folder.name + "/", folder.name) != null) {
+        if (filter.folderFilter.excluded(folders.getFullPath(parentFolderId) + folder.name + "/", folder.name) != null) {
             return
         }
 
-        val folderMapped = foldersCtx.getOrCreate(folder.name, parentFolderId)
+        val folderMapped = folders.getOrCreate(folder.name, parentFolderId)
         mapping[folder.id] = folderMapped.id
         folder.children.forEach { childFolder ->
             sync(childFolder, folderMapped.id)
         }
     }
 
-    foldersCtx.check()
+    folders.check()
 
     this.rootFolder.children.forEach { childFolder ->
-        sync(childFolder, foldersCtx.rootFolderId)
+        sync(childFolder, folders.rootFolderId)
     }
 
-    foldersCtx.check()
+    folders.check()
 
     return this.files.mapNotNull { file ->
         mapping[file.folderId]?.let { folderId ->

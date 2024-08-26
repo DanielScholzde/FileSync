@@ -1,7 +1,7 @@
 package de.danielscholz.fileSync.persistence
 
 import androidx.compose.runtime.Immutable
-import de.danielscholz.fileSync.common.FoldersContext
+import de.danielscholz.fileSync.actions.Folders
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -114,14 +114,12 @@ data class FileEntity(
 
     val hash: String? get() = fileHash?.hash
 
-    context(FoldersContext)
-    fun path(): String {
-        return foldersCtx.getFullPath(folderId)
+    fun path(folders: Folders): String {
+        return folders.getFullPath(folderId)
     }
 
-    context(FoldersContext)
-    fun pathAndName(): String {
-        return foldersCtx.getFullPath(folderId) + name
+    fun pathAndName(folders: Folders): String {
+        return folders.getFullPath(folderId) + name
     }
 
     override fun equals(other: Any?): Boolean {

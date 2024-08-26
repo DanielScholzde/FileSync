@@ -32,7 +32,7 @@ dependencies {
     implementation(kotlin("reflect")) // only used by kargparser
     //implementation("de.danielscholz:KArgParser:0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0-RC")
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC.2")
     implementation("com.google.guava:guava:33.2.0-jre") {
         exclude(group = "com.google.code.findbugs", module = "jsr305")
@@ -43,16 +43,20 @@ dependencies {
         exclude(group = "com.google.guava", module = "listenablefuture")
     }
 
-//   testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
+//   testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:$kotlinVersion")
 //   testImplementation("org.hamcrest:hamcrest:2.2")
 }
+
+//tasks.test {
+//    useJUnitPlatform()
+//}
 
 kotlin {
     jvmToolchain(21)
 
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_21) // needed?
-        freeCompilerArgs.add("-Xcontext-receivers")
+        //freeCompilerArgs.add("-Xcontext-receivers")
     }
 }
 

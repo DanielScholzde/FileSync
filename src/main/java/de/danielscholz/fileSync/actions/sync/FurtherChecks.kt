@@ -1,7 +1,7 @@
 package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.SyncFilesParams
-import de.danielscholz.fileSync.common.FoldersContext
+import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.common.formatAsFileSize
 import de.danielscholz.fileSync.common.ifNotEmpty
@@ -13,7 +13,6 @@ import java.nio.file.Files
 import javax.swing.JOptionPane
 
 
-context(FoldersContext)
 fun furtherChecks(
     sourceDir: File,
     targetDir: File,
@@ -21,7 +20,8 @@ fun furtherChecks(
     targetChanges: Changes,
     currentFilesSource: MutableCurrentFiles,
     currentFilesTarget: MutableCurrentFiles,
-    syncFilesParams: SyncFilesParams
+    syncFilesParams: SyncFilesParams,
+    folders: Folders,
 ): Boolean {
     println()
 
@@ -38,21 +38,21 @@ fun furtherChecks(
     targetChecks.printout()
 
     sourceChangesWithDetails.foldersToAdd.forEach {
-        println("Folder to create (source): " + it.path())
+        println("Folder to create (source): " + it.path(folders))
     }
     targetChangesWithDetails.foldersToAdd.forEach {
-        println("Folder to create (target): " + it.path())
+        println("Folder to create (target): " + it.path(folders))
     }
 
     sourceChangesWithDetails.filesToAdd.sortedByDescending { it.size }.ifNotEmpty {
         it.take(10).forEach {
-            println("File to add (source): " + it.pathAndName() + " " + it.size.formatAsFileSize())
+            println("File to add (source): " + it.pathAndName(folders) + " " + it.size.formatAsFileSize())
         }
         if (it.size > 10) println("...")
     }
     targetChangesWithDetails.filesToAdd.sortedByDescending { it.size }.ifNotEmpty {
         it.take(10).forEach {
-            println("File to add (target): " + it.pathAndName() + " " + it.size.formatAsFileSize())
+            println("File to add (target): " + it.pathAndName(folders) + " " + it.size.formatAsFileSize())
         }
         if (it.size > 10) println("...")
     }

@@ -1,6 +1,7 @@
 package de.danielscholz.fileSync.actions.sync
 
 import com.google.common.collect.ListMultimap
+import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.commonFileSuffix
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.indexedFilesFilePrefix
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.syncFilesDir
@@ -39,7 +40,6 @@ class LayerExtended(private val layer: Layer, filesMovedFromDifferentFolderId: L
 }
 
 
-context(MutableFoldersContext, MutableStatisticsContext, CaseSensitiveContext)
 fun getCurrentFiles(
     dir: File,
     filter: Filter,
@@ -49,7 +49,9 @@ fun getCurrentFiles(
     considerOtherIndexedFilesWithSyncName: String?,
     processDirCallback: (String) -> Unit,
     now: LocalDateTime,
-    fs: FileSystemEncryption
+    fs: FileSystemEncryption,
+    folders: MutableFolders,
+    statistics: MutableStatistics,
 ): MutableCurrentFiles {
 
     val files = mutableSetOf<FileEntity>()
@@ -59,7 +61,7 @@ fun getCurrentFiles(
         val indexResultFile = File(dir, "$syncFilesDir/$indexedFilesFilePrefix${considerOtherIndexedFilesWithSyncName}$commonFileSuffix")
         if (indexResultFile.isFile) {
             val indexedFilesEntity = readIndexedFiles(indexResultFile)!!
-            indexedFilesEntity.mapToRead(filter) to indexedFilesEntity.runDate
+            indexedFilesEntity.mapToRead(filter, folders) to indexedFilesEntity.runDate
         } else null
     }
 
@@ -67,7 +69,7 @@ fun getCurrentFiles(
 
     val cancelledIndexedFiles = if (cancelledIndexingResultFile.isFile) {
         val cancelledIndexedFilesEntity = readIndexedFiles(cancelledIndexingResultFile)!!
-        if (cancelledIndexedFilesEntity.runDate > lastIndexedFilesDate) cancelledIndexedFilesEntity.mapToRead(filter) to cancelledIndexedFilesEntity.runDate else null
+        if (cancelledIndexedFilesEntity.runDate > lastIndexedFilesDate) cancelledIndexedFilesEntity.mapToRead(filter, folders) to cancelledIndexedFilesEntity.runDate else null
     } else null
 
 
@@ -80,8 +82,8 @@ fun getCurrentFiles(
 
     fun process(folderResult: FolderResult, folderId: Long) {
 
-        println("$dir${foldersCtx.getFullPath(folderId)}")
-        processDirCallback("$dir${foldersCtx.getFullPath(folderId)}")
+        println("$dir${folders.getFullPath(folderId)}")
+        processDirCallback("$dir${folders.getFullPath(folderId)}")
 
         val filteredFiles = folderResult.files
             .filter { filter.fileFilter.excluded(it.path, it.name) == null }
@@ -122,8 +124,8 @@ fun getCurrentFiles(
                 }
                 // if not found within any layer: calculate hash
                 file.hash.value?.let {
-                    statisticsCtx.filesHashCalculatedCount++
-                    statisticsCtx.filesHashCalculatedSize += file.size
+                    statistics.filesHashCalculatedCount++
+                    statistics.filesHashCalculatedSize += file.size
                     FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
                 }
             }
@@ -137,7 +139,7 @@ fun getCurrentFiles(
                 hidden = file.hidden,
                 size = file.size
             )
-            statisticsCtx.filesCount++
+            statistics.filesCount++
 
             testIfCancel()
         }
@@ -160,18 +162,18 @@ fun getCurrentFiles(
                 excludedBy == null
             }
             .forEach {
-                val folder = foldersCtx.getOrCreate(it.name, folderId)
-                statisticsCtx.foldersCount++
+                val folder = folders.getOrCreate(it.name, folderId)
+                statistics.foldersCount++
                 process(it.content(), folder.id)
             }
     }
 
     try {
 
-        process(readDir(dir, fs = fs), foldersCtx.rootFolderId)
+        process(readDir(dir, fs = fs), folders.rootFolderId)
 
     } catch (e: Exception) {
-        files.saveIndexedFilesTo(cancelledIndexingResultFile, now)
+        files.saveIndexedFilesTo(cancelledIndexingResultFile, now, folders)
         throw e
     }
 
