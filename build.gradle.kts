@@ -31,7 +31,7 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(kotlin("reflect")) // only used by kargparser
     //implementation("de.danielscholz:KArgParser:0.1-SNAPSHOT")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0-RC")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.2")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC.2")
     implementation("com.google.guava:guava:33.2.0-jre") {
