@@ -31,7 +31,7 @@ class FileSystemEncryption private constructor(
 
     private enum class Action { COPY, MOVE }
 
-    fun move(from: File, to: File, expectedHash: String?): State {
+    fun move(from: File, to: File, expectedHash: String?): State { // TODO moved files does from not encr. to encr. dir are not displayed as content to transfer within UI
         val fileSize = getSize(from)
         return execAction(
             File2(from, fileSize),
