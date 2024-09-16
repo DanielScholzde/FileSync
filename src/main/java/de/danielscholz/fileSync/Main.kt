@@ -34,6 +34,12 @@ fun main(args: Array<String>) {
 }
 
 
+enum class Commands(val command: String) {
+    SYNC_FILES("sync"),
+//    BACKUP_FILES("backup"),
+//    VERIFY_FILES("verify"),
+}
+
 @Suppress("DuplicatedCode")
 private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParserConfig(ignoreCase = true, noPrefixForActionParams = true)) {
 
