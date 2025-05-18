@@ -136,6 +136,8 @@ class SyncFiles(
 
         val syncResultFiles: MutableSet<FileEntity>
 
+        fs.createDirsFor(source.indexedFilesFile.parentFile)
+        fs.createDirsFor(target.indexedFilesFile.parentFile)
 
         val lastSyncResultFiles = readSyncResult(syncResultFile)?.mapToRead(filter, mutableFolders) ?: setOf()
         syncResultFiles = lastSyncResultFiles.toMutableSet()
