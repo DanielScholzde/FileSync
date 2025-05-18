@@ -1,10 +1,9 @@
-## FileSync
+## FileSync (Alpha)
 
 Features:
 
 - Full bidirectional synchronization of two folders: A <--> B
   - optional 'backup mode' which only syncs in one way: A --> B
 - support for complex filters (to exclude files or folders)
-- support of multi bidirectional sync
-  - A <--> B <--> C
-  - it is possible to sync only a subset of B's folders to C
+- support for file content encryption (AES)
+- Compose UI for status infos
