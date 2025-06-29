@@ -31,8 +31,8 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(kotlin("reflect")) // only used by KArgParser
     //implementation("de.danielscholz:KArgParser:0.1-SNAPSHOT")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("com.google.guava:guava:33.2.0-jre") {
         exclude(group = "com.google.code.findbugs", module = "jsr305")
@@ -56,7 +56,8 @@ kotlin {
 
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_21) // needed?
-        //freeCompilerArgs.add("-Xcontext-receivers")
+        //freeCompilerArgs.add("-Xcontext-parameters")
+        freeCompilerArgs.add("-Xopt-in=kotlin.time.ExperimentalTime")
     }
 }
 

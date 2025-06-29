@@ -3,7 +3,7 @@ package de.danielscholz.fileSync.actions.sync
 import androidx.compose.runtime.Immutable
 import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.persistence.FileEntity
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 
 interface Changes {

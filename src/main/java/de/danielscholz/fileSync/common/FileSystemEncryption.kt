@@ -2,11 +2,11 @@ package de.danielscholz.fileSync.common
 
 import de.danielscholz.fileSync.actions.sync.SyncFiles
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 import java.nio.file.attribute.FileTime
+import kotlin.time.Instant
 
 
 const val FS_ENCRYPTED = ".fsencrypted"
@@ -56,7 +56,7 @@ class FileSystemEncryption private constructor(
         if (dryRun) return if (to.shouldEncrypt) State.ENCRYPTED else State.NOT_ENCRYPTED
 
 //        suspend fun Flow<ByteArray>.runWithHashCheck(sink: suspend Flow<ByteArray>.() -> Unit) {
-            // TODO
+        // TODO
 //            if (expectedHash != null) {
 //                val hash = this.tee(sink, { computeSHA1() }).second
 //                if (hash != expectedHash) {
