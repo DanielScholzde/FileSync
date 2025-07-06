@@ -31,7 +31,7 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(kotlin("reflect")) // only used by KArgParser
     //implementation("de.danielscholz:KArgParser:0.1-SNAPSHOT") // currently, a manual separate download and local maven install is necessary
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("com.google.guava:guava:33.2.0-jre") {

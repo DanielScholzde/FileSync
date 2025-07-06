@@ -90,6 +90,7 @@ fun startUiBlocking() = application(false) {
 
 @Composable
 @Preview
+@org.jetbrains.compose.ui.tooling.preview.Preview
 fun frame(exitApplication: () -> Unit) {
     Column {
         Box(modifier = Modifier.padding(15.dp)) {
