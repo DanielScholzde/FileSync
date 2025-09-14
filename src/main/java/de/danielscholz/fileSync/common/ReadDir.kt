@@ -76,7 +76,7 @@ fun readDir(dir: File, subPath: String = "/", fs: FileSystemEncryption): FolderR
                     hidden = file.isHidden,
                     size = size,
                     hash = myLazy {
-                        fs.checkIsUnchanged(file_, modified, size)
+                        fs.checkIsUnchanged(file_, expectedLastModified = modified, expectedSize = size)
                         if (size > 0) fs.computeSHA1(file_) else null
                     }
                 )

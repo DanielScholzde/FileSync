@@ -63,25 +63,25 @@ class SyncFiles(
     }
 
     private val source = Env(
-        "source",
-        sourceDir,
-        File(sourceDir, "$syncFilesDir/$indexedFilesFilePrefix$syncName$commonFileSuffix"),
-        File(sourceDir, "$syncFilesDir/$deletedFilesFilePrefix$commonFileSuffix"),
-        isCaseSensitiveFileSystem(sourceDir) ?: throw Exception("Unable to determine if filesystem $sourceDir is case sensitive!"),
-        UI.sourceDir,
-        encryptSourcePaths,
-        syncFilesParams.passwordSource
+        name = "source",
+        dir = sourceDir,
+        indexedFilesFile = File(sourceDir, "$syncFilesDir/$indexedFilesFilePrefix$syncName$commonFileSuffix"),
+        deletedFilesFile = File(sourceDir, "$syncFilesDir/$deletedFilesFilePrefix$commonFileSuffix"),
+        caseSensitive = isCaseSensitiveFileSystem(sourceDir) ?: throw Exception("Unable to determine if filesystem $sourceDir is case sensitive!"),
+        uiDir = UI.sourceDir,
+        encryptPaths = encryptSourcePaths,
+        password = syncFilesParams.passwordSource
     )
 
     private val target = Env(
-        "target",
-        targetDir,
-        File(targetDir, "$syncFilesDir/$indexedFilesFilePrefix$syncName$commonFileSuffix"),
-        File(targetDir, "$syncFilesDir/$deletedFilesFilePrefix$commonFileSuffix"),
-        isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"),
-        UI.targetDir,
-        encryptTargetPaths,
-        syncFilesParams.passwordTarget
+        name = "target",
+        dir = targetDir,
+        indexedFilesFile = File(targetDir, "$syncFilesDir/$indexedFilesFilePrefix$syncName$commonFileSuffix"),
+        deletedFilesFile = File(targetDir, "$syncFilesDir/$deletedFilesFilePrefix$commonFileSuffix"),
+        caseSensitive = isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"),
+        uiDir = UI.targetDir,
+        encryptPaths = encryptTargetPaths,
+        password = syncFilesParams.passwordTarget
     )
 
     private val fs = FileSystemEncryption(source, target, changedDir, deletedDir, syncFilesParams.dryRun)
@@ -179,7 +179,7 @@ class SyncFiles(
                 currentFilesTarget = getCurrentFiles(target)
                 targetChanges = getChanges(target.dir, lastSyncResultFiles, currentFilesTarget, folders, target.caseSensitive)
             },
-            parallel = syncFilesParams.parallelIndexing
+            //parallel = syncFilesParams.parallelIndexing
         )
 
         if (syncFilesParams.backupMode && targetChanges.hasChanges(true)) {

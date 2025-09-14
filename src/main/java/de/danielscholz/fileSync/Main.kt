@@ -81,10 +81,10 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
         }) {
 
         SyncFiles(
-            paramValues,
-            paramValues.sourceDir!!.canonicalFile,
-            paramValues.targetDir!!.canonicalFile,
-            getFilter(
+            syncFilesParams = paramValues,
+            sourceDir = paramValues.sourceDir!!.canonicalFile,
+            targetDir = paramValues.targetDir!!.canonicalFile,
+            filter = getFilter(
                 paramValues.excludedFiles +
                         (paramValues.excludedFilesFile?.let { file -> Files.readAllLines(file.toPath()).filter { it.isNotBlank() && !it.startsWith("'") } } ?: setOf()) +
                         paramValues.defaultExcludedFiles,
@@ -92,8 +92,8 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
                         (paramValues.excludedPathsFile?.let { file -> Files.readAllLines(file.toPath()).filter { it.isNotBlank() && !it.startsWith("'") } } ?: setOf()) +
                         paramValues.defaultExcludedPaths
             ),
-            paramValues.encryptSourcePaths.map { createPathMatcher(it, true) },
-            paramValues.encryptTargetPaths.map { createPathMatcher(it, true) },
+            encryptSourcePaths = paramValues.encryptSourcePaths.map { createPathMatcher(it, true) },
+            encryptTargetPaths = paramValues.encryptTargetPaths.map { createPathMatcher(it, true) },
         ).sync()
     }
 

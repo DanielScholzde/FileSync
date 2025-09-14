@@ -1,8 +1,5 @@
 package de.danielscholz.fileSync.common
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -61,7 +58,7 @@ private fun generateRandomBytes(): ByteArray {
 }
 
 
-suspend fun Flow<ByteArray>.encryptToFile(outputFile: File, password: String) {
+fun Sequence<ByteArray>.encryptToFile(outputFile: File, password: String) {
     val salt = getCachedSaltOrNull() ?: generateRandomBytes()
     val key = deriveSecretKeyFromPasswordCached(salt, password)
 
@@ -75,7 +72,7 @@ suspend fun Flow<ByteArray>.encryptToFile(outputFile: File, password: String) {
         outputStream.write(iv)
         outputStream.write(salt)
 
-        this.collect { data ->
+        this.forEach { data ->
             //println("encryptToFile.collect: ${data.size}  ${data.sum()}  ${Thread.currentThread().name}")
             digest.update(data)
             cipher.update(data)?.let { encryptedData ->
@@ -118,7 +115,7 @@ suspend fun Flow<ByteArray>.encryptToFile(outputFile: File, password: String) {
 //}
 
 
-fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
+fun decryptFileToFlow(inputFile: File, password: String) = sequence<ByteArray> {
     FileInputStream(inputFile).use { inputStream ->
         val iv = ByteArray(randomBytesSize)
         val salt = ByteArray(randomBytesSize)
@@ -143,22 +140,22 @@ fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
             if (totalBytesRead > fileSizeNetto) {
                 val overEnd = (totalBytesRead - fileSizeNetto).toInt() // must be > 0 and <= 20
                 // hint: bytesRead - overEnd can be less than 0 if last part of sha1 bytes are read into last buffer (bytesRead could be 10)
-                sha1 = buffer.copyOfRange(max(bytesRead - overEnd, 0), bytesRead).let { if (sha1 != null) sha1!! + it else it }
+                sha1 = buffer.copyOfRange(max(bytesRead - overEnd, 0), bytesRead).let { if (sha1 != null) sha1 + it else it }
 
                 cipher.update(buffer, 0, max(bytesRead - overEnd, 0))?.let {
                     digest.update(it)
-                    emit(it)
+                    yield(it)
                 }
             } else {
                 cipher.update(buffer, 0, bytesRead)?.let {
                     digest.update(it)
-                    emit(it)
+                    yield(it)
                 }
             }
         }
         cipher.doFinal().let {
             digest.update(it)
-            emit(it)
+            yield(it)
         }
 
         if (!digest.digest().contentEquals(sha1)) throw Exception("Decoding of encrypted file results in different SHA-1 checksum!")
@@ -171,7 +168,7 @@ private fun getCipher(key: SecretKey, iv: ByteArray, mode: Int): Cipher =
     Cipher.getInstance("AES/CFB/NoPadding").apply { init(mode, key, IvParameterSpec(iv)) }
 
 
-fun main(): Unit = runBlocking {
+fun main() {
 
 //    val flow = flow {
 //        emit(1)

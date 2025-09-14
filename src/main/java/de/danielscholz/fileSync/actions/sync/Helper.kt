@@ -3,9 +3,6 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.persistence.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.UtcOffset
 import kotlinx.datetime.toInstant
@@ -81,19 +78,22 @@ fun execute(block1: () -> Unit, block2: () -> Unit, parallel: Boolean = true) {
         callsInPlace(block1, InvocationKind.EXACTLY_ONCE)
         callsInPlace(block2, InvocationKind.EXACTLY_ONCE)
     }
-    val blocks = listOf(block1, block2)
+//    val blocks = listOf(block1, block2)
     //println("Thread: " + Thread.currentThread().name)
-    if (parallel) {
-        runBlocking(Dispatchers.IO) {
-            blocks
-                .map {
-                    async { it() }
-                }
-                .forEach {
-                    it.await()
-                }
-        }
-    } else {
-        blocks.forEach { it() }
-    }
+//    if (parallel) {
+//        runBlocking(Dispatchers.IO) {
+//            blocks
+//                .map {
+//                    async { it() }
+//                }
+//                .forEach {
+//                    it.await()
+//                }
+//        }
+//    } else {
+//        blocks.forEach { it() }
+//    }
+
+    block1()
+    block2()
 }

@@ -1,7 +1,5 @@
 package de.danielscholz.fileSync.common
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -60,25 +58,25 @@ import java.io.FileOutputStream
 //}
 
 
-fun readFile(file: File): Flow<ByteArray> = flow {
+fun readFile(file: File) = sequence {
     FileInputStream(file).use { inputStream ->
         val buffer = ByteArray(BUFFER_SIZE)
         var bytesRead: Int
         while (inputStream.read(buffer).also { bytesRead = it } > 0) {
             if (buffer.size == bytesRead) {
                 //println("emit1")
-                emit(buffer) // Attention: no copy!!
+                yield(buffer) // Attention: no copy!!
             } else {
                 //println("emit2")
-                emit(buffer.copyOf(bytesRead))
+                yield(buffer.copyOf(bytesRead))
             }
         }
     }
 }
 
-suspend fun Flow<ByteArray>.writeToFile(file: File) {
+fun Sequence<ByteArray>.writeToFile(file: File) {
     FileOutputStream(file).use { outputStream ->
-        this.collect { data ->
+        this.forEach { data ->
             outputStream.write(data)
         }
     }
