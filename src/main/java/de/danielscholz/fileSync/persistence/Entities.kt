@@ -2,7 +2,6 @@ package de.danielscholz.fileSync.persistence
 
 import androidx.compose.runtime.Immutable
 import de.danielscholz.fileSync.actions.Folders
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -12,6 +11,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import java.io.*
+import kotlin.time.Instant
 
 
 sealed interface EntityBase

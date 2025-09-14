@@ -1,12 +1,12 @@
 package de.danielscholz.fileSync.common
 
-import kotlinx.datetime.Instant
-import kotlinx.datetime.toKotlinInstant
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.FileTime
+import kotlin.time.Instant
+import kotlin.time.toKotlinInstant
 
 
 data class FolderResult(

@@ -2,11 +2,11 @@ package de.danielscholz.fileSync.common
 
 import de.danielscholz.fileSync.actions.sync.SyncFiles
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Instant
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
 import java.nio.file.attribute.FileTime
+import kotlin.time.Instant
 
 
 const val FS_ENCRYPTED = ".fsencrypted"
