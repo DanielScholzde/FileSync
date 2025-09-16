@@ -51,10 +51,22 @@ class SyncFilesParams {
     var excludedFiles: Set<String> = setOf()
 
     @Description(
+        "Part of filename (without path). You can use * for an arbitrary pattern. To exclude files by extension, use: \"*.jpg\"\n" +
+                "Hint: a full filename is matched by \"name\". If the underlying filesystem is case-sensitive, these entries are also."
+    )
+    var excludedFilesFile: File? = null
+
+    @Description(
         "Part of path OR absolute path (both without filename). Separator char is \"/\". You can use * for an arbitrary pattern. An absolute path is defined by starting with \"//\", e.g. \"//absolute/path/\"\n" +
                 "Hint: a full directory name is matched by \"name\". If the underlying filesystem is case-sensitive, these entries are also."
     )
     var excludedPaths: Set<String> = setOf()
+
+    @Description(
+        "Part of path OR absolute path (both without filename). Separator char is \"/\". You can use * for an arbitrary pattern. An absolute path is defined by starting with \"//\", e.g. \"//absolute/path/\"\n" +
+                "Hint: a full directory name is matched by \"name\". If the underlying filesystem is case-sensitive, these entries are also."
+    )
+    var excludedPathsFile: File? = null
 
     @Description(
         "Part of path OR absolute path (both without filename). Separator char is \"/\". You can use * for an arbitrary pattern. An absolute path is defined by starting with \"//\", e.g. \"//absolute/path/\"\n" +

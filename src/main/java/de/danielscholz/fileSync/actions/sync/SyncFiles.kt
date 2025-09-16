@@ -136,6 +136,8 @@ class SyncFiles(
 
         val syncResultFiles: MutableSet<FileEntity>
 
+        if (source.dir.isDirectory && !source.indexedFilesFile.parentFile.isDirectory) source.indexedFilesFile.parentFile.mkdir() || throw Exception("Directory could not be created!")
+        if (target.dir.isDirectory && !target.indexedFilesFile.parentFile.isDirectory) target.indexedFilesFile.parentFile.mkdir() || throw Exception("Directory could not be created!")
 
         val lastSyncResultFiles = readSyncResult(syncResultFile)?.mapToRead(filter, mutableFolders) ?: setOf()
         syncResultFiles = lastSyncResultFiles.toMutableSet()
@@ -180,7 +182,7 @@ class SyncFiles(
             parallel = syncFilesParams.parallelIndexing
         )
 
-        if (syncFilesParams.backupMode && targetChanges.hasChanges()) {
+        if (syncFilesParams.backupMode && targetChanges.hasChanges(true)) {
             throw Exception("Target directory has changes, which is not allowed in backupMode!")
         }
 
@@ -242,7 +244,7 @@ class SyncFiles(
         }
 
         // to be sure, repeat check:
-        if (syncFilesParams.backupMode && targetChanges.hasChanges()) {
+        if (syncFilesParams.backupMode && targetChanges.hasChanges(true)) {
             throw Exception("Target directory has changes, which is not allowed in backupMode!")
         }
 
@@ -413,7 +415,7 @@ class SyncFiles(
                 runDate = now,
                 failuresOccurred = failures,
                 files = this,
-                rootFolder = folders.get(folders.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
+                rootFolder = folders.get(Folders.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
             )
         )
     }

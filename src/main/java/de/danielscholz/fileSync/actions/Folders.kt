@@ -1,5 +1,6 @@
 package de.danielscholz.fileSync.actions
 
+import de.danielscholz.fileSync.actions.Folders.Companion.rootFolderId
 import de.danielscholz.fileSync.common.mutableListMultimapOf
 import de.danielscholz.fileSync.common.set
 import de.danielscholz.fileSync.persistence.FolderEntity
@@ -7,7 +8,9 @@ import java.util.concurrent.ConcurrentHashMap
 
 
 interface Folders {
-    val rootFolderId: Long
+    companion object {
+        const val rootFolderId: Long = 0L
+    }
 
     fun get(id: Long): FolderEntity
 
@@ -29,8 +32,6 @@ interface Folders {
 
 
 class MutableFolders : Folders {
-
-    override val rootFolderId = 0L
 
     private var maxAssignedFolderId = 0L
 

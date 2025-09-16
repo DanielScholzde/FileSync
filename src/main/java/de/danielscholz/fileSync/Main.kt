@@ -9,6 +9,7 @@ import de.danielscholz.kargparser.ArgParser
 import de.danielscholz.kargparser.ArgParserBuilder
 import de.danielscholz.kargparser.ArgParserConfig
 import de.danielscholz.kargparser.parser.*
+import java.nio.file.Files
 
 
 fun main(args: Array<String>) {
@@ -55,13 +56,15 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
             add(paramValues::targetDir, FileParam(checkIsDir = true), required = true)
             add(paramValues::excludedPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
+            add(paramValues::excludedPathsFile, FileParam(checkIsFile = true))
+            add(paramValues::excludedFiles, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
+            add(paramValues::excludedFilesFile, FileParam(checkIsFile = true))
             add(paramValues::encryptSourcePaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
             add(paramValues::encryptTargetPaths, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
             add(paramValues::passwordSource, StringParam())
             add(paramValues::passwordTarget, StringParam())
             add(paramValues::lockfileSourceDir, FileParam(checkIsDir = true))
             add(paramValues::lockfileTargetDir, FileParam(checkIsDir = true))
-            add(paramValues::excludedFiles, StringSetParam(mapper = { it.replace('\\', '/') }, typeDescription = ""))
             add(paramValues::maxChangedFilesWarningPercent, IntParam())
             add(paramValues::minAllowedChanges, IntParam())
             add(paramValues::minDiskFreeSpacePercent, IntParam())
@@ -81,7 +84,14 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             paramValues,
             paramValues.sourceDir!!.canonicalFile,
             paramValues.targetDir!!.canonicalFile,
-            getFilter(paramValues.excludedFiles + paramValues.defaultExcludedFiles, paramValues.excludedPaths + paramValues.defaultExcludedPaths),
+            getFilter(
+                paramValues.excludedFiles +
+                        (paramValues.excludedFilesFile?.let { file -> Files.readAllLines(file.toPath()).filter { it.isNotBlank() && !it.startsWith("'") } } ?: setOf()) +
+                        paramValues.defaultExcludedFiles,
+                paramValues.excludedPaths +
+                        (paramValues.excludedPathsFile?.let { file -> Files.readAllLines(file.toPath()).filter { it.isNotBlank() && !it.startsWith("'") } } ?: setOf()) +
+                        paramValues.defaultExcludedPaths
+            ),
             paramValues.encryptSourcePaths.map { createPathMatcher(it, true) },
             paramValues.encryptTargetPaths.map { createPathMatcher(it, true) },
         ).sync()

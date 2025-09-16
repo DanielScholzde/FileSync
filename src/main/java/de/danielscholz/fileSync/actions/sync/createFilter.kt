@@ -1,24 +1,33 @@
 package de.danielscholz.fileSync.actions.sync
 
+import de.danielscholz.fileSync.common.ensurePrefix
+import de.danielscholz.fileSync.common.ensureSuffix
 
-fun getFilter(excludedFiles: Set<String>, excludedPaths: Set<String>): Filter {
 
-    val excludedFilenameMatchers = excludedFiles.map { excludedFilename ->
-        if (excludedFilename.contains("*")) {
-            val escaped = excludedFilename
-                .replace("(", "\\(")
-                .replace("[", "\\[")
-                .replace(".", "\\.")
-            val pattern = escaped
-                .replace("*", ".*")
-                .replace("?", ".")
-            val regex = Regex(pattern, RegexOption.IGNORE_CASE)
-            FilenameMatcher { _, filename ->
-                regex.matches(filename)
+fun getFilter(excludedFilenames: Set<String>, excludedPaths: Set<String>): Filter {
+
+    val excludedFilenameMatchers = excludedFilenames.map { excludedFilename ->
+        when {
+            "/" in excludedFilename || "\\" in excludedFilename -> {
+                throw Exception("Excluded filename must not contain a slash!")
             }
-        } else {
-            FilenameMatcher { _, filename ->
-                filename.equals(excludedFilename, ignoreCase = true)
+            "*" in excludedFilename -> {
+                val escaped = excludedFilename
+                    .replace("(", "\\(")
+                    .replace("[", "\\[")
+                    .replace(".", "\\.")
+                val pattern = escaped
+                    .replace("*", ".*")
+                    .replace("?", ".")
+                val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+                FilenameMatcher { _, filename ->
+                    regex.matches(filename)
+                }
+            }
+            else -> {
+                FilenameMatcher { _, filename ->
+                    filename.equals(excludedFilename, ignoreCase = true)
+                }
             }
         }
     }
@@ -39,6 +48,7 @@ fun getFilter(excludedFiles: Set<String>, excludedPaths: Set<String>): Filter {
 }
 
 
+// if considerFullPath==false only the last folder name of the path is checked on specific checks
 fun createPathMatcher(path: String, considerFullPath: Boolean): PathMatcher {
 
     fun checkFullPath(fullPath: String) {
@@ -49,6 +59,7 @@ fun createPathMatcher(path: String, considerFullPath: Boolean): PathMatcher {
     val excludedPathLC = excludedPath.lowercase()
     return when {
         "/" in excludedPath && "*" in excludedPath -> {
+//            if (!excludedPath.startsWith("*")) TODO
             val escaped = excludedPath
                 .replace("(", "\\(")
                 .replace("[", "\\[")
@@ -68,12 +79,13 @@ fun createPathMatcher(path: String, considerFullPath: Boolean): PathMatcher {
             }
         }
         "/" in excludedPath -> {
+            val p = excludedPathLC.ensurePrefix("/").ensureSuffix("/")
             PathMatcher { fullPath, _ ->
                 checkFullPath(fullPath)
-                if (excludedPathLC.startsWith("//")) {
-                    "/$fullPath".lowercase().startsWith(excludedPathLC)
+                if (p.startsWith("//")) {
+                    "/$fullPath".lowercase().startsWith(p)
                 } else {
-                    excludedPathLC in fullPath.lowercase()
+                    p in fullPath.lowercase()
                 }
             }
         }

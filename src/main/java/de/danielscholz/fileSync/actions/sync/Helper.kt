@@ -38,14 +38,14 @@ fun Set<FileEntity>.saveIndexedFilesTo(file: File, dateTime: LocalDateTime, fold
         IndexedFilesEntity(
             runDate = dateTime,
             files = this,
-            rootFolder = folders.get(folders.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
+            rootFolder = folders.get(Folders.rootFolderId).stripUnusedFolder(this.usedFolderIds()),
         )
     )
 }
 
 fun FilesAndFolder.mapToRead(filter: Filter, folders: MutableFolders): MutableSet<FileEntity> {
     val mapping = mutableMapOf<Long, Long>()
-    mapping[folders.rootFolderId] = folders.rootFolderId
+    mapping[Folders.rootFolderId] = Folders.rootFolderId
 
     fun sync(folder: FolderEntity, parentFolderId: Long) {
         if (filter.folderFilter.excluded(folders.getFullPath(parentFolderId) + folder.name + "/", folder.name) != null) {
@@ -62,7 +62,7 @@ fun FilesAndFolder.mapToRead(filter: Filter, folders: MutableFolders): MutableSe
     folders.check()
 
     this.rootFolder.children.forEach { childFolder ->
-        sync(childFolder, folders.rootFolderId)
+        sync(childFolder, Folders.rootFolderId)
     }
 
     folders.check()

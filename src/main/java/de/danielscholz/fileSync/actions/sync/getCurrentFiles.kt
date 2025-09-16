@@ -1,6 +1,7 @@
 package de.danielscholz.fileSync.actions.sync
 
 import com.google.common.collect.ListMultimap
+import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.commonFileSuffix
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.indexedFilesFilePrefix
@@ -174,8 +175,7 @@ fun getCurrentFiles(
                 excludedBy == null
             }
             .let { folderEntries ->
-                @Suppress("KotlinConstantConditions")
-                if (folderId == folders.rootFolderId && maxParallelFoldersRead > 1) {
+                if (folderId == Folders.rootFolderId && maxParallelFoldersRead > 1) {
                     coroutineScope {
                         folderEntries.map {
                             async(folderReadDispatcher) {
@@ -203,7 +203,7 @@ fun getCurrentFiles(
     try {
 
         runBlocking {
-            process(readDir(dir, fs = fs), folders.rootFolderId)
+            process(readDir(dir, fs = fs), Folders.rootFolderId)
         }
 
     } catch (e: Exception) {

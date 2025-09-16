@@ -1,8 +1,10 @@
 package de.danielscholz.fileSync.actions.sync
 
 import androidx.compose.runtime.Immutable
+import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.common.fileSize
 import de.danielscholz.fileSync.persistence.FileEntity
+import de.danielscholz.fileSync.persistence.isFolderMarker
 import kotlin.time.Instant
 
 
@@ -13,7 +15,8 @@ interface Changes {
     val movedAndContentChanged: Set<MovedAndContentChanged>
     val movedOrRenamed: Set<MovedOrRenamed>
     val modifiedChanged: Set<ModifiedChanged>
-    fun hasChanges(): Boolean
+
+    fun hasChanges(ignoreAddedRootFolderMarker: Boolean = false): Boolean
 
     fun renamed() = movedOrRenamed.filter { it.renamed && !it.moved }
     fun moved() = movedOrRenamed.filter { !it.renamed && it.moved }
@@ -51,7 +54,9 @@ class MutableChanges(
         }
     }
 
-    override fun hasChanges() = added.isNotEmpty() ||
+    @Suppress("SimplifyBooleanWithConstants")
+    override fun hasChanges(ignoreAddedRootFolderMarker: Boolean) = false ||
+            (if (!ignoreAddedRootFolderMarker) added else added.filter { !(it.isFolderMarker && it.folderId == Folders.rootFolderId) }).isNotEmpty() ||
             deleted.isNotEmpty() ||
             contentChanged.isNotEmpty() ||
             movedAndContentChanged.isNotEmpty() ||
