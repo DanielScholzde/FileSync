@@ -55,12 +55,17 @@ fun createPathMatcher(path: String, considerFullPath: Boolean): PathMatcher {
         if (!(fullPath.startsWith('/') && fullPath.endsWith('/')) || fullPath.contains('\\') || fullPath.contains("//")) throw Error("Full path must start and end with '/', but it is: $fullPath")
     }
 
-    val excludedPath = path.replace('\\', '/')
-    val excludedPathLC = excludedPath.lowercase()
+    val pathCanonical = path.replace('\\', '/')
+    val pathCanonicalLC = pathCanonical.lowercase()
     return when {
-        "/" in excludedPath && "*" in excludedPath -> {
+        pathCanonical == "*" || pathCanonical == "//" || pathCanonical == "//*" -> {
+            PathMatcher { _, _ ->
+                true
+            }
+        }
+        "/" in pathCanonical && "*" in pathCanonical -> {
 //            if (!excludedPath.startsWith("*")) TODO
-            val escaped = excludedPath
+            val escaped = pathCanonical
                 .replace("(", "\\(")
                 .replace("[", "\\[")
                 .replace(".", "\\.")
@@ -78,8 +83,8 @@ fun createPathMatcher(path: String, considerFullPath: Boolean): PathMatcher {
                 regex.matches("/$fullPath")
             }
         }
-        "/" in excludedPath -> {
-            val p = excludedPathLC.ensurePrefix("/").ensureSuffix("/")
+        "/" in pathCanonical -> {
+            val p = pathCanonicalLC.ensurePrefix("/").ensureSuffix("/")
             PathMatcher { fullPath, _ ->
                 checkFullPath(fullPath)
                 if (p.startsWith("//")) {
@@ -89,8 +94,8 @@ fun createPathMatcher(path: String, considerFullPath: Boolean): PathMatcher {
                 }
             }
         }
-        "*" in excludedPath -> {
-            val escaped = excludedPath
+        "*" in pathCanonical -> {
+            val escaped = pathCanonical
                 .replace("(", "\\(")
                 .replace("[", "\\[")
                 .replace(".", "\\.")
@@ -113,7 +118,7 @@ fun createPathMatcher(path: String, considerFullPath: Boolean): PathMatcher {
         }
         else -> {
             if (considerFullPath) {
-                val p = "/$excludedPath/"
+                val p = "/$pathCanonical/"
                 PathMatcher { fullPath, _ ->
                     checkFullPath(fullPath)
                     fullPath.contains(p, ignoreCase = true)
@@ -121,7 +126,7 @@ fun createPathMatcher(path: String, considerFullPath: Boolean): PathMatcher {
             } else {
                 PathMatcher { fullPath, folderName ->
                     checkFullPath(fullPath)
-                    folderName.equals(excludedPath, ignoreCase = true)
+                    folderName.equals(pathCanonical, ignoreCase = true)
                 }
             }
         }
