@@ -1,6 +1,12 @@
 package de.danielscholz.fileSync
 
-import de.danielscholz.fileSync.common.*
+import de.danielscholz.fileSync.actions.sync.SyncFiles
+import de.danielscholz.fileSync.actions.sync.createPathMatcher
+import de.danielscholz.fileSync.actions.sync.getFilter
+import de.danielscholz.fileSync.common.Global
+import de.danielscholz.fileSync.common.isTest
+import de.danielscholz.fileSync.common.registerLowMemoryListener
+import de.danielscholz.fileSync.common.registerShutdownCallback
 import de.danielscholz.kargparser.ArgParseException
 import de.danielscholz.kargparser.ArgParser
 import de.danielscholz.kargparser.ArgParserBuilder
@@ -9,23 +15,23 @@ import de.danielscholz.kargparser.parser.*
 
 
 fun main(args: Array<String>) {
-    _root_ide_package_.de.danielscholz.fileSync.common.registerShutdownCallback {
-        _root_ide_package_.de.danielscholz.fileSync.common.Global.cancel = true
+    registerShutdownCallback {
+        Global.cancel = true
     }
-    _root_ide_package_.de.danielscholz.fileSync.common.registerLowMemoryListener()
+    registerLowMemoryListener()
 
-    val parser = _root_ide_package_.de.danielscholz.fileSync.createParser()
-    if (!_root_ide_package_.de.danielscholz.fileSync.demandedHelp(args, parser)) {
+    val parser = createParser()
+    if (!demandedHelp(args, parser)) {
         try {
 
             parser.parseArgs(args)
 
         } catch (e: de.danielscholz.fileSync.common.CancelException) {
             println("execution canceled")
-            if (_root_ide_package_.de.danielscholz.fileSync.common.isTest()) throw e // throw exception only in test case
+            if (isTest()) throw e // throw exception only in test case
         } catch (e: ArgParseException) {
             println(parser.printout(e))
-            if (_root_ide_package_.de.danielscholz.fileSync.common.isTest()) throw e // throw exception only in test case
+            if (isTest()) throw e // throw exception only in test case
         }
     }
 }
@@ -39,15 +45,15 @@ enum class Commands(val command: String) {
 
 @Suppress("DuplicatedCode")
 private fun createParser() =
-    ArgParserBuilder(_root_ide_package_.de.danielscholz.fileSync.GlobalParams()).buildWith(ArgParserConfig(ignoreCase = true, noPrefixForActionParams = true)) {
+    ArgParserBuilder(GlobalParams()).buildWith(ArgParserConfig(ignoreCase = true, noPrefixForActionParams = true)) {
 
     addActionParser("help", "Show all available options and commands") {
         println(printout())
     }
 
     addActionParser(
-        _root_ide_package_.de.danielscholz.fileSync.Commands.SYNC_FILES.command,
-        ArgParserBuilder(_root_ide_package_.de.danielscholz.fileSync.SyncFilesParams()).buildWith {
+        Commands.SYNC_FILES.command,
+        ArgParserBuilder(SyncFilesParams()).buildWith {
             add(paramValues::syncName, StringParam(), required = true)
             add(paramValues::considerOtherIndexedFilesWithSyncName, StringParam())
             add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
@@ -75,16 +81,16 @@ private fun createParser() =
             add(paramValues::warnIfFileCopyHasNoOriginal, BooleanParam())
         }) {
 
-        _root_ide_package_.de.danielscholz.fileSync.actions.sync.SyncFiles(
+        SyncFiles(
             paramValues,
             paramValues.sourceDir!!.canonicalFile,
             paramValues.targetDir!!.canonicalFile,
-            _root_ide_package_.de.danielscholz.fileSync.actions.sync.getFilter(
+            getFilter(
                 paramValues.excludedFiles + paramValues.defaultExcludedFiles,
                 paramValues.excludedPaths + paramValues.defaultExcludedPaths
             ),
-            paramValues.encryptSourcePaths.map { _root_ide_package_.de.danielscholz.fileSync.actions.sync.createPathMatcher(it, true) },
-            paramValues.encryptTargetPaths.map { _root_ide_package_.de.danielscholz.fileSync.actions.sync.createPathMatcher(it, true) },
+            paramValues.encryptSourcePaths.map { createPathMatcher(it, true) },
+            paramValues.encryptTargetPaths.map { createPathMatcher(it, true) },
         ).sync()
     }
 

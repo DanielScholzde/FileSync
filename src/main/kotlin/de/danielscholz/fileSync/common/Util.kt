@@ -7,7 +7,6 @@ import java.nio.file.Files
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
-import kotlin.math.absoluteValue
 
 
 fun registerShutdownCallback(exitCallback: () -> Unit) {
@@ -66,25 +65,6 @@ inline fun exec(block: () -> Unit) {
     }
     block()
 }
-
-
-fun Long.formatAsFileSize(): String {
-    val size = this
-    val gb = size * 10 / (1024 * 1024 * 1024)
-    if (gb.absoluteValue >= 10) {
-        return "${gb / 10.0} GB".replace('.', ',')
-    }
-    val mb = size * 10 / (1024 * 1024)
-    if (mb.absoluteValue >= 10) {
-        return "${mb / 10.0} MB".replace('.', ',')
-    }
-    val kb = size * 10 / 1024
-    if (kb.absoluteValue >= 10) {
-        return "${kb / 10.0} KB".replace('.', ',')
-    }
-    return "$size Byte"
-}
-
 
 fun isTest(): Boolean {
     return Exception().stackTrace.any { it.className.contains(".junit.") }

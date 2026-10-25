@@ -13,10 +13,10 @@ enum class Location { SOURCE, TARGET }
 class Action(
     val folderId: Long,
     val filename: String,
-    val locationOfChangesToBeMade: de.danielscholz.fileSync.actions.sync.Location,
+    val locationOfChangesToBeMade: Location,
     val switchedSourceAndTarget: Boolean,
     val priority: Int = 0,
-    val action: de.danielscholz.fileSync.actions.sync.ActionEnv.() -> Unit,
+    val action: ActionEnv.() -> Unit,
 )
 
 class ActionEnv(
@@ -24,20 +24,20 @@ class ActionEnv(
     val targetDir: File,
     val changedDir: String,
     val deletedDir: String,
-    val syncResultFiles: MutableSet<de.danielscholz.fileSync.persistence.FileEntity>,
-    val currentFilesTarget: MutableSet<de.danielscholz.fileSync.persistence.FileEntity>, // may be currentFilesSource, if switchedSourceAndTarget==true
+    val syncResultFiles: MutableSet<FileEntity>,
+    val currentFilesTarget: MutableSet<FileEntity>, // may be currentFilesSource, if switchedSourceAndTarget==true
     private val addFailure: (String) -> Unit,
-    private val fs: de.danielscholz.fileSync.common.fs.FileSystemEncryption
+    private val fs: FileSystemEncryption
 ) {
     var successfullyRealProcessed = 0
 
-    fun processDir(action: String, files: String, block: de.danielscholz.fileSync.actions.sync.ProcessEnv.() -> Unit) {
+    fun processDir(action: String, files: String, block: ProcessEnv.() -> Unit) {
         process(action, files, false, block)
     }
 
-    fun process(action: String, files: String, emptyFile: Boolean, block: de.danielscholz.fileSync.actions.sync.ProcessEnv.() -> Unit) {
+    fun process(action: String, files: String, emptyFile: Boolean, block: ProcessEnv.() -> Unit) {
         print("$action:".padEnd(14) + files)
-        _root_ide_package_.de.danielscholz.fileSync.ui.UI.addCurrentOperation("$action $files")
+        UI.addCurrentOperation("$action $files")
         var result: String
         try {
             val processEnv = ProcessEnv(fs)
