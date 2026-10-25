@@ -1,15 +1,13 @@
 package de.danielscholz.fileSync.actions
 
-import de.danielscholz.fileSync.common.mutableListMultimapOf
 import de.danielscholz.fileSync.common.set
-import de.danielscholz.fileSync.persistence.FolderEntity
 import java.util.concurrent.ConcurrentHashMap
 
 
 interface Folders {
     val rootFolderId: Long
 
-    fun get(id: Long): FolderEntity
+    fun get(id: Long): de.danielscholz.fileSync.persistence.FolderEntity
 
     /**
      * includes folder name itself as last node.
@@ -28,25 +26,25 @@ interface Folders {
 }
 
 
-class MutableFolders : Folders {
+class MutableFolders : de.danielscholz.fileSync.actions.Folders {
 
     override val rootFolderId = 0L
 
     private var maxAssignedFolderId = 0L
 
-    private val folders = ConcurrentHashMap<Long, FolderEntity>()
+    private val folders = ConcurrentHashMap<Long, de.danielscholz.fileSync.persistence.FolderEntity>()
 
-    private val foldersByParent = mutableListMultimapOf<Long, FolderEntity>()
+    private val foldersByParent = _root_ide_package_.de.danielscholz.fileSync.common.mutableListMultimapOf<Long, de.danielscholz.fileSync.persistence.FolderEntity>()
 
     private val foldersFullPathCache = ConcurrentHashMap<Long, String>()
     private val foldersFullPathLowercaseCache = ConcurrentHashMap<Long, String>()
 
     init {
-        folders[rootFolderId] = FolderEntity(rootFolderId, null, "")
+        folders[rootFolderId] = _root_ide_package_.de.danielscholz.fileSync.persistence.FolderEntity(rootFolderId, null, "")
     }
 
 
-    override fun get(id: Long): FolderEntity {
+    override fun get(id: Long): de.danielscholz.fileSync.persistence.FolderEntity {
         return folders[id]!!
     }
 
@@ -72,7 +70,7 @@ class MutableFolders : Folders {
     }
 
     @Synchronized
-    fun getOrCreate(name: String, parentFolderId: Long): FolderEntity {
+    fun getOrCreate(name: String, parentFolderId: Long): de.danielscholz.fileSync.persistence.FolderEntity {
         if (!folders.containsKey(parentFolderId)) {
             throw Error("Folders does not contain key $parentFolderId")
         }
@@ -82,7 +80,7 @@ class MutableFolders : Folders {
         }
 
         val id = ++maxAssignedFolderId
-        val folder = FolderEntity(id, parentFolderId, name)
+        val folder = _root_ide_package_.de.danielscholz.fileSync.persistence.FolderEntity(id, parentFolderId, name)
         folders[id] = folder
         foldersByParent[parentFolderId] = folder
         folders[parentFolderId]!!.children += folder

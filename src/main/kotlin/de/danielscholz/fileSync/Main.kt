@@ -1,8 +1,5 @@
 package de.danielscholz.fileSync
 
-import de.danielscholz.fileSync.actions.sync.SyncFiles
-import de.danielscholz.fileSync.actions.sync.createPathMatcher
-import de.danielscholz.fileSync.actions.sync.getFilter
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.kargparser.ArgParseException
 import de.danielscholz.kargparser.ArgParser
@@ -12,23 +9,23 @@ import de.danielscholz.kargparser.parser.*
 
 
 fun main(args: Array<String>) {
-    registerShutdownCallback {
-        Global.cancel = true
+    _root_ide_package_.de.danielscholz.fileSync.common.registerShutdownCallback {
+        _root_ide_package_.de.danielscholz.fileSync.common.Global.cancel = true
     }
-    registerLowMemoryListener()
+    _root_ide_package_.de.danielscholz.fileSync.common.registerLowMemoryListener()
 
-    val parser = createParser()
-    if (!demandedHelp(args, parser)) {
+    val parser = _root_ide_package_.de.danielscholz.fileSync.createParser()
+    if (!_root_ide_package_.de.danielscholz.fileSync.demandedHelp(args, parser)) {
         try {
 
             parser.parseArgs(args)
 
-        } catch (e: CancelException) {
+        } catch (e: de.danielscholz.fileSync.common.CancelException) {
             println("execution canceled")
-            if (isTest()) throw e // throw exception only in test case
+            if (_root_ide_package_.de.danielscholz.fileSync.common.isTest()) throw e // throw exception only in test case
         } catch (e: ArgParseException) {
             println(parser.printout(e))
-            if (isTest()) throw e // throw exception only in test case
+            if (_root_ide_package_.de.danielscholz.fileSync.common.isTest()) throw e // throw exception only in test case
         }
     }
 }
@@ -41,15 +38,16 @@ enum class Commands(val command: String) {
 }
 
 @Suppress("DuplicatedCode")
-private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParserConfig(ignoreCase = true, noPrefixForActionParams = true)) {
+private fun createParser() =
+    ArgParserBuilder(_root_ide_package_.de.danielscholz.fileSync.GlobalParams()).buildWith(ArgParserConfig(ignoreCase = true, noPrefixForActionParams = true)) {
 
     addActionParser("help", "Show all available options and commands") {
         println(printout())
     }
 
     addActionParser(
-        Commands.SYNC_FILES.command,
-        ArgParserBuilder(SyncFilesParams()).buildWith {
+        _root_ide_package_.de.danielscholz.fileSync.Commands.SYNC_FILES.command,
+        ArgParserBuilder(_root_ide_package_.de.danielscholz.fileSync.SyncFilesParams()).buildWith {
             add(paramValues::syncName, StringParam(), required = true)
             add(paramValues::considerOtherIndexedFilesWithSyncName, StringParam())
             add(paramValues::sourceDir, FileParam(checkIsDir = true), required = true)
@@ -77,13 +75,16 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
             add(paramValues::warnIfFileCopyHasNoOriginal, BooleanParam())
         }) {
 
-        SyncFiles(
+        _root_ide_package_.de.danielscholz.fileSync.actions.sync.SyncFiles(
             paramValues,
             paramValues.sourceDir!!.canonicalFile,
             paramValues.targetDir!!.canonicalFile,
-            getFilter(paramValues.excludedFiles + paramValues.defaultExcludedFiles, paramValues.excludedPaths + paramValues.defaultExcludedPaths),
-            paramValues.encryptSourcePaths.map { createPathMatcher(it, true) },
-            paramValues.encryptTargetPaths.map { createPathMatcher(it, true) },
+            _root_ide_package_.de.danielscholz.fileSync.actions.sync.getFilter(
+                paramValues.excludedFiles + paramValues.defaultExcludedFiles,
+                paramValues.excludedPaths + paramValues.defaultExcludedPaths
+            ),
+            paramValues.encryptSourcePaths.map { _root_ide_package_.de.danielscholz.fileSync.actions.sync.createPathMatcher(it, true) },
+            paramValues.encryptTargetPaths.map { _root_ide_package_.de.danielscholz.fileSync.actions.sync.createPathMatcher(it, true) },
         ).sync()
     }
 
@@ -124,7 +125,7 @@ private fun createParser() = ArgParserBuilder(GlobalParams()).buildWith(ArgParse
 }
 
 
-private fun demandedHelp(args: Array<String>, parser: ArgParser<GlobalParams>): Boolean {
+private fun demandedHelp(args: Array<String>, parser: ArgParser<de.danielscholz.fileSync.GlobalParams>): Boolean {
     // offer some more options for showing help and to get help for a specific command
     val helpArguments = setOf("/?", "--?", "?", "--help", "help")
     val foundIdx = args.indexOfFirst { it in helpArguments }
