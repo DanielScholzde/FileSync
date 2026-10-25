@@ -29,8 +29,7 @@ dependencies {
     implementation(compose.material3)
     implementation(compose.components.uiToolingPreview)
     implementation(compose.desktop.currentOs)
-    implementation(kotlin("reflect")) // only used by KArgParser
-    //implementation("de.danielscholz:KArgParser:0.1-SNAPSHOT")
+    implementation("de.danielscholz:KArgParser:0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
