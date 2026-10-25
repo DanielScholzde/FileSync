@@ -1,7 +1,7 @@
-package de.danielscholz.fileSync.common
+package de.danielscholz.fileSync.common.fs
 
-import de.danielscholz.fileSync.common.fs.FS_ENCRYPTED_SUFFIX
-import de.danielscholz.fileSync.common.fs.FileSystemEncryption
+import de.danielscholz.fileSync.common.ignoreMillis
+import de.danielscholz.fileSync.common.myLazy
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -18,12 +18,12 @@ data class FolderResult(
 
 class FolderEntry(
     val name: String,
-    /*
+    /**
      * full path including this folders name
      * starts and ends with '/'
      */
     val fullPath: String,
-    val content: () -> FolderResult
+    val content: Lazy<FolderResult>
 ) {
     init {
         if (!(fullPath.startsWith("/") && fullPath.endsWith("/")) || fullPath.contains('\\') || fullPath.contains("//")) throw Error("Path is wrong: $fullPath")
@@ -62,7 +62,7 @@ fun readDir(dir: File, subPath: String = "/", fs: FileSystemEncryption): FolderR
                 folders += FolderEntry(
                     name = file.name,
                     fullPath = path,
-                    content = { readDir(file, path, fs) }
+                    content = myLazy { readDir(file, path, fs) }
                 )
             } else if (attributes.isRegularFile) {
                 val encrypted = file.name.endsWith(FS_ENCRYPTED_SUFFIX)
@@ -94,7 +94,7 @@ fun readDir(dir: File, subPath: String = "/", fs: FileSystemEncryption): FolderR
 }
 
 
-fun getBasicFileAttributes(file: File): BasicFileAttributes =
+private fun getBasicFileAttributes(file: File): BasicFileAttributes =
     Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
 
 fun FileTime.toKotlinInstantIgnoreMillis(): Instant = toInstant().ignoreMillis().toKotlinInstant()

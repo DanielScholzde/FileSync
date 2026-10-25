@@ -11,10 +11,8 @@ fun readFileToSeq(file: File): Sequence<ByteArray> = sequence {
         var bytesRead: Int
         while (inputStream.read(buffer).also { bytesRead = it } > 0) {
             if (buffer.size == bytesRead) {
-                //println("emit1")
                 yield(buffer) // Attention: no copy!!
             } else {
-                //println("emit2")
                 yield(buffer.copyOf(bytesRead))
             }
         }

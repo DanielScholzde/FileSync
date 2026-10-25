@@ -7,6 +7,8 @@ import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.indexedFilesFil
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.syncFilesDir
 import de.danielscholz.fileSync.common.*
 import de.danielscholz.fileSync.common.fs.FileSystemEncryption
+import de.danielscholz.fileSync.common.fs.FolderResult
+import de.danielscholz.fileSync.common.fs.readDir
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.FileHashEntity
 import de.danielscholz.fileSync.persistence.folderMarkerName
@@ -172,7 +174,7 @@ fun getCurrentFiles(
                 folderEntries.forEach {
                     val folder = folders.getOrCreate(it.name, folderId)
                     statistics.foldersCount++
-                    process(it.content(), folder.id)
+                    process(it.content.value, folder.id)
                 }
             }
     }

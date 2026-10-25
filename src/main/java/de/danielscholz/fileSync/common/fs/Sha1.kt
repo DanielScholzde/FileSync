@@ -1,5 +1,7 @@
-package de.danielscholz.fileSync.common
+package de.danielscholz.fileSync.common.fs
 
+import de.danielscholz.fileSync.common.testIfCancel
+import de.danielscholz.fileSync.common.toBase64
 import java.security.MessageDigest
 
 
