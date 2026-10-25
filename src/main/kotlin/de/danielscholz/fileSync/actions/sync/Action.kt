@@ -74,8 +74,8 @@ class ProcessEnv(val fs: FileSystemEncryption) {
         UI.currentBytesCopied += bytes
     }
 
-    fun FileSystemEncryption.State.processResult() {
-        if (this == FileSystemEncryption.State.ENCRYPTED) {
+    fun FileSystemEncryption.EncrState.processResult() {
+        if (this == FileSystemEncryption.EncrState.ENCRYPTED) {
             encrypted = true
         }
     }

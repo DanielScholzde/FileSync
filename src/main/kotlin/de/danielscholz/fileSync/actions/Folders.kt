@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 
 interface Folders {
+
     val rootFolderId: Long
 
     fun get(id: Long): FolderEntity

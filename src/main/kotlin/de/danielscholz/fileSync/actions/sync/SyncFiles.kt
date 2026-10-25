@@ -50,40 +50,26 @@ class SyncFiles(
     private val mutableFolders = MutableFolders()
     private val folders: Folders = mutableFolders
 
-    class Env(
-        val name: String,
-        val dir: File,
-        val indexedFilesFile: File,
-        val deletedFilesFile: File,
-        val caseSensitive: Boolean,
-        val uiDir: UI.Dir,
-        val encryptPaths: List<PathMatcher>,
-        val password: String?
-    ) {
-        val mutableStatistics = MutableStatistics(uiDir)
-        val statistics: Statistics = mutableStatistics
-    }
-
     private val source = Env(
-        "source",
-        sourceDir,
-        File(sourceDir, "$syncFilesDir/$indexedFilesFilePrefix$syncName$commonFileSuffix"),
-        File(sourceDir, "$syncFilesDir/$deletedFilesFilePrefix$commonFileSuffix"),
-        isCaseSensitiveFileSystem(sourceDir) ?: throw Exception("Unable to determine if filesystem $sourceDir is case sensitive!"),
-        UI.sourceDir,
-        encryptSourcePaths,
-        syncFilesParams.passwordSource
+        name = "source",
+        dir = sourceDir,
+        indexedFilesFile = File(sourceDir, "$syncFilesDir/$indexedFilesFilePrefix$syncName$commonFileSuffix"),
+        deletedFilesFile = File(sourceDir, "$syncFilesDir/$deletedFilesFilePrefix$commonFileSuffix"),
+        caseSensitive = isCaseSensitiveFileSystem(sourceDir) ?: throw Exception("Unable to determine if filesystem $sourceDir is case sensitive!"),
+        uiDir = UI.sourceDir,
+        encryptPaths = encryptSourcePaths,
+        password = syncFilesParams.passwordSource
     )
 
     private val target = Env(
-        "target",
-        targetDir,
-        File(targetDir, "$syncFilesDir/$indexedFilesFilePrefix$syncName$commonFileSuffix"),
-        File(targetDir, "$syncFilesDir/$deletedFilesFilePrefix$commonFileSuffix"),
-        isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"),
-        UI.targetDir,
-        encryptTargetPaths,
-        syncFilesParams.passwordTarget
+        name = "target",
+        dir = targetDir,
+        indexedFilesFile = File(targetDir, "$syncFilesDir/$indexedFilesFilePrefix$syncName$commonFileSuffix"),
+        deletedFilesFile = File(targetDir, "$syncFilesDir/$deletedFilesFilePrefix$commonFileSuffix"),
+        caseSensitive = isCaseSensitiveFileSystem(targetDir) ?: throw Exception("Unable to determine if filesystem $targetDir is case sensitive!"),
+        uiDir = UI.targetDir,
+        encryptPaths = encryptTargetPaths,
+        password = syncFilesParams.passwordTarget
     )
 
     private val fs = FileSystemEncryption(source, target, changedDir, deletedDir, syncFilesParams.dryRun)
@@ -154,17 +140,17 @@ class SyncFiles(
             }
 
             currentFiles = getCurrentFiles(
-                env.dir,
-                filter,
-                lastIndexedFilesMapped,
-                lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
-                syncName,
-                syncFilesParams.considerOtherIndexedFilesWithSyncName,
-                { env.uiDir.currentReadDir = it },
-                now,
-                fs,
-                mutableFolders,
-                env.mutableStatistics,
+                dir = env.dir,
+                filter = filter,
+                lastIndexedFiles = lastIndexedFilesMapped,
+                lastIndexedFilesDate = lastIndexedFiles?.runDate ?: PAST_LOCAL_DATE_TIME,
+                syncName = syncName,
+                considerOtherIndexedFilesWithSyncName = syncFilesParams.considerOtherIndexedFilesWithSyncName,
+                processDirCallback = { env.uiDir.currentReadDir = it },
+                now = now,
+                fs = fs,
+                folders = mutableFolders,
+                statistics = env.mutableStatistics,
             )
             env.uiDir.currentReadDir = null
             backup(env.indexedFilesFile)
@@ -172,17 +158,11 @@ class SyncFiles(
             return currentFiles
         }
 
-//        execute(
-//            {
         currentFilesSource = getCurrentFiles(source)
         sourceChanges = getChanges(source.dir, lastSyncResultFiles, currentFilesSource, folders, source.caseSensitive)
-//            },
-//            {
+
         currentFilesTarget = getCurrentFiles(target)
         targetChanges = getChanges(target.dir, lastSyncResultFiles, currentFilesTarget, folders, target.caseSensitive)
-//            },
-//            parallel = syncFilesParams.parallelIndexing
-//        )
 
         if (syncFilesParams.backupMode && targetChanges.hasChanges()) {
             throw Exception("Target directory has changes, which is not allowed in backupMode!")
@@ -215,7 +195,7 @@ class SyncFiles(
         printoutDuplFiles(currentFilesSource.files, "source")
         printoutDuplFiles(currentFilesTarget.files, "target")
 
-        if (!checkAndFix(
+        if (!CheckAndFix(
                 source.dir,
                 target.dir,
                 sourceChanges,
@@ -226,7 +206,7 @@ class SyncFiles(
                 fs,
                 folders,
                 source.caseSensitive && target.caseSensitive
-            )
+            ).run()
         ) {
             if (!syncFilesParams.ignoreConflicts) return
         }

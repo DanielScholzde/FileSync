@@ -1,6 +1,6 @@
 package de.danielscholz.fileSync.common.fs
 
-import de.danielscholz.fileSync.actions.sync.SyncFiles
+import de.danielscholz.fileSync.actions.sync.Env
 import de.danielscholz.fileSync.common.ensurePrefix
 import de.danielscholz.fileSync.common.ensureSuffix
 import de.danielscholz.fileSync.common.myLazy
@@ -15,47 +15,47 @@ const val FS_ENCRYPTED_SUFFIX = ".fsencrypted"
 
 
 class FileSystemEncryption private constructor(
-    val source: SyncFiles.Env,
-    val target: SyncFiles.Env,
+    val source: Env,
+    val target: Env,
     val changedDir: String,
     val deletedDir: String,
     val dryRun: Boolean,
     dummy: Unit
 ) {
 
-    constructor(source: SyncFiles.Env, target: SyncFiles.Env, changedDir: String, deletedDir: String, dryRun: Boolean) :
+    constructor(source: Env, target: Env, changedDir: String, deletedDir: String, dryRun: Boolean) :
             this(source, target, changedDir.replace('\\', '/').ensurePrefix("/"), deletedDir.replace('\\', '/').ensurePrefix("/"), dryRun, Unit)
 
     val sourceDirCanonicalPath: String = source.dir.canonicalPath.replace('\\', '/')
     val targetDirCanonicalPath: String = target.dir.canonicalPath.replace('\\', '/')
 
-    enum class State { ENCRYPTED, NOT_ENCRYPTED }
+    enum class EncrState { ENCRYPTED, NOT_ENCRYPTED }
 
     private enum class Action { COPY, MOVE }
 
-    fun move(from: File, to: File, expectedHash: String?): State { // TODO moved files does from not encr. to encr. dir are not displayed as content to transfer within UI
+    fun move(from: File, to: File, expectedHash: String?): EncrState { // TODO moved files does from not encr. to encr. dir are not displayed as content to transfer within UI
         val fileSize = getSize(from)
         return execAction(
-            File2(from, fileSize),
-            File2(to, fileSize),
+            fileDecorator(from, fileSize),
+            fileDecorator(to, fileSize),
             expectedHash,
             Action.MOVE
         )
     }
 
-    fun copy(from: File, to: File, expectedHash: String?): State {
+    fun copy(from: File, to: File, expectedHash: String?): EncrState {
         val fileSize = getSize(from)
         return execAction(
-            File2(from, fileSize),
-            File2(to, fileSize),
+            fileDecorator(from, fileSize),
+            fileDecorator(to, fileSize),
             expectedHash,
             Action.COPY
         )
     }
 
-    private fun execAction(from: File2, to: File2, expectedHash: String?, action: Action): State {
+    private fun execAction(from: FileDecorator, to: FileDecorator, expectedHash: String?, action: Action): EncrState {
 
-        if (dryRun) return if (to.shouldEncrypt) State.ENCRYPTED else State.NOT_ENCRYPTED
+        if (dryRun) return if (to.shouldEncrypt) EncrState.ENCRYPTED else EncrState.NOT_ENCRYPTED
 
 //        suspend fun Flow<ByteArray>.runWithHashCheck(sink: suspend Flow<ByteArray>.() -> Unit) {
         // TODO
@@ -70,7 +70,7 @@ class FileSystemEncryption private constructor(
 //            }
 //        }
 
-        fun Action.exec(source: File, target: File) {
+        fun Action.execDirect(source: File, target: File) {
             when (this) {
                 Action.COPY -> Files.copy(source.toPath(), target.toPath(), COPY_ATTRIBUTES)
                 Action.MOVE -> Files.move(source.toPath(), target.toPath())
@@ -80,7 +80,7 @@ class FileSystemEncryption private constructor(
         when {
             from.encrypted && to.shouldEncrypt -> {
                 if (from.encryptPassword == to.encryptPassword) {
-                    action.exec(from.fileIn, to.fileOut)
+                    action.execDirect(from.fileIn, to.fileOut)
                 } else {
                     decryptFileToSeq(from.fileIn, from.encryptPassword).encryptSeqToFile(to.fileOut, to.encryptPassword)
                     if (decryptFileToSeq(to.fileOut, to.encryptPassword).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
@@ -101,16 +101,16 @@ class FileSystemEncryption private constructor(
                 if (action == Action.MOVE) Files.delete(from.fileIn.toPath())
             }
             else -> {
-                action.exec(from.fileIn, to.fileOut)
+                action.execDirect(from.fileIn, to.fileOut)
             }
         }
 
-        return if (to.shouldEncrypt) State.ENCRYPTED else State.NOT_ENCRYPTED
+        return if (to.shouldEncrypt) EncrState.ENCRYPTED else EncrState.NOT_ENCRYPTED
     }
 
     fun copyLastModified(from: File, to: File) {
         if (dryRun) return
-        File2(to).fileIn.setLastModified(File2(from).fileIn.lastModified()) || throw Exception("set of last modification date failed!")
+        fileDecorator(to).fileIn.setLastModified(fileDecorator(from).fileIn.lastModified()) || throw Exception("set of last modification date failed!")
     }
 
     private fun copyLastModifiedIntern(from: File, to: File) {
@@ -134,11 +134,11 @@ class FileSystemEncryption private constructor(
     }
 
     fun getSize(file: File): Long {
-        return File2(file).fileSize()
+        return fileDecorator(file).fileSize()
     }
 
     fun checkIsUnchanged(file: File, expectedLastModified: Instant, expectedSize: Long) {
-        val file2 = File2(file)
+        val file2 = fileDecorator(file)
         val modifiedChanged = FileTime.fromMillis(file2.fileIn.lastModified()).toKotlinInstantIgnoreMillis() != expectedLastModified
         val sizeChanged = file2.fileSize() != expectedSize
         if (modifiedChanged || sizeChanged) {
@@ -147,22 +147,22 @@ class FileSystemEncryption private constructor(
     }
 
     fun computeSHA1(file: File): String {
-        val file2 = File2(file)
+        val file2 = fileDecorator(file)
         val hash = (if (file2.encrypted) decryptFileToSeq(file2.fileIn, file2.encryptPassword) else readFileToSeq(file2.fileIn)).computeSHA1()
         return hash
     }
 
-    private fun File2(file: File) = File2(file, this)
+    private fun fileDecorator(file: File) = FileDecorator(file, this)
 
-    private fun File2(file: File, fileSize: Long) = File2(file, this, fileSize)
+    private fun fileDecorator(file: File, fileSize: Long) = FileDecorator(file, this, fileSize)
 }
 
 
-class File2(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
+class FileDecorator(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
 
-    private val filePath: String // without file name! starts and ends with a '/'
+    private val filePath: String // without a file name! starts and ends with a '/'
 
-    private val env: SyncFiles.Env
+    private val env: Env
 
     val encryptPassword: String get() = env.password!!
 
@@ -204,7 +204,7 @@ class File2(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
         else -> throw Exception("File $this does not exist!")
     }
 
-    private fun shouldEncrypt(filePath: String, env: SyncFiles.Env, fileSize: Long): Boolean {
+    private fun shouldEncrypt(filePath: String, env: Env, fileSize: Long): Boolean {
         val folderName = filePath.removeSuffix("/").substringAfterLast('/')
         val b = env.password != null && env.encryptPaths.any { it.matches(filePath, folderName) }
         return b && fileSize > 0

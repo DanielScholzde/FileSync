@@ -96,7 +96,7 @@ class ChangesWithDetails(
 
 }
 
-class FurtherChecks(
+private class FurtherChecks(
     private val dir: File,
     private val changes: ChangesWithDetails,
     private val syncFilesParams: SyncFilesParams
