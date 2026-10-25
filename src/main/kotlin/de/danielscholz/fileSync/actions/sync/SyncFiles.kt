@@ -4,7 +4,7 @@ import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.common.*
-import de.danielscholz.fileSync.common.fs.FileSystemEncryption
+import de.danielscholz.fileSync.common.fs.FileSystemWithEncryption
 import de.danielscholz.fileSync.common.fs.isCaseSensitiveFileSystem
 import de.danielscholz.fileSync.matching.MatchMode
 import de.danielscholz.fileSync.matching.equalsForFileBy
@@ -72,7 +72,7 @@ class SyncFiles(
         password = syncFilesParams.passwordTarget
     )
 
-    private val fs = FileSystemEncryption(source, target, changedDir, deletedDir, syncFilesParams.dryRun)
+    private val fs = FileSystemWithEncryption(source, target, changedDir, deletedDir, syncFilesParams.dryRun)
 
     private val syncResultFile = File(source.dir, "$syncFilesDir/$syncResultFilePrefix$syncName$commonFileSuffix")
 

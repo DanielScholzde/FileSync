@@ -1,6 +1,6 @@
 package de.danielscholz.fileSync.actions.sync
 
-import de.danielscholz.fileSync.common.fs.FileSystemEncryption
+import de.danielscholz.fileSync.common.fs.FileSystemWithEncryption
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.ui.UI
 import java.io.File
@@ -27,7 +27,7 @@ class ActionEnv(
     val syncResultFiles: MutableSet<FileEntity>,
     val currentFilesTarget: MutableSet<FileEntity>, // may be currentFilesSource, if switchedSourceAndTarget==true
     private val addFailure: (String) -> Unit,
-    private val fs: FileSystemEncryption
+    private val fs: FileSystemWithEncryption
 ) {
     var successfullyRealProcessed = 0
 
@@ -61,7 +61,7 @@ class ActionEnv(
 }
 
 
-class ProcessEnv(val fs: FileSystemEncryption) {
+class ProcessEnv(val fs: FileSystemWithEncryption) {
 
     var encrypted = false
         private set
@@ -74,8 +74,8 @@ class ProcessEnv(val fs: FileSystemEncryption) {
         UI.currentBytesCopied += bytes
     }
 
-    fun FileSystemEncryption.EncrState.processResult() {
-        if (this == FileSystemEncryption.EncrState.ENCRYPTED) {
+    fun FileSystemWithEncryption.EncrState.processResult() {
+        if (this == FileSystemWithEncryption.EncrState.ENCRYPTED) {
             encrypted = true
         }
     }

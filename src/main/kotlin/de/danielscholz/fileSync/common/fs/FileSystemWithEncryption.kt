@@ -14,7 +14,7 @@ import kotlin.time.Instant
 const val FS_ENCRYPTED_SUFFIX = ".fsencrypted"
 
 
-class FileSystemEncryption private constructor(
+class FileSystemWithEncryption private constructor(
     val source: Env,
     val target: Env,
     val changedDir: String,
@@ -158,7 +158,7 @@ class FileSystemEncryption private constructor(
 }
 
 
-class FileDecorator(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
+class FileDecorator(val file: File, fs: FileSystemWithEncryption, fileSize: Long? = null) {
 
     private val filePath: String // without a file name! starts and ends with a '/'
 

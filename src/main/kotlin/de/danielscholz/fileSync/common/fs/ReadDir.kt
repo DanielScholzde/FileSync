@@ -50,7 +50,7 @@ class FileEntry(
 }
 
 
-fun readDir(dir: File, subPath: String = "/", fs: FileSystemEncryption): FolderResult {
+fun readDir(dir: File, subPath: String = "/", fs: FileSystemWithEncryption): FolderResult {
     val files = mutableListOf<FileEntry>()
     val folders = mutableListOf<FolderEntry>()
     val filesAndFolders = dir.listFiles()

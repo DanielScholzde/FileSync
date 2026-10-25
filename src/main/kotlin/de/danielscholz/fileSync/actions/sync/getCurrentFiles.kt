@@ -6,7 +6,7 @@ import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.commonFileSuffi
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.indexedFilesFilePrefix
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.syncFilesDir
 import de.danielscholz.fileSync.common.*
-import de.danielscholz.fileSync.common.fs.FileSystemEncryption
+import de.danielscholz.fileSync.common.fs.FileSystemWithEncryption
 import de.danielscholz.fileSync.common.fs.FolderResult
 import de.danielscholz.fileSync.common.fs.readDir
 import de.danielscholz.fileSync.persistence.FileEntity
@@ -54,7 +54,7 @@ fun getCurrentFiles(
     considerOtherIndexedFilesWithSyncName: String?,
     processDirCallback: (String) -> Unit,
     now: LocalDateTime,
-    fs: FileSystemEncryption,
+    fs: FileSystemWithEncryption,
     folders: MutableFolders,
     statistics: MutableStatistics,
 ): MutableCurrentFiles {

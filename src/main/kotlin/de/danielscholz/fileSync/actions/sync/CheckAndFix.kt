@@ -3,7 +3,7 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.common.addWithCheck
 import de.danielscholz.fileSync.common.formatAsFileSize
-import de.danielscholz.fileSync.common.fs.FileSystemEncryption
+import de.danielscholz.fileSync.common.fs.FileSystemWithEncryption
 import de.danielscholz.fileSync.common.removeWithCheck
 import de.danielscholz.fileSync.common.toStr
 import de.danielscholz.fileSync.matching.*
@@ -20,7 +20,7 @@ class CheckAndFix(
     val currentFilesSource: MutableCurrentFiles,
     val currentFilesTarget: MutableCurrentFiles,
     val syncResultFiles: MutableSet<FileEntity>,
-    val fs: FileSystemEncryption,
+    val fs: FileSystemWithEncryption,
     val folders: Folders,
     val caseSensitive: Boolean
 ) {
