@@ -36,12 +36,12 @@ fun main() {
 //    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
 
     measureTime {
-        readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
+        readFileToSeq(File(file)).encryptSeqToFile(File("$file.encrypt"), password)
     }.let { println(it) }
 
     if (File("$file.encrypt").length() != File(file).length() + AES_FILESIZE_OVERHEAD) throw Exception("Size")
 
-    decryptFileToSeq(File("$file.encrypt"), password).writeToFile(File("$file.tmp"))
+    decryptFileToSeq(File("$file.encrypt"), password).writeSeqToFile(File("$file.tmp"))
 
     if (!Files.readAllBytes(File(file).toPath()).contentEquals(Files.readAllBytes(File("$file.tmp").toPath()))) throw Exception("UNGLEICH!")
 

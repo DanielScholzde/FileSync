@@ -1,6 +1,6 @@
 package de.danielscholz.fileSync.common
 
-import de.danielscholz.fileSync.common.fs.FS_ENCRYPTED
+import de.danielscholz.fileSync.common.fs.FS_ENCRYPTED_SUFFIX
 import de.danielscholz.fileSync.common.fs.FileSystemEncryption
 import java.io.File
 import java.nio.file.Files
@@ -65,8 +65,8 @@ fun readDir(dir: File, subPath: String = "/", fs: FileSystemEncryption): FolderR
                     content = { readDir(file, path, fs) }
                 )
             } else if (attributes.isRegularFile) {
-                val encrypted = file.name.endsWith(FS_ENCRYPTED)
-                val file_ = if (encrypted) File(file.path.removeSuffix(FS_ENCRYPTED)) else file
+                val encrypted = file.name.endsWith(FS_ENCRYPTED_SUFFIX)
+                val file_ = if (encrypted) File(file.path.removeSuffix(FS_ENCRYPTED_SUFFIX)) else file
                 val size = fs.getSize(file_)
                 val created = attributes.creationTime().toKotlinInstantIgnoreMillis()
                 val modified = attributes.lastModifiedTime().toKotlinInstantIgnoreMillis()

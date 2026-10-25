@@ -9,7 +9,7 @@ import java.nio.file.attribute.FileTime
 import kotlin.time.Instant
 
 
-const val FS_ENCRYPTED = ".fsencrypted"
+const val FS_ENCRYPTED_SUFFIX = ".fsencrypted"
 
 
 class FileSystemEncryption private constructor(
@@ -80,21 +80,21 @@ class FileSystemEncryption private constructor(
                 if (from.encryptPassword == to.encryptPassword) {
                     action.exec(from.fileIn, to.fileOut)
                 } else {
-                    decryptFileToSeq(from.fileIn, from.encryptPassword).encryptToFile(to.fileOut, to.encryptPassword)
+                    decryptFileToSeq(from.fileIn, from.encryptPassword).encryptSeqToFile(to.fileOut, to.encryptPassword)
                     if (decryptFileToSeq(to.fileOut, to.encryptPassword).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
                     copyLastModifiedIntern(from.fileIn, to.fileOut)
                     if (action == Action.MOVE) Files.delete(from.fileIn.toPath())
                 }
             }
             !from.encrypted && to.shouldEncrypt -> {
-                readFile(from.fileIn).encryptToFile(to.fileOut, to.encryptPassword)
+                readFileToSeq(from.fileIn).encryptSeqToFile(to.fileOut, to.encryptPassword)
                 if (decryptFileToSeq(to.fileOut, to.encryptPassword).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
                 copyLastModifiedIntern(from.fileIn, to.fileOut)
                 if (action == Action.MOVE) Files.delete(from.fileIn.toPath())
             }
             from.encrypted && !to.shouldEncrypt -> {
-                decryptFileToSeq(from.fileIn, from.encryptPassword).writeToFile(to.fileOut)
-                if (readFile(to.fileOut).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
+                decryptFileToSeq(from.fileIn, from.encryptPassword).writeSeqToFile(to.fileOut)
+                if (readFileToSeq(to.fileOut).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
                 copyLastModifiedIntern(from.fileIn, to.fileOut)
                 if (action == Action.MOVE) Files.delete(from.fileIn.toPath())
             }
@@ -146,7 +146,7 @@ class FileSystemEncryption private constructor(
 
     fun computeSHA1(file: File): String {
         val file2 = File2(file)
-        val hash = (if (file2.encrypted) decryptFileToSeq(file2.fileIn, file2.encryptPassword) else readFile(file2.fileIn)).computeSHA1()
+        val hash = (if (file2.encrypted) decryptFileToSeq(file2.fileIn, file2.encryptPassword) else readFileToSeq(file2.fileIn)).computeSHA1()
         return hash
     }
 
@@ -194,7 +194,7 @@ class File2(val file: File, fs: FileSystemEncryption, fileSize: Long? = null) {
 
     fun fileSize() = if (encrypted) (fileIn.length() - AES_FILESIZE_OVERHEAD) else fileIn.length()
 
-    private fun File.toEncryptedPath() = File(this.path + FS_ENCRYPTED)
+    private fun File.toEncryptedPath() = File(this.path + FS_ENCRYPTED_SUFFIX)
 
     private fun File.isEncrypted() = when {
         this.isFile -> false

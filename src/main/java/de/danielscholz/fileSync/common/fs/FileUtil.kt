@@ -5,6 +5,31 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 
 
+fun readFileToSeq(file: File): Sequence<ByteArray> = sequence {
+    FileInputStream(file).use { inputStream ->
+        val buffer = ByteArray(BUFFER_SIZE)
+        var bytesRead: Int
+        while (inputStream.read(buffer).also { bytesRead = it } > 0) {
+            if (buffer.size == bytesRead) {
+                //println("emit1")
+                yield(buffer) // Attention: no copy!!
+            } else {
+                //println("emit2")
+                yield(buffer.copyOf(bytesRead))
+            }
+        }
+    }
+}
+
+fun Sequence<ByteArray>.writeSeqToFile(file: File) {
+    FileOutputStream(file).use { outputStream ->
+        this.forEach { data ->
+            outputStream.write(data)
+        }
+    }
+}
+
+
 //suspend fun <T, R1, R2> Flow<T>.tee(consumer1: suspend Flow<T>.() -> R1, consumer2: suspend Flow<T>.() -> R2): Pair<R1, R2> {
 //    var result1: R1? = null
 //    var result2: R2? = null
@@ -57,27 +82,3 @@ import java.io.FileOutputStream
 //    return result1!! to result2!!
 //}
 
-
-fun readFile(file: File): Sequence<ByteArray> = sequence {
-    FileInputStream(file).use { inputStream ->
-        val buffer = ByteArray(BUFFER_SIZE)
-        var bytesRead: Int
-        while (inputStream.read(buffer).also { bytesRead = it } > 0) {
-            if (buffer.size == bytesRead) {
-                //println("emit1")
-                yield(buffer) // Attention: no copy!!
-            } else {
-                //println("emit2")
-                yield(buffer.copyOf(bytesRead))
-            }
-        }
-    }
-}
-
-fun Sequence<ByteArray>.writeToFile(file: File) {
-    FileOutputStream(file).use { outputStream ->
-        this.forEach { data ->
-            outputStream.write(data)
-        }
-    }
-}

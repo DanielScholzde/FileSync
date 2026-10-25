@@ -56,7 +56,7 @@ private fun generateRandomBytes(): ByteArray {
 }
 
 
-fun Sequence<ByteArray>.encryptToFile(outputFile: File, password: String) {
+fun Sequence<ByteArray>.encryptSeqToFile(outputFile: File, password: String) {
     val salt = getCachedSaltOrNull() ?: generateRandomBytes()
     val key = deriveSecretKeyFromPasswordCached(salt, password)
 
@@ -86,32 +86,6 @@ fun Sequence<ByteArray>.encryptToFile(outputFile: File, password: String) {
         //println("SHA-1 of encrypted file ${outputFile.name}: ${sha1.toBase64()}")
     }
 }
-
-//fun Flow<ByteArray>.encryptToFlow(password: String) = flow<ByteArray> {
-//    val salt = getCachedSaltOrNull() ?: generateRandomBytes()
-//    val key = deriveSecretKeyFromPasswordCached(salt, password)
-//
-//    val iv = generateRandomBytes()
-//    val cipher = getCipher(key, iv, Cipher.ENCRYPT_MODE)
-//
-//    val digest = MessageDigest.getInstance("SHA-1")
-//    if (digest.digestLength != SHA1_BYTES) throw Exception()
-//
-//    emit(iv)
-//    emit(salt)
-//
-//    this@encryptToFlow.collect { data ->
-//        digest.update(data)
-//        cipher.update(data, 0, data.size)?.let { encryptedData ->
-//            //println("write encrypted block (${Thread.currentThread().name})")
-//            emit(encryptedData)
-//        }
-//    }
-//    //println("write encrypted finished")
-//    emit(cipher.doFinal())
-//    emit(digest.digest())
-//}
-
 
 fun decryptFileToSeq(inputFile: File, password: String) = sequence<ByteArray> {
     // TODO schließen des Streams
@@ -163,5 +137,32 @@ fun decryptFileToSeq(inputFile: File, password: String) = sequence<ByteArray> {
 }
 
 
+//fun Flow<ByteArray>.encryptToFlow(password: String) = flow<ByteArray> {
+//    val salt = getCachedSaltOrNull() ?: generateRandomBytes()
+//    val key = deriveSecretKeyFromPasswordCached(salt, password)
+//
+//    val iv = generateRandomBytes()
+//    val cipher = getCipher(key, iv, Cipher.ENCRYPT_MODE)
+//
+//    val digest = MessageDigest.getInstance("SHA-1")
+//    if (digest.digestLength != SHA1_BYTES) throw Exception()
+//
+//    emit(iv)
+//    emit(salt)
+//
+//    this@encryptToFlow.collect { data ->
+//        digest.update(data)
+//        cipher.update(data, 0, data.size)?.let { encryptedData ->
+//            //println("write encrypted block (${Thread.currentThread().name})")
+//            emit(encryptedData)
+//        }
+//    }
+//    //println("write encrypted finished")
+//    emit(cipher.doFinal())
+//    emit(digest.digest())
+//}
+
 private fun getCipher(key: SecretKey, iv: ByteArray, mode: Int): Cipher =
-    Cipher.getInstance("AES/CFB/NoPadding").apply { init(mode, key, IvParameterSpec(iv)) }
+    Cipher.getInstance("AES/CFB/NoPadding").apply {
+        init(mode, key, IvParameterSpec(iv))
+    }
