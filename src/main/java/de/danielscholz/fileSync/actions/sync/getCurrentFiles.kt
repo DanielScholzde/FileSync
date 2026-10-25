@@ -11,11 +11,7 @@ import de.danielscholz.fileSync.persistence.FileHashEntity
 import de.danielscholz.fileSync.persistence.folderMarkerName
 import de.danielscholz.fileSync.persistence.readIndexedFiles
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDateTime
 import java.io.File
 import kotlin.time.Instant
@@ -90,7 +86,7 @@ fun getCurrentFiles(
     ).sortedByDescending { it.indexDate }
 
 
-    suspend fun process(folderResult: FolderResult, folderId: Long) {
+    fun process(folderResult: FolderResult, folderId: Long) {
 
         //println("$dir${folders.getFullPath(folderId)}")
         processDirCallback("$dir${folders.getFullPath(folderId)}")
@@ -133,12 +129,10 @@ fun getCurrentFiles(
                     return@supply result
                 }
                 // if not found within any layer: calculate hash
-                hashCalcMutex.withLock {
-                    file.hash.value?.let {
-                        statistics.filesHashCalculatedCount++
-                        statistics.filesHashCalculatedSize += file.size
-                        FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
-                    }
+                file.hash.value?.let {
+                    statistics.filesHashCalculatedCount++
+                    statistics.filesHashCalculatedSize += file.size
+                    FileHashEntity(java.time.Instant.now().toKotlinInstant(), it)
                 }
             }
 
@@ -174,37 +168,17 @@ fun getCurrentFiles(
                 excludedBy == null
             }
             .let { folderEntries ->
-                @Suppress("KotlinConstantConditions")
-                if (folderId == folders.rootFolderId && maxParallelFoldersRead > 1) {
-                    coroutineScope {
-                        folderEntries.map {
-                            async(folderReadDispatcher) {
-                                val folder = folders.getOrCreate(it.name, folderId)
-                                statistics.foldersCount++
-                                process(
-                                    it.content(), // no suspend function; blocks thread (this is fine/necessary to ensure working of folderReadDispatcher with limitedParallelism)
-                                    folder.id
-                                )
-                            }
-                        }.forEach {
-                            it.await()
-                        }
-                    }
-                } else {
-                    folderEntries.forEach {
-                        val folder = folders.getOrCreate(it.name, folderId)
-                        statistics.foldersCount++
-                        process(it.content(), folder.id)
-                    }
+                folderEntries.forEach {
+                    val folder = folders.getOrCreate(it.name, folderId)
+                    statistics.foldersCount++
+                    process(it.content(), folder.id)
                 }
             }
     }
 
     try {
 
-        runBlocking {
-            process(readDir(dir, fs = fs), folders.rootFolderId)
-        }
+        process(readDir(dir, fs = fs), folders.rootFolderId)
 
     } catch (e: Exception) {
         files.saveIndexedFilesTo(cancelledIndexingResultFile, now, folders)

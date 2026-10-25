@@ -3,16 +3,10 @@ package de.danielscholz.fileSync.actions.sync
 import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.persistence.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.UtcOffset
 import kotlinx.datetime.toInstant
 import java.io.File
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 
 
 fun Collection<Pair<FileEntity, FileEntity>>.leftSide() = this.map { it.first }
@@ -75,25 +69,25 @@ fun FilesAndFolder.mapToRead(filter: Filter, folders: MutableFolders): MutableSe
 }
 
 
-@OptIn(ExperimentalContracts::class)
-fun execute(block1: () -> Unit, block2: () -> Unit, parallel: Boolean = true) {
-    contract {
-        callsInPlace(block1, InvocationKind.EXACTLY_ONCE)
-        callsInPlace(block2, InvocationKind.EXACTLY_ONCE)
-    }
-    val blocks = listOf(block1, block2)
-    //println("Thread: " + Thread.currentThread().name)
-    if (parallel) {
-        runBlocking(Dispatchers.IO) {
-            blocks
-                .map {
-                    async { it() }
-                }
-                .forEach {
-                    it.await()
-                }
-        }
-    } else {
-        blocks.forEach { it() }
-    }
-}
+//@OptIn(ExperimentalContracts::class)
+//fun execute(block1: () -> Unit, block2: () -> Unit, parallel: Boolean = true) {
+//    contract {
+//        callsInPlace(block1, InvocationKind.EXACTLY_ONCE)
+//        callsInPlace(block2, InvocationKind.EXACTLY_ONCE)
+//    }
+//    val blocks = listOf(block1, block2)
+//    //println("Thread: " + Thread.currentThread().name)
+//    if (parallel) {
+//        runBlocking(Dispatchers.IO) {
+//            blocks
+//                .map {
+//                    async { it() }
+//                }
+//                .forEach {
+//                    it.await()
+//                }
+//        }
+//    } else {
+//        blocks.forEach { it() }
+//    }
+//}

@@ -170,17 +170,17 @@ class SyncFiles(
             return currentFiles
         }
 
-        execute(
-            {
-                currentFilesSource = getCurrentFiles(source)
-                sourceChanges = getChanges(source.dir, lastSyncResultFiles, currentFilesSource, folders, source.caseSensitive)
-            },
-            {
-                currentFilesTarget = getCurrentFiles(target)
-                targetChanges = getChanges(target.dir, lastSyncResultFiles, currentFilesTarget, folders, target.caseSensitive)
-            },
-            parallel = syncFilesParams.parallelIndexing
-        )
+//        execute(
+//            {
+        currentFilesSource = getCurrentFiles(source)
+        sourceChanges = getChanges(source.dir, lastSyncResultFiles, currentFilesSource, folders, source.caseSensitive)
+//            },
+//            {
+        currentFilesTarget = getCurrentFiles(target)
+        targetChanges = getChanges(target.dir, lastSyncResultFiles, currentFilesTarget, folders, target.caseSensitive)
+//            },
+//            parallel = syncFilesParams.parallelIndexing
+//        )
 
         if (syncFilesParams.backupMode && targetChanges.hasChanges()) {
             throw Exception("Target directory has changes, which is not allowed in backupMode!")

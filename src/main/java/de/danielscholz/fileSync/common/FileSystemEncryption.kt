@@ -1,7 +1,6 @@
 package de.danielscholz.fileSync.common
 
 import de.danielscholz.fileSync.actions.sync.SyncFiles
-import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES
@@ -80,31 +79,21 @@ class FileSystemEncryption private constructor(
                 if (from.encryptPassword == to.encryptPassword) {
                     action.exec(from.fileIn, to.fileOut)
                 } else {
-                    runBlocking {
-                        decryptFileToFlow(from.fileIn, from.encryptPassword).encryptToFile(to.fileOut, to.encryptPassword)
-                        if (decryptFileToFlow(
-                                to.fileOut,
-                                to.encryptPassword
-                            ).computeSHA1() != expectedHash && expectedHash != null
-                        ) throw Exception("Hash is not equal to expected")
-                    }
+                    decryptFileToSeq(from.fileIn, from.encryptPassword).encryptToFile(to.fileOut, to.encryptPassword)
+                    if (decryptFileToSeq(to.fileOut, to.encryptPassword).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
                     copyLastModifiedIntern(from.fileIn, to.fileOut)
                     if (action == Action.MOVE) Files.delete(from.fileIn.toPath())
                 }
             }
             !from.encrypted && to.shouldEncrypt -> {
-                runBlocking {
-                    readFile(from.fileIn).encryptToFile(to.fileOut, to.encryptPassword)
-                    if (decryptFileToFlow(to.fileOut, to.encryptPassword).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
-                }
+                readFile(from.fileIn).encryptToFile(to.fileOut, to.encryptPassword)
+                if (decryptFileToSeq(to.fileOut, to.encryptPassword).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
                 copyLastModifiedIntern(from.fileIn, to.fileOut)
                 if (action == Action.MOVE) Files.delete(from.fileIn.toPath())
             }
             from.encrypted && !to.shouldEncrypt -> {
-                runBlocking {
-                    decryptFileToFlow(from.fileIn, from.encryptPassword).writeToFile(to.fileOut)
-                    if (readFile(to.fileOut).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
-                }
+                decryptFileToSeq(from.fileIn, from.encryptPassword).writeToFile(to.fileOut)
+                if (readFile(to.fileOut).computeSHA1() != expectedHash && expectedHash != null) throw Exception("Hash is not equal to expected")
                 copyLastModifiedIntern(from.fileIn, to.fileOut)
                 if (action == Action.MOVE) Files.delete(from.fileIn.toPath())
             }
@@ -156,10 +145,7 @@ class FileSystemEncryption private constructor(
 
     fun computeSHA1(file: File): String {
         val file2 = File2(file)
-        val hash = runBlocking {
-            val flow = if (file2.encrypted) decryptFileToFlow(file2.fileIn, file2.encryptPassword) else readFile(file2.fileIn)
-            flow.computeSHA1()
-        }
+        val hash = (if (file2.encrypted) decryptFileToSeq(file2.fileIn, file2.encryptPassword) else readFile(file2.fileIn)).computeSHA1()
         return hash
     }
 

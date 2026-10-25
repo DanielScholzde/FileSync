@@ -1,12 +1,8 @@
 package de.danielscholz.fileSync.common
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.nio.file.Files
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -16,7 +12,6 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.max
-import kotlin.time.measureTime
 import kotlin.time.measureTimedValue
 
 
@@ -36,15 +31,15 @@ typealias SaltHexStr = String
 
 private val keyCache = mutableMapOf<Pair<SaltHexStr, String>, SecretKey>()
 
-@OptIn(ExperimentalStdlibApi::class)
+
 private fun deriveSecretKeyFromPasswordCached(salt: ByteArray, password: String) =
-    keyCache.computeIfAbsent(salt.toHexString(kotlin.text.HexFormat.UpperCase) to password) {
+    keyCache.computeIfAbsent(salt.toHexString(HexFormat.UpperCase) to password) {
         deriveSecretKeyFromPassword(salt, password)
     }
 
-@OptIn(ExperimentalStdlibApi::class)
+
 private fun getCachedSaltOrNull() =
-    keyCache.keys.firstOrNull()?.first?.hexToByteArray(kotlin.text.HexFormat.UpperCase)
+    keyCache.keys.firstOrNull()?.first?.hexToByteArray(HexFormat.UpperCase)
 
 
 private const val randomBytesSize = 16
@@ -61,7 +56,7 @@ private fun generateRandomBytes(): ByteArray {
 }
 
 
-suspend fun Flow<ByteArray>.encryptToFile(outputFile: File, password: String) {
+fun Sequence<ByteArray>.encryptToFile(outputFile: File, password: String) {
     val salt = getCachedSaltOrNull() ?: generateRandomBytes()
     val key = deriveSecretKeyFromPasswordCached(salt, password)
 
@@ -75,7 +70,7 @@ suspend fun Flow<ByteArray>.encryptToFile(outputFile: File, password: String) {
         outputStream.write(iv)
         outputStream.write(salt)
 
-        this.collect { data ->
+        this.forEach { data ->
             //println("encryptToFile.collect: ${data.size}  ${data.sum()}  ${Thread.currentThread().name}")
             digest.update(data)
             cipher.update(data)?.let { encryptedData ->
@@ -118,7 +113,8 @@ suspend fun Flow<ByteArray>.encryptToFile(outputFile: File, password: String) {
 //}
 
 
-fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
+fun decryptFileToSeq(inputFile: File, password: String) = sequence<ByteArray> {
+    // TODO schließen des Streams
     FileInputStream(inputFile).use { inputStream ->
         val iv = ByteArray(randomBytesSize)
         val salt = ByteArray(randomBytesSize)
@@ -147,18 +143,18 @@ fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
 
                 cipher.update(buffer, 0, max(bytesRead - overEnd, 0))?.let {
                     digest.update(it)
-                    emit(it)
+                    yield(it)
                 }
             } else {
                 cipher.update(buffer, 0, bytesRead)?.let {
                     digest.update(it)
-                    emit(it)
+                    yield(it)
                 }
             }
         }
         cipher.doFinal().let {
             digest.update(it)
-            emit(it)
+            yield(it)
         }
 
         if (!digest.digest().contentEquals(sha1)) throw Exception("Decoding of encrypted file results in different SHA-1 checksum!")
@@ -169,47 +165,3 @@ fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
 
 private fun getCipher(key: SecretKey, iv: ByteArray, mode: Int): Cipher =
     Cipher.getInstance("AES/CFB/NoPadding").apply { init(mode, key, IvParameterSpec(iv)) }
-
-
-fun main(): Unit = runBlocking {
-
-//    val flow = flow {
-//        emit(1)
-//        emit(2)
-//        emit(3)
-//        emit(4)
-//    }
-//    flow.tee({ collect { println("1: "+it+" "+System.nanoTime()) } }, { collect { println("2: "+it+" "+System.nanoTime()) } })
-//    println()
-//    flow.tee({ collect { println("1: "+it) } }, { collect { println("2: "+it) } })
-//
-//return@runBlocking Unit
-
-    val password = "test"
-    val file = "Test_copy.mpg"
-
-    // warmup
-//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-//    readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-
-    measureTime {
-        readFile(File(file)).encryptToFile(File("$file.encrypt"), password)
-    }.let { println(it) }
-
-    if (File("$file.encrypt").length() != File(file).length() + AES_FILESIZE_OVERHEAD) throw Exception("Size")
-
-    decryptFileToFlow(File("$file.encrypt"), password).writeToFile(File("$file.tmp"))
-
-    if (!Files.readAllBytes(File(file).toPath()).contentEquals(Files.readAllBytes(File("$file.tmp").toPath()))) throw Exception("UNGLEICH!")
-
-    File("$file.tmp").delete()
-    File("$file.encrypt").delete()
-}

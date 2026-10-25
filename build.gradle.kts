@@ -32,7 +32,7 @@ dependencies {
     implementation("de.danielscholz:KArgParser:0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    //implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("com.google.guava:guava:33.2.0-jre") {
         exclude(group = "com.google.code.findbugs", module = "jsr305")
         exclude(group = "com.google.errorprone", module = "error_prone_annotations")
