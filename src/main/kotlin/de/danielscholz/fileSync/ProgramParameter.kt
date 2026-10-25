@@ -1,7 +1,7 @@
 package de.danielscholz.fileSync
 
+import de.danielscholz.fileSync.actions.sync.Dir
 import de.danielscholz.kargparser.Description
-import java.io.File
 
 
 class GlobalParams
@@ -15,10 +15,10 @@ class SyncFilesParams {
     var considerOtherIndexedFilesWithSyncName: String? = null
 
     @Description("Source directory")
-    var sourceDir: File? = null
+    var sourceDir: Dir? = null
 
     @Description("Target directory")
-    var targetDir: File? = null
+    var targetDir: Dir? = null
 
     @Description("Should sourceDir and targetDir be indexed in parallel?")
     var parallelIndexing: Boolean = true
@@ -75,10 +75,10 @@ class SyncFilesParams {
     var passwordTarget: String? = null
 
     @Description("Directory where the synchronization lockfile should be placed (for sourceDir)")
-    var lockfileSourceDir: File? = null
+    var lockfileSourceDir: Dir? = null
 
     @Description("Directory where the synchronization lockfile should be placed (for targetDir)")
-    var lockfileTargetDir: File? = null
+    var lockfileTargetDir: Dir? = null
 
     @Description("Should a test run be done without any file changes (except the index database)?")
     var dryRun = false

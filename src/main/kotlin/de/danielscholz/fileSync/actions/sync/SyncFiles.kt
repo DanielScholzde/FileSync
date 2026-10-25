@@ -24,8 +24,8 @@ import java.time.LocalDateTime as JavaLocalDateTime
 @Suppress("ConstPropertyName")
 class SyncFiles(
     private val syncFilesParams: SyncFilesParams,
-    sourceDir: File,
-    targetDir: File,
+    sourceDir: Dir,
+    targetDir: Dir,
     filter: Filter,
     encryptSourcePaths: List<PathMatcher>,
     encryptTargetPaths: List<PathMatcher>

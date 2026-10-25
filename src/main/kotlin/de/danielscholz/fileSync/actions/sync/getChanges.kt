@@ -6,10 +6,9 @@ import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.matching.MatchMode.*
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.isFolderMarker
-import java.io.File
 
 
-fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResult: CurrentFiles, folders: Folders, caseSensitive: Boolean): MutableChanges {
+fun getChanges(dir: Dir, lastSyncResultFiles: Set<FileEntity>, currentFilesResult: CurrentFiles, folders: Folders, caseSensitive: Boolean): MutableChanges {
 
     val currentFiles = currentFilesResult.files
 
@@ -102,7 +101,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
             }
     }
 
-    // file moved to other folder
+    // file moved to another folder
     equalsForFileBy(FILENAME + HASH + MODIFIED, folders, caseSensitive, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
@@ -114,7 +113,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
             }
     }
 
-    // file renamed and moved to other folder
+    // file renamed and moved to another folder
     equalsForFileBy(HASH + MODIFIED, folders, caseSensitive, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }
@@ -126,7 +125,7 @@ fun getChanges(dir: File, lastSyncResultFiles: Set<FileEntity>, currentFilesResu
             }
     }
 
-    // special case: file moved to other folder and file content changed (but filename still the same)
+    // special case: file moved to another folder and file content changed (but filename still the same)
     equalsForFileBy(FILENAME, folders, caseSensitive, true) {
         (deleted intersect added)
             .filter { !it.left.isFolderMarker and !it.right.isFolderMarker }

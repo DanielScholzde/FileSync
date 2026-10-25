@@ -14,8 +14,8 @@ import javax.swing.JOptionPane
 
 
 fun furtherChecks(
-    sourceDir: File,
-    targetDir: File,
+    sourceDir: Dir,
+    targetDir: Dir,
     sourceChanges: Changes,
     targetChanges: Changes,
     currentFilesSource: MutableCurrentFiles,

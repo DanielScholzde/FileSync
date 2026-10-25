@@ -11,10 +11,12 @@ import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.ui.UI
 import java.io.File
 
+typealias Dir = File
+
 
 class CheckAndFix(
-    val sourceDir: File,
-    val targetDir: File,
+    val sourceDir: Dir,
+    val targetDir: Dir,
     val sourceChanges: MutableChanges,
     val targetChanges: MutableChanges,
     val currentFilesSource: MutableCurrentFiles,
@@ -28,6 +30,7 @@ class CheckAndFix(
     private val failures = mutableListOf<Triple<String, (() -> Unit)?, (() -> Unit)?>>()
 
     fun run(): Boolean {
+
         // fix scenario: same added/changed files in both locations
         equalsForFileBy(pathAndName, folders, caseSensitive) {
             sourceChanges.added + sourceChanges.contentChanged.to() intersect targetChanges.added + targetChanges.contentChanged.to()
@@ -161,8 +164,8 @@ class CheckAndFix(
     }
 
     private fun Collection<IntersectResult<FileEntity>>.ifNotEmptyCreateConflicts(
-        leftDir: File,
-        rightDir: File,
+        leftDir: Dir,
+        rightDir: Dir,
         detailMsg: String,
         resolveConflict: ((File, File) -> Unit)? = null,
         diffExtractor: (FileEntity) -> String
@@ -177,8 +180,8 @@ class CheckAndFix(
     }
 
     private fun directionalChecks(
-        sourceDir: File,
-        targetDir: File,
+        sourceDir: Dir,
+        targetDir: Dir,
         sourceChanges: MutableChanges,
         targetChanges: MutableChanges,
         currentFilesTarget: Set<FileEntity>,

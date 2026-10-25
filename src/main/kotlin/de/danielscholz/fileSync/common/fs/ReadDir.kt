@@ -1,5 +1,6 @@
 package de.danielscholz.fileSync.common.fs
 
+import de.danielscholz.fileSync.actions.sync.Dir
 import de.danielscholz.fileSync.common.ignoreMillis
 import de.danielscholz.fileSync.common.myLazy
 import java.io.File
@@ -50,7 +51,7 @@ class FileEntry(
 }
 
 
-fun readDir(dir: File, subPath: String = "/", fs: FileSystemWithEncryption): FolderResult {
+fun readDir(dir: Dir, subPath: String = "/", fs: FileSystemWithEncryption): FolderResult {
     val files = mutableListOf<FileEntry>()
     val folders = mutableListOf<FolderEntry>()
     val filesAndFolders = dir.listFiles()
@@ -100,7 +101,7 @@ private fun getBasicFileAttributes(file: File): BasicFileAttributes =
 fun FileTime.toKotlinInstantIgnoreMillis(): Instant = toInstant().ignoreMillis().toKotlinInstant()
 
 
-fun isCaseSensitiveFileSystem(dir: File): Boolean? {
+fun isCaseSensitiveFileSystem(dir: Dir): Boolean? {
 
     if (dir.path.lowercase() != dir.path.uppercase() && dir.isDirectory) {
         return !(File(dir.path.lowercase()).isDirectory && File(dir.path.uppercase()).isDirectory)
@@ -110,7 +111,7 @@ fun isCaseSensitiveFileSystem(dir: File): Boolean? {
     if (filesAndDirs != null) {
         for (fileEntry in filesAndDirs) {
             val name = fileEntry.name
-            val subDirs = mutableListOf<File>()
+            val subDirs = mutableListOf<Dir>()
             if (fileEntry.isDirectory) {
                 if (name.lowercase() != name.uppercase()) {
                     return !(File(fileEntry.path.lowercase()).isDirectory && File(fileEntry.path.uppercase()).isDirectory)

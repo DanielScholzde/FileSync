@@ -6,7 +6,7 @@ import java.io.File
 
 class Env(
     val name: String,
-    val dir: File,
+    val dir: Dir,
     val indexedFilesFile: File,
     val deletedFilesFile: File,
     val caseSensitive: Boolean,

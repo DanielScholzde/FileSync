@@ -13,8 +13,6 @@ import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.FileHashEntity
 import de.danielscholz.fileSync.persistence.folderMarkerName
 import de.danielscholz.fileSync.persistence.readIndexedFiles
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.datetime.LocalDateTime
 import java.io.File
 import kotlin.time.Instant
@@ -60,11 +58,6 @@ fun getCurrentFiles(
 ): MutableCurrentFiles {
 
     val files = mutableSetOf<FileEntity>()
-
-    val maxParallelFoldersRead = 1
-
-    val folderReadDispatcher = Dispatchers.IO.limitedParallelism(maxParallelFoldersRead)
-    val hashCalcMutex = Mutex()
 
     val indexedFilesFromOtherSync: Pair<Set<FileEntity>, LocalDateTime>? = considerOtherIndexedFilesWithSyncName?.let {
         val indexResultFile = File(dir, "$syncFilesDir/$indexedFilesFilePrefix${considerOtherIndexedFilesWithSyncName}$commonFileSuffix")
