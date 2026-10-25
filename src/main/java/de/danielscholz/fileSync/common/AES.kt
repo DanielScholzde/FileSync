@@ -143,7 +143,7 @@ fun decryptFileToFlow(inputFile: File, password: String) = flow<ByteArray> {
             if (totalBytesRead > fileSizeNetto) {
                 val overEnd = (totalBytesRead - fileSizeNetto).toInt() // must be > 0 and <= 20
                 // hint: bytesRead - overEnd can be less than 0 if last part of sha1 bytes are read into last buffer (bytesRead could be 10)
-                sha1 = buffer.copyOfRange(max(bytesRead - overEnd, 0), bytesRead).let { if (sha1 != null) sha1!! + it else it }
+                sha1 = buffer.copyOfRange(max(bytesRead - overEnd, 0), bytesRead).let { if (sha1 != null) sha1 + it else it }
 
                 cipher.update(buffer, 0, max(bytesRead - overEnd, 0))?.let {
                     digest.update(it)

@@ -27,7 +27,7 @@ fun JavaLocalDateTime.ignoreMillis(): JavaLocalDateTime = this.withNano(0)
 
 
 val customFormat = LocalDateTime.Format {
-    dayOfMonth()
+    day()
     char('.')
     monthNumber()
     char('.')
