@@ -6,6 +6,7 @@ import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.commonFileSuffi
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.indexedFilesFilePrefix
 import de.danielscholz.fileSync.actions.sync.SyncFiles.Companion.syncFilesDir
 import de.danielscholz.fileSync.common.*
+import de.danielscholz.fileSync.common.fs.FileSystemEncryption
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.persistence.FileHashEntity
 import de.danielscholz.fileSync.persistence.folderMarkerName

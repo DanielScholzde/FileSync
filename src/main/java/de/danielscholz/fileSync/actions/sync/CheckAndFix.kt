@@ -1,7 +1,11 @@
 package de.danielscholz.fileSync.actions.sync
 
 import de.danielscholz.fileSync.actions.Folders
-import de.danielscholz.fileSync.common.*
+import de.danielscholz.fileSync.common.addWithCheck
+import de.danielscholz.fileSync.common.formatAsFileSize
+import de.danielscholz.fileSync.common.fs.FileSystemEncryption
+import de.danielscholz.fileSync.common.removeWithCheck
+import de.danielscholz.fileSync.common.toStr
 import de.danielscholz.fileSync.matching.*
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.ui.UI

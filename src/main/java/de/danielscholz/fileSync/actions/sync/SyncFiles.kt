@@ -4,6 +4,7 @@ import de.danielscholz.fileSync.SyncFilesParams
 import de.danielscholz.fileSync.actions.Folders
 import de.danielscholz.fileSync.actions.MutableFolders
 import de.danielscholz.fileSync.common.*
+import de.danielscholz.fileSync.common.fs.FileSystemEncryption
 import de.danielscholz.fileSync.matching.MatchMode
 import de.danielscholz.fileSync.matching.equalsForFileBy
 import de.danielscholz.fileSync.matching.pathAndName

@@ -1,6 +1,7 @@
-package de.danielscholz.fileSync.common
+package de.danielscholz.fileSync.common.fs
 
 import de.danielscholz.fileSync.actions.sync.SyncFiles
+import de.danielscholz.fileSync.common.*
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.COPY_ATTRIBUTES

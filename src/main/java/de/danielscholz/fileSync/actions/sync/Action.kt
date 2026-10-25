@@ -1,6 +1,6 @@
 package de.danielscholz.fileSync.actions.sync
 
-import de.danielscholz.fileSync.common.FileSystemEncryption
+import de.danielscholz.fileSync.common.fs.FileSystemEncryption
 import de.danielscholz.fileSync.persistence.FileEntity
 import de.danielscholz.fileSync.ui.UI
 import java.io.File

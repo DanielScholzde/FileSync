@@ -1,4 +1,4 @@
-package de.danielscholz.fileSync.common
+package de.danielscholz.fileSync.common.fs
 
 import java.io.File
 import java.io.FileInputStream

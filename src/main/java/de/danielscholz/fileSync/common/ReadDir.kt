@@ -1,5 +1,7 @@
 package de.danielscholz.fileSync.common
 
+import de.danielscholz.fileSync.common.fs.FS_ENCRYPTED
+import de.danielscholz.fileSync.common.fs.FileSystemEncryption
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
